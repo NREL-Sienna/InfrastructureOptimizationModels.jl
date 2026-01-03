@@ -1,6 +1,6 @@
 # Public API Reference
 
 ```@autodocs
-Modules = [SiennaTemplate]
+Modules = [PowerOptimizationModels]
 Public = true
 ```
