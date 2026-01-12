@@ -50,4 +50,4 @@ Contributions to the development and enhancement of PowerOptimizationModels.jl a
 
 ## License
 
-PowerOptimizationModels.jl is released under a BSD [license](https://github.com/NREL-Sienna/PowerOptimizationModels.jl/blob/main/LICENSE). PowerOptimizationModels.jl has been developed as part of the Sienna ecosystem at the U.S. Department of Energy's National Renewable Energy Laboratory ([NREL](https://www.nrel.gov/))
+PowerOptimizationModels.jl is released under a BSD [license](https://github.com/NREL-Sienna/PowerOptimizationModels.jl/blob/main/LICENSE). PowerOptimizationModels.jl has been developed as part of the Sienna ecosystem at the U.S. Department of Energy's National Lab of the Rockies NLR (formerly known as NREL)
