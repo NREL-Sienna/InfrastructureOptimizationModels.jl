@@ -429,17 +429,6 @@ function update_parameters!(model::EmulationModel, data::DatasetContainer{InMemo
     return
 end
 
-function update_initial_conditions!(
-    model::EmulationModel,
-    source::EmulationModelStore,
-    ::InterProblemChronology,
-)
-    for key in keys(get_initial_conditions(model))
-        update_initial_conditions!(model, key, source)
-    end
-    return
-end
-
 function update_model!(
     model::EmulationModel,
     source::EmulationModelStore,
@@ -475,11 +464,6 @@ function update_parameter_values!(
         get_name(model),
     )
     #end
-    return
-end
-
-function update_model!(model::EmulationModel)
-    update_model!(model, get_store(model), InterProblemChronology())
     return
 end
 
