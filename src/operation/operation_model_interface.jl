@@ -49,12 +49,30 @@ get_optimizer_stats(model::OperationModel) =
     deepcopy(get_optimizer_stats(get_optimization_container(model)))
 
 get_simulation_info(model::OperationModel) = model.simulation_info
-get_simulation_number(model::OperationModel) = get_number(get_simulation_info(model))
-set_simulation_number!(model::OperationModel, val) =
-    set_number!(get_simulation_info(model), val)
-get_sequence_uuid(model::OperationModel) = get_sequence_uuid(get_simulation_info(model))
-set_sequence_uuid!(model::OperationModel, val) =
-    set_sequence_uuid!(get_simulation_info(model), val)
+
+function get_simulation_number(model::OperationModel)
+    sim_info = get_simulation_info(model)
+    isnothing(sim_info) && error("Model is not part of a simulation. Cannot get simulation number.")
+    return get_number(sim_info)
+end
+
+function set_simulation_number!(model::OperationModel, val)
+    sim_info = get_simulation_info(model)
+    isnothing(sim_info) && error("Model is not part of a simulation. Cannot set simulation number.")
+    return set_number!(sim_info, val)
+end
+
+function get_sequence_uuid(model::OperationModel)
+    sim_info = get_simulation_info(model)
+    isnothing(sim_info) && error("Model is not part of a simulation. Cannot get sequence UUID.")
+    return get_sequence_uuid(sim_info)
+end
+
+function set_sequence_uuid!(model::OperationModel, val)
+    sim_info = get_simulation_info(model)
+    isnothing(sim_info) && error("Model is not part of a simulation. Cannot set sequence UUID.")
+    return set_sequence_uuid!(sim_info, val)
+end
 get_status(model::OperationModel) = ISOPT.get_status(get_internal(model))
 get_system(model::OperationModel) = model.sys
 get_template(model::OperationModel) = model.template
@@ -73,9 +91,20 @@ get_initial_conditions(model::OperationModel) =
     get_initial_conditions(get_optimization_container(model))
 
 get_interval(model::OperationModel) = get_store_params(model).interval
-get_run_status(model::OperationModel) = get_run_status(get_simulation_info(model))
-set_run_status!(model::OperationModel, status) =
-    set_run_status!(get_simulation_info(model), status)
+
+function get_run_status(model::OperationModel)
+    sim_info = get_simulation_info(model)
+    # For standalone models, return NOT_READY
+    isnothing(sim_info) && return RunStatus.NOT_READY
+    return get_run_status(sim_info)
+end
+
+function set_run_status!(model::OperationModel, status)
+    sim_info = get_simulation_info(model)
+    # Silently ignore for standalone models
+    isnothing(sim_info) && return nothing
+    return set_run_status!(sim_info, status)
+end
 get_time_series_cache(model::OperationModel) =
     ISOPT.get_time_series_cache(get_internal(model))
 empty_time_series_cache!(x::OperationModel) = empty!(get_time_series_cache(x))

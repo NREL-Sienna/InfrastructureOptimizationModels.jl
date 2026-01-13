@@ -17,7 +17,6 @@ export NetworkModel
 ######## Model Container Types ########
 export DeviceModel
 export ServiceModel
-export EventModel
 
 # Initial Conditions Quantities
 export DevicePower
@@ -95,7 +94,6 @@ export get_realized_timestamps
 export get_problem_base_power
 export get_objective_value
 export read_optimizer_stats
-export serialize_optimization_model
 
 ## Utils Exports
 export OptimizationProblemResults
@@ -110,6 +108,17 @@ export show_recorder_events
 export list_simulation_events
 export show_simulation_events
 export get_num_partitions
+
+# Key Types (from InfrastructureSystems.Optimization)
+export VariableKey
+export ConstraintKey
+export ParameterKey
+export ExpressionKey
+export AuxVarKey
+
+# Status Enums (from InfrastructureSystems)
+export ModelBuildStatus
+export RunStatus
 
 # Variables
 export ActivePowerVariable
@@ -273,11 +282,8 @@ export RequirementTimeSeriesParameter
 export FromToFlowLimitParameter
 export ToFromFlowLimitParameter
 
-# Datacenter Time Series Parameters
-export EnergyPriceTimeSeriesParameter
-export PowerTargetTimeSeriesParameter
-export FrequencyScalingTimeSeriesParameter
-export DemandForecastTimeSeriesParameter
+# NOTE: Datacenter-specific parameters removed - they belong in DataCenterModels.jl, not here
+# If you need these parameters, define them in your domain-specific package that imports PowerOptimizationModels
 
 # Cost Parameters
 export CostFunctionParameter
@@ -480,6 +486,9 @@ include("operation/problem_template.jl")
 include("core/optimization_container.jl")
 include("initial_conditions/initial_condition_chronologies.jl")
 include("core/model_store_params.jl")
+
+# Standard variable and expression types (after OptimizationContainer is defined)
+include("core/standard_variables_expressions.jl")
 
 # Common models - extension points for device formulations
 include("common_models/variable_properties.jl")

@@ -14,7 +14,7 @@ mutable struct DecisionModel{M <: DecisionProblem} <: OperationModel
     template::AbstractProblemTemplate
     sys::PSY.System
     internal::Union{Nothing, ISOPT.ModelInternal}
-    simulation_info::SimulationInfo
+    simulation_info::Union{Nothing, SimulationInfo}
     store::DecisionModelStore
     ext::Dict{String, Any}
 end
@@ -86,7 +86,7 @@ function DecisionModel{M}(
         template_,
         sys,
         internal,
-        SimulationInfo(),
+        nothing,  # No simulation context for standalone DecisionModel
         DecisionModelStore(),
         Dict{String, Any}(),
     )
@@ -531,38 +531,6 @@ function solve!(
     return get_run_status(model)
 end
 
-"""
-Default solve method for a DecisionModel used inside of a Simulation. Solves problems that conform to the requirements of DecisionModel{<: DecisionProblem}
-
-# Arguments
-
-  - `step::Int`: Simulation Step
-  - `model::OperationModel`: operation model
-  - `start_time::Dates.DateTime`: Initial Time of the simulation step in Simulation time.
-  - `store::SimulationStore`: Simulation output store
-
-# Accepted Key Words
-
-  - `exports`: realtime export of output. Use wisely, it can have negative impacts in the simulation times
-"""
-function solve!(
-    step::Int,
-    model::DecisionModel{<:DecisionProblem},
-    start_time::Dates.DateTime,
-    store::SimulationStore;
-    exports = nothing,
-)
-    # Note, we don't call solve!(decision_model) here because the solve call includes a lot of
-    # other logic used when solving the models separate from a simulation
-    solve_impl!(model)
-    IS.@assert_op get_current_time(model) == start_time
-    if get_run_status(model) == RunStatus.SUCCESSFULLY_FINALIZED
-        write_results!(store, model, start_time, start_time; exports = exports)
-        write_optimizer_stats!(store, model, start_time)
-        advance_execution_count!(model)
-    end
-    return get_run_status(model)
-end
 
 function handle_initial_conditions!(model::DecisionModel{<:DecisionProblem})
     TimerOutputs.@timeit BUILD_PROBLEMS_TIMER "Model Initialization" begin

@@ -52,7 +52,6 @@ mutable struct DeviceModel{D <: PSY.Device, B <: AbstractDeviceFormulation}
     time_series_names::Dict{Type{<:ParameterType}, String}
     attributes::Dict{String, Any}
     subsystem::Union{Nothing, String}
-    events::Dict{EventKey, EventModel}
     function DeviceModel(
         ::Type{D},
         ::Type{B};
@@ -77,7 +76,6 @@ mutable struct DeviceModel{D <: PSY.Device, B <: AbstractDeviceFormulation}
             time_series_names,
             attributes_,
             nothing,
-            Dict{EventKey, EventModel}(),
         )
     end
 end
@@ -85,7 +83,6 @@ end
 get_component_type(
     ::DeviceModel{D, B},
 ) where {D <: PSY.Device, B <: AbstractDeviceFormulation} = D
-get_events(m::DeviceModel) = m.events
 get_formulation(
     ::DeviceModel{D, B},
 ) where {D <: PSY.Device, B <: AbstractDeviceFormulation} = B
@@ -115,15 +112,3 @@ function _set_model!(
 end
 
 has_service_model(model::DeviceModel) = !isempty(get_services(model))
-
-function set_event_model!(
-    model::DeviceModel{D, B},
-    key::EventKey,
-    event_model::EventModel,
-) where {D <: PSY.Device, B <: AbstractDeviceFormulation}
-    if haskey(model.events, key)
-        error("EventModel $key already exists in model for device $D")
-    end
-    model.events[key] = event_model
-    return
-end

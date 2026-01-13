@@ -42,6 +42,14 @@ struct SimulationInfo
     SimulationInfo() = new()
 end
 
+# Stub methods for SimulationInfo (to be extended by PowerSimulations.jl)
+get_number(::SimulationInfo) = 0
+set_number!(::SimulationInfo, val) = nothing
+get_sequence_uuid(::SimulationInfo) = nothing
+set_sequence_uuid!(::SimulationInfo, val) = nothing
+get_run_status(::SimulationInfo) = RunStatus.NOT_READY
+set_run_status!(::SimulationInfo, status) = nothing
+
 #################################################################################
 # Parameter Container Type
 # Stores parameter arrays and their attributes for optimization problems

@@ -9,9 +9,3 @@ struct ReactivePowerTimeSeriesParameter <: TimeSeriesParameter end
 struct ActivePowerInTimeSeriesParameter <: TimeSeriesParameter end
 struct ActivePowerOutTimeSeriesParameter <: TimeSeriesParameter end
 struct RequirementTimeSeriesParameter <: TimeSeriesParameter end
-
-# Datacenter-specific parameters
-struct EnergyPriceTimeSeriesParameter <: TimeSeriesParameter end
-struct PowerTargetTimeSeriesParameter <: TimeSeriesParameter end
-struct FrequencyScalingTimeSeriesParameter <: TimeSeriesParameter end
-struct DemandForecastTimeSeriesParameter <: TimeSeriesParameter end
