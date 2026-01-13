@@ -273,6 +273,12 @@ export RequirementTimeSeriesParameter
 export FromToFlowLimitParameter
 export ToFromFlowLimitParameter
 
+# Datacenter Time Series Parameters
+export EnergyPriceTimeSeriesParameter
+export PowerTargetTimeSeriesParameter
+export FrequencyScalingTimeSeriesParameter
+export DemandForecastTimeSeriesParameter
+
 # Cost Parameters
 export CostFunctionParameter
 
@@ -454,6 +460,7 @@ using DocStringExtensions
                     """
 # Includes
 include("core/definitions.jl")
+include("core/time_series_parameter_types.jl")
 
 # Core components
 include("core/operation_model_abstract_types.jl")
@@ -473,6 +480,18 @@ include("operation/problem_template.jl")
 include("core/optimization_container.jl")
 include("initial_conditions/initial_condition_chronologies.jl")
 include("core/model_store_params.jl")
+
+# Common models - extension points for device formulations
+include("common_models/variable_properties.jl")
+include("common_models/add_variable.jl")
+include("common_models/add_parameters.jl")
+include("common_models/add_constraints.jl")
+include("common_models/construct_device.jl")
+include("common_models/objective_function.jl")
+include("common_models/get_default_attributes.jl")
+include("common_models/add_variable_cost.jl")
+# Note: add_to_expression.jl already exists and will be included elsewhere if needed
+
 include("operation/operation_model_interface.jl")
 include("operation/decision_model_store.jl")
 include("operation/emulation_model_store.jl")

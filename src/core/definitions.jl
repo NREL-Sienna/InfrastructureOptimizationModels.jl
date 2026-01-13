@@ -43,29 +43,6 @@ struct SimulationInfo
 end
 
 #################################################################################
-# Simulation Store Type
-# Abstract type for simulation result storage
-# Concrete implementations should be defined in packages that use this
-# This allows DecisionModel and EmulationModel to have simulation solve methods
-# without depending on simulation infrastructure
-abstract type SimulationStore end
-
-#################################################################################
-# Event Model Types
-# Basic event handling infrastructure
-struct EventKey
-    event_type::Type
-    name::Symbol
-end
-
-struct EventModel
-    # Placeholder for event model functionality
-    # Can be extended in PowerSimulations or other packages
-    attributes::Dict{String, Any}
-    EventModel() = new(Dict{String, Any}())
-end
-
-#################################################################################
 # Parameter Container Type
 # Stores parameter arrays and their attributes for optimization problems
 struct ParameterContainer{T, U <: Union{JuMP.Containers.DenseAxisArray, JuMP.Containers.SparseAxisArray}}
@@ -177,9 +154,6 @@ const MAX_OPTIMIZE_TRIES = 2
 # File Names definitions
 const PROBLEM_SERIALIZATION_FILENAME = "operation_problem.bin"
 const PROBLEM_LOG_FILENAME = "operation_problem.log"
-const SIMULATION_SERIALIZATION_FILENAME = "simulation.bin"
-const SIMULATION_LOG_FILENAME = "simulation.log"
-const REQUIRED_RECORDERS = (:simulation_status, :execution)
 const KNOWN_SIMULATION_PATHS = [
     "data_store",
     "logs",
@@ -187,8 +161,6 @@ const KNOWN_SIMULATION_PATHS = [
     "problems",
     "recorder",
     "results",
-    "simulation_files",
-    "simulation_partitions",
 ]
 "If the name of an extraneous file that appears in simulation results matches one of these regexes, it is safe to ignore"
 const IGNORABLE_FILES = [
