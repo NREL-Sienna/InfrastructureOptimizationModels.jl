@@ -484,7 +484,6 @@ include("core/results_by_time.jl")
 include("core/power_flow_data_wrapper.jl")
 include("operation/problem_template.jl")
 include("core/optimization_container.jl")
-include("initial_conditions/initial_condition_chronologies.jl")
 include("core/model_store_params.jl")
 
 # Standard variable and expression types (after OptimizationContainer is defined)
