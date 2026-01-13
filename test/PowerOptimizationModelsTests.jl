@@ -21,7 +21,7 @@ include("mocks/mock_system.jl")
 include("mocks/mock_components.jl")
 include("mocks/mock_time_series.jl")
 include("mocks/mock_services.jl")
-include("mocks/factories.jl")
+include("mocks/constructors.jl")
 
 # Environment flags for test selection
 const RUN_UNIT_TESTS = get(ENV, "POM_RUN_UNIT_TESTS", "true") == "true"
