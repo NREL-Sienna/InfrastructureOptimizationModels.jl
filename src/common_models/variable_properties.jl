@@ -56,7 +56,12 @@ function get_variable_lower_bound(
     service::U,
     d::V,
     ::F,
-) where {T <: VariableType, U <: PSY.Service, V <: PSY.Component, F <: AbstractServiceFormulation}
+) where {
+    T <: VariableType,
+    U <: PSY.Service,
+    V <: PSY.Component,
+    F <: AbstractServiceFormulation,
+}
     return nothing
 end
 
@@ -65,7 +70,12 @@ function get_variable_upper_bound(
     service::U,
     d::V,
     ::F,
-) where {T <: VariableType, U <: PSY.Service, V <: PSY.Component, F <: AbstractServiceFormulation}
+) where {
+    T <: VariableType,
+    U <: PSY.Service,
+    V <: PSY.Component,
+    F <: AbstractServiceFormulation,
+}
     return nothing
 end
 

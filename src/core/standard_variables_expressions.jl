@@ -150,5 +150,7 @@ function add_to_expression!(
     model::DeviceModel,
     network_model::NetworkModel,
 )
-    error("add_to_expression! not implemented for expression_type=$expression_type, variable_type=$variable_type, device_type=$(typeof(devices.values[1]))")
+    error(
+        "add_to_expression! not implemented for expression_type=$expression_type, variable_type=$variable_type, device_type=$(typeof(devices.values[1]))",
+    )
 end

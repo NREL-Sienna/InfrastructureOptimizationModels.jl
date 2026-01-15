@@ -8,13 +8,13 @@ mutable struct MockSystem
     components::Dict{DataType, Vector{Any}}
     time_series::Dict{Any, Any}
 
-    MockSystem(base_power=100.0) = new(base_power, Dict(), Dict())
+    MockSystem(base_power = 100.0) = new(base_power, Dict(), Dict())
 end
 
 # Required interface methods
 get_base_power(sys::MockSystem) = sys.base_power
 
-function get_components(::Type{T}, sys::MockSystem) where T
+function get_components(::Type{T}, sys::MockSystem) where {T}
     return get(sys.components, T, T[])
 end
 
@@ -32,8 +32,8 @@ function get_time_series(
     sys::MockSystem,
     component,
     args...;
-    kwargs...
-) where T
+    kwargs...,
+) where {T}
     return get(sys.time_series, (T, component), nothing)
 end
 

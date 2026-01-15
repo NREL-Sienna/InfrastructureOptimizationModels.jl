@@ -531,7 +531,6 @@ function solve!(
     return get_run_status(model)
 end
 
-
 function handle_initial_conditions!(model::DecisionModel{<:DecisionProblem})
     TimerOutputs.@timeit BUILD_PROBLEMS_TIMER "Model Initialization" begin
         if isempty(get_template(model))
