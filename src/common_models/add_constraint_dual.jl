@@ -1,3 +1,4 @@
+# Device model
 function add_constraint_dual!(
     container::OptimizationContainer,
     sys::PSY.System,
@@ -12,6 +13,7 @@ function add_constraint_dual!(
     return
 end
 
+# Network model
 function add_constraint_dual!(
     container::OptimizationContainer,
     sys::PSY.System,
@@ -26,21 +28,7 @@ function add_constraint_dual!(
     return
 end
 
-# NOTE: Commented out because it references CopperPlatePowerModel concrete type
-# This should be defined in PowerSimulations if needed for specific network models
-# function add_constraint_dual!(
-#     container::OptimizationContainer,
-#     sys::PSY.System,
-#     model::NetworkModel{T},
-# ) where {T <: AbstractPTDFModel}  # Changed from Union{CopperPlatePowerModel, AbstractPTDFModel}
-#     if !isempty(get_duals(model))
-#         for constraint_type in get_duals(model)
-#             assign_dual_variable!(container, constraint_type, sys, model)
-#         end
-#     end
-#     return
-# end
-
+# Service model
 function add_constraint_dual!(
     container::OptimizationContainer,
     sys::PSY.System,
@@ -55,6 +43,7 @@ function add_constraint_dual!(
     return
 end
 
+# service formulation
 function assign_dual_variable!(
     container::OptimizationContainer,
     constraint_type::Type{<:ConstraintType},
@@ -74,6 +63,7 @@ function assign_dual_variable!(
     return
 end
 
+# device formulation
 function assign_dual_variable!(
     container::OptimizationContainer,
     constraint_type::Type{<:ConstraintType},
@@ -92,6 +82,7 @@ function assign_dual_variable!(
     return
 end
 
+# network model with buses
 function assign_dual_variable!(
     container::OptimizationContainer,
     constraint_type::Type{<:ConstraintType},
@@ -107,17 +98,5 @@ function assign_dual_variable!(
         PSY.get_name.(devices),
         time_steps,
     )
-    return
-end
-
-function assign_dual_variable!(
-    container::OptimizationContainer,
-    constraint_type::Type{CopperPlateBalanceConstraint},
-    ::U,
-    network_model::NetworkModel{<:PM.AbstractPowerModel},
-) where {U <: PSY.System}
-    time_steps = get_time_steps(container)
-    ref_buses = get_reference_buses(network_model)
-    add_dual_container!(container, constraint_type, U, ref_buses, time_steps)
     return
 end
