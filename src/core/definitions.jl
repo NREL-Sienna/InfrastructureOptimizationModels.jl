@@ -74,8 +74,8 @@ const UpDown = NamedTuple{(:up, :down), NTuple{2, Float64}}
 const InOut = NamedTuple{(:in, :out), NTuple{2, Float64}}
 
 # Type alias for decision model indices - used for indexing into result stores
-const DecisionModelIndexType = Int
-const EmulationModelIndexType = Dates.DateTime
+const DecisionModelIndexType = Dates.DateTime
+const EmulationModelIndexType = Int
 
 const BUILD_PROBLEMS_TIMER = TimerOutputs.TimerOutput()
 const RUN_OPERATION_MODEL_TIMER = TimerOutputs.TimerOutput()
