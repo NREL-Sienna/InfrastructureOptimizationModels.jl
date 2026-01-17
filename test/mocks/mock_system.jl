@@ -1,5 +1,5 @@
 """
-Minimal mock for PSY.System without PowerSystems dependency.
+Minimal mock for PSY.System.
 Implements only the interface required by OptimizationContainer and models.
 """
 
@@ -7,14 +7,20 @@ mutable struct MockSystem
     base_power::Float64
     components::Dict{DataType, Vector{Any}}
     time_series::Dict{Any, Any}
-
-    MockSystem(base_power=100.0) = new(base_power, Dict(), Dict())
+    stores_in_memory::Bool
 end
 
-# Required interface methods
-get_base_power(sys::MockSystem) = sys.base_power
+# Convenience constructors
+MockSystem() = MockSystem(100.0, Dict{DataType, Vector{Any}}(), Dict{Any, Any}(), false)
+MockSystem(base_power::Float64) = MockSystem(base_power, Dict{DataType, Vector{Any}}(), Dict{Any, Any}(), false)
+MockSystem(base_power::Float64, stores_in_memory::Bool) =
+    MockSystem(base_power, Dict{DataType, Vector{Any}}(), Dict{Any, Any}(), stores_in_memory)
 
-function get_components(::Type{T}, sys::MockSystem) where T
+# Required interface methods - extend PowerOptimizationModels functions for duck-typing
+PowerOptimizationModels.get_base_power(sys::MockSystem) = sys.base_power
+PowerOptimizationModels.stores_time_series_in_memory(sys::MockSystem) = sys.stores_in_memory
+
+function get_components(::Type{T}, sys::MockSystem) where {T}
     return get(sys.components, T, T[])
 end
 
@@ -32,8 +38,8 @@ function get_time_series(
     sys::MockSystem,
     component,
     args...;
-    kwargs...
-) where T
+    kwargs...,
+) where {T}
     return get(sys.time_series, (T, component), nothing)
 end
 

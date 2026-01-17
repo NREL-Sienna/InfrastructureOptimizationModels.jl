@@ -3,13 +3,20 @@ Unit tests for piecewise linear (PWL) approximation methods.
 Tests the mathematical correctness of breakpoint generation.
 """
 
-using PowerSystems
-using JuMP
+# These are loaded by the test harness before this file is included
+# using PowerSystems
+# using JuMP
 using InfrastructureSystems
 using Dates
 
-const PSI = PowerOptimizationModels
-const PSY = PowerSystems
+# Define aliases if not already defined by test harness
+if !@isdefined(PSI)
+    const PSI = PowerOptimizationModels
+end
+if !@isdefined(PSY)
+    using PowerSystems
+    const PSY = PowerSystems
+end
 const IS = InfrastructureSystems
 const ISOPT = InfrastructureSystems.Optimization
 

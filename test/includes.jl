@@ -21,6 +21,7 @@ using DataFrames
 using DataFramesMeta
 using Dates
 using JuMP
+import JuMP.MOI as MOI
 import JuMP.Containers: DenseAxisArray, SparseAxisArray
 using TimeSeries
 using CSV

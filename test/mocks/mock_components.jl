@@ -3,6 +3,12 @@ Minimal mock components that satisfy PowerSystems device interfaces.
 Each mock is ~20 lines and implements only get_name, get_available, etc.
 """
 
+using PowerOptimizationModels
+const PSI = PowerOptimizationModels
+
+# Mock formulation type for testing DeviceModel
+struct TestDeviceFormulation <: PSI.AbstractDeviceFormulation end
+
 # Mock Bus
 struct MockBus
     name::String

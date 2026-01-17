@@ -86,7 +86,7 @@ mutable struct OptimizationContainer <: ISOPT.AbstractOptimizationContainer
 end
 
 function OptimizationContainer(
-    sys::PSY.System,
+    sys,  # Any system implementing get_base_power (duck-typing)
     settings::Settings,
     jump_model::Union{Nothing, JuMP.Model},
     ::Type{T},
@@ -120,7 +120,7 @@ function OptimizationContainer(
         InitialConditionsData(),
         Dict{Symbol, Array}(),
         nothing,
-        PSY.get_base_power(sys),
+        get_base_power(sys),
         OptimizerStats(),
         false,
         ISOPT.OptimizationContainerMetadata(),

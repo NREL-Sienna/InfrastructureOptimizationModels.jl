@@ -4,7 +4,7 @@ struct Settings
     time_series_cache_size::Int
     warm_start::Base.RefValue{Bool}
     initial_time::Base.RefValue{Dates.DateTime}
-    optimizer::Union{Nothing, MOI.OptimizerWithAttributes}
+    optimizer::Any  # Union{Nothing, MOI.OptimizerWithAttributes} or duck-typed optimizer
     direct_mode_optimizer::Bool
     optimizer_solve_log_print::Bool
     detailed_optimizer_stats::Bool
@@ -46,19 +46,16 @@ function Settings(
     store_variable_names = false,
     ext = Dict{String, Any}(),
 )
-    if time_series_cache_size > 0 && PSY.stores_time_series_in_memory(sys)
+    if time_series_cache_size > 0 && stores_time_series_in_memory(sys)
         @info "Overriding time_series_cache_size because time series is stored in memory"
         time_series_cache_size = 0
     end
 
-    if isa(optimizer, MOI.OptimizerWithAttributes) || optimizer === nothing
-        optimizer_ = optimizer
-    elseif isa(optimizer, DataType)
+    # Handle optimizer: wrap DataType in OptimizerWithAttributes, pass through others (duck-typing)
+    if isa(optimizer, DataType)
         optimizer_ = MOI.OptimizerWithAttributes(optimizer)
     else
-        error(
-            "The provided input for optimizer is invalid. Provide a JuMP.OptimizerWithAttributes object or a valid Optimizer constructor (e.g. HiGHS.Optimizer).",
-        )
+        optimizer_ = optimizer  # nothing, OptimizerWithAttributes, or duck-typed optimizer
     end
 
     return Settings(
@@ -117,7 +114,7 @@ end
 
 function restore_from_copy(
     settings::Settings;
-    optimizer::Union{Nothing, MOI.OptimizerWithAttributes},
+    optimizer = nothing,  # Any optimizer type (duck-typing supported)
 )
     vals = Dict{Symbol, Any}()
     for name in fieldnames(Settings)

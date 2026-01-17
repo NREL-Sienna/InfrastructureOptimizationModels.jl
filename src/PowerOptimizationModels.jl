@@ -394,7 +394,7 @@ import InfrastructureSystems.Optimization: get_source_data
 # PowerSystems imports
 import PowerSystems:
     get_components, get_component, get_available_components, get_available_component,
-    get_groups, get_available_groups
+    get_groups, get_available_groups, stores_time_series_in_memory, get_base_power
 import PowerSystems: StartUpStages
 
 export get_name
