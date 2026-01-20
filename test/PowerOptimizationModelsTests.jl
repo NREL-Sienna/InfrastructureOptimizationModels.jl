@@ -25,16 +25,16 @@ include("mocks/mock_time_series.jl")
 include("mocks/mock_services.jl")
 include("mocks/constructors.jl")
 
-# TODO: would like to load these only if we're running the tests that need them,
-# but unfortunately, Julia requires all dependencies to be loaded at module level.
-# So we'd need to split the tests into multiple modules to achieve that.
-using PowerSystems
-using JuMP
-const PSY = PowerSystems
-
 # Environment flags for test selection
 const RUN_UNIT_TESTS = get(ENV, "POM_RUN_UNIT_TESTS", "true") == "true"
 const RUN_INTEGRATION_TESTS = get(ENV, "POM_RUN_INTEGRATION_TESTS", "false") == "true"
+
+# Heavy dependencies - only load if we need tests that use them
+if RUN_INTEGRATION_TESTS
+    using PowerSystems
+    using JuMP
+    const PSY = PowerSystems
+end
 
 const LOG_FILE = "power-optimization-models-test.log"
 
@@ -75,18 +75,20 @@ function run_tests()
         if RUN_UNIT_TESTS
             @info "Starting unit tests..."
             @time @testset "PowerOptimizationModels Unit Tests" begin
-                # Phase 1: Lightweight tests (use only mock objects, no PSY types)
+                # Lightweight tests (use only mock objects, no PSY types)
                 @testset "Lightweight Tests (mocks only)" begin
                     @info "Running lightweight tests..."
                     include("test_settings.jl")
                 end
 
-                # Phase 2: Tests requiring PowerSystems types
-                @testset "Tests with PowerSystems" begin
-                    @info "Running tests that require PowerSystems..."
-                    include("test_device_model.jl")
-                    include("test_optimization_container.jl")
-                    include("test_pwl_methods.jl")
+                # Tests requiring PowerSystems types
+                if RUN_INTEGRATION_TESTS
+                    @testset "Tests with PowerSystems" begin
+                        @info "Running tests that require PowerSystems..."
+                        include("test_device_model.jl")
+                        include("test_optimization_container.jl")
+                        include("test_pwl_methods.jl")
+                    end
                 end
             end
         end
