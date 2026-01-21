@@ -19,8 +19,8 @@ end
         sys = MockSystem(100.0, false)
         settings = PSI.Settings(
             sys;
-            horizon=Hour(24),
-            resolution=Hour(1),
+            horizon = Hour(24),
+            resolution = Hour(1),
         )
 
         @test PSI.get_horizon(settings) == Dates.Millisecond(Hour(24))
@@ -48,13 +48,13 @@ end
         sys = MockSystem(100.0, false)
         settings = PSI.Settings(
             sys;
-            horizon=Hour(48),
-            resolution=Minute(30),
-            warm_start=false,
-            system_to_file=false,
-            allow_fails=true,
-            check_numerical_bounds=false,
-            ext=Dict{String, Any}("custom" => 123),
+            horizon = Hour(48),
+            resolution = Minute(30),
+            warm_start = false,
+            system_to_file = false,
+            allow_fails = true,
+            check_numerical_bounds = false,
+            ext = Dict{String, Any}("custom" => 123),
         )
 
         @test PSI.get_horizon(settings) == Dates.Millisecond(Hour(48))
@@ -70,15 +70,15 @@ end
         sys = MockSystem(100.0, false)
 
         # Test with nothing (default)
-        settings_none = PSI.Settings(sys; horizon=Hour(24), resolution=Hour(1))
+        settings_none = PSI.Settings(sys; horizon = Hour(24), resolution = Hour(1))
         @test PSI.get_optimizer(settings_none) === nothing
 
         # Test with duck-typed optimizer instance (passes through directly)
         settings_duck = PSI.Settings(
             sys;
-            horizon=Hour(24),
-            resolution=Hour(1),
-            optimizer=MockOptimizer(),
+            horizon = Hour(24),
+            resolution = Hour(1),
+            optimizer = MockOptimizer(),
         )
         @test PSI.get_optimizer(settings_duck) isa MockOptimizer
     end
@@ -89,9 +89,9 @@ end
 
         settings = PSI.Settings(
             sys_in_memory;
-            horizon=Hour(24),
-            resolution=Hour(1),
-            time_series_cache_size=1000,
+            horizon = Hour(24),
+            resolution = Hour(1),
+            time_series_cache_size = 1000,
         )
 
         @test !PSI.use_time_series_cache(settings)
@@ -102,9 +102,9 @@ end
 
         settings = PSI.Settings(
             sys_not_in_memory;
-            horizon=Hour(24),
-            resolution=Hour(1),
-            time_series_cache_size=1000,
+            horizon = Hour(24),
+            resolution = Hour(1),
+            time_series_cache_size = 1000,
         )
 
         @test PSI.use_time_series_cache(settings)
@@ -112,7 +112,7 @@ end
 
     @testset "Setters" begin
         sys = MockSystem(100.0, false)
-        settings = PSI.Settings(sys; horizon=Hour(24), resolution=Hour(1))
+        settings = PSI.Settings(sys; horizon = Hour(24), resolution = Hour(1))
 
         # Test set_horizon!
         PSI.set_horizon!(settings, Hour(48))
@@ -140,10 +140,10 @@ end
 
         original = PSI.Settings(
             sys;
-            horizon=Hour(24),
-            resolution=Hour(1),
-            optimizer=optimizer,
-            warm_start=false,
+            horizon = Hour(24),
+            resolution = Hour(1),
+            optimizer = optimizer,
+            warm_start = false,
         )
 
         copied = PSI.copy_for_serialization(original)
@@ -163,13 +163,13 @@ end
 
         original = PSI.Settings(
             sys;
-            horizon=Hour(24),
-            resolution=Hour(1),
-            warm_start=false,
-            allow_fails=true,
+            horizon = Hour(24),
+            resolution = Hour(1),
+            warm_start = false,
+            allow_fails = true,
         )
 
-        restored_vals = PSI.restore_from_copy(original; optimizer=optimizer)
+        restored_vals = PSI.restore_from_copy(original; optimizer = optimizer)
 
         @test restored_vals isa Dict{Symbol, Any}
         @test restored_vals[:optimizer] === optimizer
@@ -181,16 +181,17 @@ end
         sys = MockSystem(100.0, false)
 
         # Test with Hour
-        settings_hour = PSI.Settings(sys; horizon=Hour(12), resolution=Hour(1))
+        settings_hour = PSI.Settings(sys; horizon = Hour(12), resolution = Hour(1))
         @test PSI.get_horizon(settings_hour) == Dates.Millisecond(Hour(12))
 
         # Test with Minute
-        settings_minute = PSI.Settings(sys; horizon=Minute(360), resolution=Minute(15))
+        settings_minute = PSI.Settings(sys; horizon = Minute(360), resolution = Minute(15))
         @test PSI.get_horizon(settings_minute) == Dates.Millisecond(Minute(360))
         @test PSI.get_resolution(settings_minute) == Dates.Millisecond(Minute(15))
 
         # Test with Second
-        settings_second = PSI.Settings(sys; horizon=Second(3600), resolution=Second(300))
+        settings_second =
+            PSI.Settings(sys; horizon = Second(3600), resolution = Second(300))
         @test PSI.get_horizon(settings_second) == Dates.Millisecond(Second(3600))
     end
 end

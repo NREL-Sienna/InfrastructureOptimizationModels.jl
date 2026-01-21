@@ -26,14 +26,14 @@ bus = MockBus("bus1", 1, :PV)
 println("✓ MockBus works")
 
 # Test MockThermalGen
-gen = MockThermalGen("gen1", true, bus, (min=10.0, max=100.0))
+gen = MockThermalGen("gen1", true, bus, (min = 10.0, max = 100.0))
 @assert get_name(gen) == "gen1"
 @assert get_available(gen) == true
 @assert get_active_power_limits(gen).max == 100.0
 println("✓ MockThermalGen works")
 
 # Test factory function
-sys2 = make_mock_system(n_buses=3, n_gens=2, n_loads=1)
+sys2 = make_mock_system(; n_buses = 3, n_gens = 2, n_loads = 1)
 @assert get_base_power(sys2) == 100.0
 buses = get_components(MockBus, sys2)
 @assert length(buses) == 3
@@ -42,7 +42,7 @@ gens = get_components(MockThermalGen, sys2)
 println("✓ make_mock_system() works")
 
 # Test time series
-ts = make_mock_time_series(length=24)
+ts = make_mock_time_series(; length = 24)
 @assert length(ts.data) == 24
 println("✓ make_mock_time_series() works")
 

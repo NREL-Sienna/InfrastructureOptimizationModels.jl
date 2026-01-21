@@ -8,10 +8,10 @@ using Dates
 Create a mock system with specified number of buses, generators, and loads.
 """
 function make_mock_system(;
-    n_buses=3,
-    n_gens=2,
-    n_loads=1,
-    base_power=100.0
+    n_buses = 3,
+    n_gens = 2,
+    n_loads = 1,
+    base_power = 100.0,
 )
     sys = MockSystem(base_power)
 
@@ -27,7 +27,7 @@ function make_mock_system(;
             "gen$i",
             true,
             buses[mod1(i, length(buses))],
-            (min=0.0, max=100.0)
+            (min = 0.0, max = 100.0),
         )
         add_component!(sys, gen)
     end
@@ -38,7 +38,7 @@ function make_mock_system(;
             "load$i",
             true,
             buses[mod1(i, length(buses))],
-            50.0
+            50.0,
         )
         add_component!(sys, load)
     end
@@ -50,15 +50,15 @@ end
 Create a mock time series with specified parameters.
 """
 function make_mock_time_series(;
-    name="test_ts",
-    length=24,
-    resolution=Hour(1),
-    initial_timestamp=DateTime(2024, 1, 1)
+    name = "test_ts",
+    length = 24,
+    resolution = Hour(1),
+    initial_timestamp = DateTime(2024, 1, 1),
 )
     return MockDeterministic(
         name,
         rand(length),
         resolution,
-        initial_timestamp
+        initial_timestamp,
     )
 end

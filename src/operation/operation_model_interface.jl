@@ -52,25 +52,29 @@ get_simulation_info(model::OperationModel) = model.simulation_info
 
 function get_simulation_number(model::OperationModel)
     sim_info = get_simulation_info(model)
-    isnothing(sim_info) && error("Model is not part of a simulation. Cannot get simulation number.")
+    isnothing(sim_info) &&
+        error("Model is not part of a simulation. Cannot get simulation number.")
     return get_number(sim_info)
 end
 
 function set_simulation_number!(model::OperationModel, val)
     sim_info = get_simulation_info(model)
-    isnothing(sim_info) && error("Model is not part of a simulation. Cannot set simulation number.")
+    isnothing(sim_info) &&
+        error("Model is not part of a simulation. Cannot set simulation number.")
     return set_number!(sim_info, val)
 end
 
 function get_sequence_uuid(model::OperationModel)
     sim_info = get_simulation_info(model)
-    isnothing(sim_info) && error("Model is not part of a simulation. Cannot get sequence UUID.")
+    isnothing(sim_info) &&
+        error("Model is not part of a simulation. Cannot get sequence UUID.")
     return get_sequence_uuid(sim_info)
 end
 
 function set_sequence_uuid!(model::OperationModel, val)
     sim_info = get_simulation_info(model)
-    isnothing(sim_info) && error("Model is not part of a simulation. Cannot set sequence UUID.")
+    isnothing(sim_info) &&
+        error("Model is not part of a simulation. Cannot set sequence UUID.")
     return set_sequence_uuid!(sim_info, val)
 end
 get_status(model::OperationModel) = ISOPT.get_status(get_internal(model))

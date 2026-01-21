@@ -35,8 +35,8 @@ end
         model = PSI.DeviceModel(
             PSY.ThermalStandard,
             TestDeviceFormulation;
-            use_slacks=true,
-            attributes=Dict{String, Any}("custom_attr" => 42),
+            use_slacks = true,
+            attributes = Dict{String, Any}("custom_attr" => 42),
         )
 
         @test PSI.get_use_slacks(model) == true
@@ -49,7 +49,7 @@ end
         model = PSI.DeviceModel(
             PSY.ThermalStandard,
             TestDeviceFormulation;
-            attributes=Dict{String, Any}("my_key" => "my_value"),
+            attributes = Dict{String, Any}("my_key" => "my_value"),
         )
 
         attrs = PSI.get_attributes(model)
@@ -86,7 +86,9 @@ end
         @test_throws ArgumentError PSI._check_device_formulation(PSY.Generator)
 
         # Should reject abstract formulation type
-        @test_throws ArgumentError PSI._check_device_formulation(PSI.AbstractDeviceFormulation)
+        @test_throws ArgumentError PSI._check_device_formulation(
+            PSI.AbstractDeviceFormulation,
+        )
 
         # Should accept concrete types
         @test PSI._check_device_formulation(PSY.ThermalStandard) === nothing

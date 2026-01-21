@@ -12,13 +12,20 @@ end
 
 # Convenience constructors
 MockSystem() = MockSystem(100.0, Dict{DataType, Vector{Any}}(), Dict{Any, Any}(), false)
-MockSystem(base_power::Float64) = MockSystem(base_power, Dict{DataType, Vector{Any}}(), Dict{Any, Any}(), false)
+MockSystem(base_power::Float64) =
+    MockSystem(base_power, Dict{DataType, Vector{Any}}(), Dict{Any, Any}(), false)
 MockSystem(base_power::Float64, stores_in_memory::Bool) =
-    MockSystem(base_power, Dict{DataType, Vector{Any}}(), Dict{Any, Any}(), stores_in_memory)
+    MockSystem(
+        base_power,
+        Dict{DataType, Vector{Any}}(),
+        Dict{Any, Any}(),
+        stores_in_memory,
+    )
 
 # Required interface methods - extend InfrastructureOptimizationModels functions for duck-typing
 InfrastructureOptimizationModels.get_base_power(sys::MockSystem) = sys.base_power
-InfrastructureOptimizationModels.stores_time_series_in_memory(sys::MockSystem) = sys.stores_in_memory
+InfrastructureOptimizationModels.stores_time_series_in_memory(sys::MockSystem) =
+    sys.stores_in_memory
 
 function get_components(::Type{T}, sys::MockSystem) where {T}
     return get(sys.components, T, T[])

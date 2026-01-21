@@ -55,10 +55,16 @@ set_run_status!(::SimulationInfo, status) = nothing
 #################################################################################
 # Parameter Container Type
 # Stores parameter arrays and their attributes for optimization problems
-struct ParameterContainer{T, U <: Union{JuMP.Containers.DenseAxisArray, JuMP.Containers.SparseAxisArray}}
+struct ParameterContainer{
+    T,
+    U <: Union{JuMP.Containers.DenseAxisArray, JuMP.Containers.SparseAxisArray},
+}
     attributes::T
     parameter_array::U
-    multiplier_array::Union{JuMP.Containers.DenseAxisArray{Float64}, JuMP.Containers.SparseAxisArray{Float64}}
+    multiplier_array::Union{
+        JuMP.Containers.DenseAxisArray{Float64},
+        JuMP.Containers.SparseAxisArray{Float64},
+    }
 end
 
 # Accessor functions for ParameterContainer
