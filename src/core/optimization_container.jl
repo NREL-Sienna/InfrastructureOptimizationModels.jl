@@ -248,7 +248,7 @@ function is_milp(container::OptimizationContainer)::Bool
     !supports_milp(container) && return false
     if !isempty(
         JuMP.all_constraints(
-            PSI.get_jump_model(container),
+            get_jump_model(container),
             JuMP.VariableRef,
             JuMP.MOI.ZeroOne,
         ),
@@ -291,10 +291,10 @@ function _finalize_jump_model!(container::OptimizationContainer, settings::Setti
         @debug "The optimization model has no optimizer attached" _group =
             LOG_GROUP_OPTIMIZATION_CONTAINER
     else
-        JuMP.set_optimizer(PSI.get_jump_model(container), get_optimizer(settings))
+        JuMP.set_optimizer(get_jump_model(container), get_optimizer(settings))
     end
 
-    JuMPmodel = PSI.get_jump_model(container)
+    JuMPmodel = get_jump_model(container)
     warm_start_enabled = get_warm_start(settings)
     solver_supports_warm_start = _validate_warm_start_support(JuMPmodel, warm_start_enabled)
     set_warm_start!(settings, solver_supports_warm_start)
@@ -373,7 +373,7 @@ function reset_optimization_model!(container::OptimizationContainer)
     container.initial_conditions_data = InitialConditionsData()
     container.objective_function = ObjectiveFunction()
     container.primal_values_cache = PrimalValuesCache()
-    JuMP.empty!(PSI.get_jump_model(container))
+    JuMP.empty!(get_jump_model(container))
     return
 end
 
@@ -878,7 +878,7 @@ function build_impl!(
         @debug "Building Objective" _group = LOG_GROUP_OPTIMIZATION_CONTAINER
         update_objective_function!(container)
     end
-    @debug "Total operation count $(PSI.get_jump_model(container).operator_counter)" _group =
+    @debug "Total operation count $(get_jump_model(container).operator_counter)" _group =
         LOG_GROUP_OPTIMIZATION_CONTAINER
 
     TimerOutputs.@timeit BUILD_PROBLEMS_TIMER "Power Flow Initialization" begin

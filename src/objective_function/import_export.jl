@@ -20,7 +20,7 @@ function _add_variable_cost_to_objective!(
     U <: AbstractSourceFormulation,
 }
     component_name = PSY.get_name(component)
-    @debug "Import Export Cost" _group = PSI.LOG_GROUP_COST_FUNCTIONS component_name
+    @debug "Import Export Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     import_cost_curves = PSY.get_import_offer_curves(cost_function)
     if !isnothing(import_cost_curves)
         add_pwl_term!(
@@ -46,7 +46,7 @@ function _add_variable_cost_to_objective!(
     U <: AbstractSourceFormulation,
 }
     component_name = PSY.get_name(component)
-    @debug "Import Export Cost" _group = PSI.LOG_GROUP_COST_FUNCTIONS component_name
+    @debug "Import Export Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     export_cost_curves = PSY.get_export_offer_curves(cost_function)
     if !isnothing(export_cost_curves)
         add_pwl_term!(

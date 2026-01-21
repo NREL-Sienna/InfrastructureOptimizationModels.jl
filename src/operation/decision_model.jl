@@ -90,7 +90,7 @@ function DecisionModel{M}(
         DecisionModelStore(),
         Dict{String, Any}(),
     )
-    PSI.validate_time_series!(model)
+    validate_time_series!(model)
     return model
 end
 

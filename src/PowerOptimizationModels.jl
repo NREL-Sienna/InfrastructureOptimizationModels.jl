@@ -105,8 +105,6 @@ export get_constraint_index
 export get_variable_index
 export list_recorder_events
 export show_recorder_events
-export list_simulation_events
-export show_simulation_events
 export get_num_partitions
 
 # Key Types (from InfrastructureSystems.Optimization)

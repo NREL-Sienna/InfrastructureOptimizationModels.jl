@@ -11,7 +11,7 @@ Abstract type for Decision Problems
 
 import PowerOptimizationModels
 const POM = PowerOptimizationModels
-struct MyCustomProblem <: PSI.DecisionProblem
+struct MyCustomProblem <: POM.DecisionProblem
 """
 abstract type DecisionProblem end
 
@@ -22,7 +22,7 @@ Abstract type for Emulation Problems
 
 import PowerOptimizationModels
 const POM = PowerOptimizationModels
-struct MyCustomEmulator <: PSI.EmulationProblem
+struct MyCustomEmulator <: POM.EmulationProblem
 """
 abstract type EmulationProblem end
 

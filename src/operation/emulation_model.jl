@@ -485,7 +485,7 @@ function run_impl!(
     for execution in 1:executions
         TimerOutputs.@timeit RUN_OPERATION_MODEL_TIMER "Run execution" begin
             solve_impl!(model)
-            current_time = initial_time + (execution - 1) * PSI.get_resolution(model)
+            current_time = initial_time + (execution - 1) * get_resolution(model)
             write_results!(get_store(model), model, execution, current_time)
             write_optimizer_stats!(get_store(model), get_optimizer_stats(model), execution)
             advance_execution_count!(model)
