@@ -753,7 +753,7 @@ function _get_pwl_data(
         breakpoint_cost_component,
         slope_cost_component,
         unit_system,
-        get_base_power(container),
+        get_model_base_power(container),
         PSY.get_base_power(component),
     )
 
@@ -834,7 +834,7 @@ function _add_pwl_term!(
     multiplier = objective_function_multiplier(U(), V())
     resolution = get_resolution(container)
     dt = Dates.value(Dates.Second(resolution)) / SECONDS_IN_HOUR
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     value_curve = PSY.get_value_curve(cost_data)
     power_units = PSY.get_power_units(cost_data)
     cost_component = PSY.get_function_data(value_curve)
@@ -941,7 +941,7 @@ function _add_service_bid_cost!(
 ) where {T <: PSY.Reserve{<:PSY.ReserveDirection}}
     time_steps = get_time_steps(container)
     initial_time = get_initial_time(container)
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     forecast_data = PSY.get_services_bid(
         component,
         PSY.get_operation_cost(component),
@@ -1038,7 +1038,7 @@ function _add_vom_cost_to_objective_helper!(
     multiplier = 1.0 # VOM Cost is always positive
     cost_term = PSY.get_proportional_term(vom_cost)
     iszero(cost_term) && return
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     device_base_power = PSY.get_base_power(component)
     cost_term_normalized = get_proportional_cost_per_system_unit(cost_term,
         power_units,

@@ -77,7 +77,7 @@ mutable struct OptimizationContainer <: AbstractOptimizationContainer
     initial_conditions_data::InitialConditionsData
     infeasibility_conflict::Dict{Symbol, Array}
     pm::Union{Nothing, PM.AbstractPowerModel}
-    base_power::Float64
+    model_base_power::Float64
     optimizer_stats::OptimizerStats
     built_for_recurrent_solves::Bool
     metadata::OptimizationContainerMetadata
@@ -133,7 +133,7 @@ built_for_recurrent_solves(container::OptimizationContainer) =
     container.built_for_recurrent_solves
 
 get_aux_variables(container::OptimizationContainer) = container.aux_variables
-get_base_power(container::OptimizationContainer) = container.base_power
+get_model_base_power(container::OptimizationContainer) = container.model_base_power
 get_constraints(container::OptimizationContainer) = container.constraints
 
 function cost_function_unsynch(container::OptimizationContainer)

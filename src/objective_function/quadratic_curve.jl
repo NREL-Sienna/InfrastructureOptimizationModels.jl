@@ -142,7 +142,7 @@ function _add_variable_cost_to_objective!(
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     multiplier = objective_function_multiplier(T(), U())
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     device_base_power = PSY.get_base_power(component)
     value_curve = PSY.get_value_curve(cost_function)
     power_units = PSY.get_power_units(cost_function)
@@ -250,7 +250,7 @@ function _add_variable_cost_to_objective!(
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     multiplier = objective_function_multiplier(T(), U())
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     device_base_power = PSY.get_base_power(component)
     value_curve = PSY.get_value_curve(cost_function)
     power_units = PSY.get_power_units(cost_function)

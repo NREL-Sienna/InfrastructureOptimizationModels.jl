@@ -354,7 +354,7 @@ import InfrastructureSystems.Optimization:
 import InfrastructureSystems:
     @scoped_enum,
     TableFormat,
-    get_base_power,
+    get_results_base_power,
     get_variables,
     get_parameters,
     get_total_cost,

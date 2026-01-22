@@ -2431,7 +2431,7 @@ function add_to_expression!(
 }
     variable = get_variable(container, U(), V)
     time_steps = get_time_steps(container)
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     resolution = get_resolution(container)
     dt = Dates.value(resolution) / MILLISECONDS_IN_HOUR
     for d in devices
@@ -2505,7 +2505,7 @@ function add_to_expression!(
 }
     variable = get_variable(container, U(), V)
     time_steps = get_time_steps(container)
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     resolution = get_resolution(container)
     dt = Dates.value(resolution) / MILLISECONDS_IN_HOUR
     for d in devices
