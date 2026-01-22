@@ -259,7 +259,7 @@ function add_to_expression!(
     U <: ReactivePowerTimeSeriesParameter,
     V <: PSY.MotorLoad,
     W <: StaticPowerLoad,
-    X <: PM.ACPPowerModel,
+    X <: ACPPowerModel,
 }
     network_reduction = get_network_reduction(network_model)
     for d in devices
@@ -1572,7 +1572,7 @@ function add_to_expression!(
     U <: FlowActivePowerVariable,
     V <: PSY.ACBranch,
     W <: AbstractBranchFormulation,
-    X <: PM.AbstractActivePowerModel,
+    X <: AbstractActivePowerModel,
 }
     var = get_variable(container, U(), V)
     expression = get_expression(container, T(), PSY.ACBus)
@@ -1639,7 +1639,7 @@ function add_to_expression!(
     network_model::NetworkModel{U},
 ) where {
     W <: AbstractBranchFormulation,
-    U <: PM.AbstractActivePowerModel,
+    U <: AbstractActivePowerModel,
 }
     @debug "AreaInterchanges do not contribute to ActivePowerBalance expressions in non-area models."
     return
@@ -1905,7 +1905,7 @@ function add_to_expression!(
     ::Type{FlowActivePowerVariable},
     service::PSY.TransmissionInterface,
     model::ServiceModel{PSY.TransmissionInterface, V},
-    network_model::NetworkModel{<:PM.AbstractActivePowerModel},
+    network_model::NetworkModel{<:AbstractActivePowerModel},
 ) where {V <: Union{ConstantMaxInterfaceFlow, VariableMaxInterfaceFlow}}
     net_reduction_data = get_network_reduction(network_model)
     expression = get_expression(container, InterfaceTotalFlow(), PSY.TransmissionInterface)
@@ -2317,7 +2317,7 @@ function add_to_expression!(
 ) where {
     T <: ActivePowerBalance,
     U <: Union{SystemBalanceSlackUp, SystemBalanceSlackDown},
-    W <: PM.AbstractActivePowerModel,
+    W <: AbstractActivePowerModel,
 }
     variable = get_variable(container, U(), PSY.ACBus)
     expression = get_expression(container, T(), PSY.ACBus)

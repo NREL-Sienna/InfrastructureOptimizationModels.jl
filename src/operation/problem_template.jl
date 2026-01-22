@@ -5,13 +5,13 @@ const ServicesModelContainer = Dict{Tuple{String, Symbol}, ServiceModel}
 abstract type AbstractProblemTemplate end
 
 """
-    ProblemTemplate(::Type{T}) where {T<:PM.AbstractPowerFormulation}
+    ProblemTemplate(::Type{T}) where {T<:AbstractPowerModel}
 
 Creates a model reference of the InfrastructureOptimizationModels Optimization Problem.
 
 # Arguments
 
-  - `model::Type{T<:PM.AbstractPowerFormulation}`:
+  - `model::Type{T<:AbstractPowerModel}`:
 
 # Example
 

@@ -11,9 +11,10 @@ function _check_pm_formulation(::Type{T}) where {T <: AbstractPowerModel}
     end
 end
 
-_maybe_flatten_pfem(pfem::Vector{PFS.PowerFlowEvaluationModel}) = pfem
-_maybe_flatten_pfem(pfem::PFS.PowerFlowEvaluationModel) =
-    PFS.flatten_power_flow_evaluation_model(pfem)
+# Note: PowerFlowEvaluationModel support has been moved to PowerOperationsModels
+# These stub functions maintain API compatibility
+_maybe_flatten_pfem(pfem::Vector) = pfem
+_maybe_flatten_pfem(pfem) = [pfem]
 
 """
 Establishes the NetworkModel for a given AC network formulation type.
@@ -37,7 +38,7 @@ Establishes the NetworkModel for a given AC network formulation type.
     subnetworks are inferred from PTDF/VirtualPTDF or discovered from the system.
 - `duals::Vector{DataType}` = Vector{DataType}()
     Constraint types for which duals should be recorded.
-- `power_flow_evaluation::Union{PFS.PowerFlowEvaluationModel, Vector{PFS.PowerFlowEvaluationModel}}`
+- `power_flow_evaluation::Union{AbstractPowerFlowEvaluationModel, Vector{<:AbstractPowerFlowEvaluationModel}}`
     Power-flow evaluation model(s). A single model is flattened to a vector internally.
 
 # Notes
@@ -64,7 +65,7 @@ mutable struct NetworkModel{T <: AbstractPowerModel}
     network_reduction::PNM.NetworkReductionData
     reduce_radial_branches::Bool
     reduce_degree_two_branches::Bool
-    power_flow_evaluation::Vector{PFS.PowerFlowEvaluationModel}
+    power_flow_evaluation::Vector{<:AbstractPowerFlowEvaluationModel}
     subsystem::Union{Nothing, String}
     hvdc_network_model::Union{Nothing, AbstractHVDCNetworkModel}
     modeled_branch_types::Vector{DataType}
@@ -80,9 +81,9 @@ mutable struct NetworkModel{T <: AbstractPowerModel}
         subnetworks = Dict{Int, Set{Int}}(),
         duals = Vector{DataType}(),
         power_flow_evaluation::Union{
-            PFS.PowerFlowEvaluationModel,
-            Vector{PFS.PowerFlowEvaluationModel},
-        } = PFS.PowerFlowEvaluationModel[],
+            AbstractPowerFlowEvaluationModel,
+            Vector{<:AbstractPowerFlowEvaluationModel},
+        } = AbstractPowerFlowEvaluationModel[],
         hvdc_network_model = nothing,
     ) where {T <: AbstractPowerModel}
         _check_pm_formulation(T)
