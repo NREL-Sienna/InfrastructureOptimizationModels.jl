@@ -16,7 +16,7 @@ _maybe_flatten_pfem(pfem::PFS.PowerFlowEvaluationModel) =
     PFS.flatten_power_flow_evaluation_model(pfem)
 
 """
-Establishes the NetworkModel for a given PowerModels formulation type.
+Establishes the NetworkModel for a given AC network formulation type.
 
 # Arguments
 - `::Type{T}` where `T <: IS.AbstractPowerModel`: the power-system formulation type.
