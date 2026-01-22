@@ -3,7 +3,10 @@ Minimal mock for PSY.System.
 Implements only the interface required by OptimizationContainer and models.
 """
 
-mutable struct MockSystem
+using InfrastructureSystems
+const IS = InfrastructureSystems
+
+mutable struct MockSystem <: IS.InfrastructureSystemsContainer
     base_power::Float64
     components::Dict{DataType, Vector{Any}}
     time_series::Dict{Any, Any}

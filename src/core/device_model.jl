@@ -42,7 +42,10 @@ feedforward to enable passing values between operation model at simulation time
 thermal_gens = DeviceModel(ThermalStandard, ThermalBasicUnitCommitment)
 ```
 """
-mutable struct DeviceModel{D, B <: AbstractDeviceFormulation}
+mutable struct DeviceModel{
+    D <: IS.InfrastructureSystemsComponent,
+    B <: AbstractDeviceFormulation,
+}
     feedforwards::Vector{<:AbstractAffectFeedforward}
     use_slacks::Bool
     duals::Vector{DataType}
@@ -58,7 +61,7 @@ mutable struct DeviceModel{D, B <: AbstractDeviceFormulation}
         duals = Vector{DataType}(),
         time_series_names = get_default_time_series_names(D, B),
         attributes = Dict{String, Any}(),
-    ) where {D, B <: AbstractDeviceFormulation}
+    ) where {D <: IS.InfrastructureSystemsComponent, B <: AbstractDeviceFormulation}
         attributes_ = get_default_attributes(D, B)
         for (k, v) in attributes
             attributes_[k] = v
@@ -78,8 +81,12 @@ mutable struct DeviceModel{D, B <: AbstractDeviceFormulation}
     end
 end
 
-get_component_type(::DeviceModel{D, B}) where {D, B <: AbstractDeviceFormulation} = D
-get_formulation(::DeviceModel{D, B}) where {D, B <: AbstractDeviceFormulation} = B
+get_component_type(
+    ::DeviceModel{D, B},
+) where {D <: IS.InfrastructureSystemsComponent, B <: AbstractDeviceFormulation} = D
+get_formulation(
+    ::DeviceModel{D, B},
+) where {D <: IS.InfrastructureSystemsComponent, B <: AbstractDeviceFormulation} = B
 get_feedforwards(m::DeviceModel) = m.feedforwards
 get_services(m::DeviceModel) = m.services
 get_services(::Nothing) = nothing
@@ -96,7 +103,7 @@ set_subsystem!(m::DeviceModel, id::String) = m.subsystem = id
 function _set_model!(
     dict::Dict,
     model::DeviceModel{D, B},
-) where {D, B <: AbstractDeviceFormulation}
+) where {D <: IS.InfrastructureSystemsComponent, B <: AbstractDeviceFormulation}
     key = nameof(D)
     if haskey(dict, key)
         @warn "Overwriting $(D) existing model"

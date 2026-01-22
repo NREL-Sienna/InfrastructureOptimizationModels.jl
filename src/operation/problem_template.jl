@@ -141,7 +141,7 @@ Routes to devices dictionary.
 function set_device_model!(
     template::ProblemTemplate,
     model::DeviceModel{D},
-) where {D}
+) where {D <: IS.InfrastructureSystemsComponent}
     _set_model!(template.devices, model)
     return
 end

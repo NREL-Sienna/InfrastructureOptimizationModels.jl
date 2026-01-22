@@ -17,8 +17,8 @@ const IS = InfrastructureSystems
 struct TestDeviceFormulation <: PSI.AbstractDeviceFormulation end
 
 # Abstract mock device type for testing rejection of abstract types in DeviceModel
-# Subtypes IS.InfrastructureSystemsType so they work with container keys
-abstract type AbstractMockDevice <: IS.InfrastructureSystemsType end
+# Subtypes IS.InfrastructureSystemsComponent so they work with DeviceModel and container keys
+abstract type AbstractMockDevice <: IS.InfrastructureSystemsComponent end
 abstract type AbstractMockGenerator <: AbstractMockDevice end
 
 # Mock Bus
@@ -33,7 +33,7 @@ get_number(b::MockBus) = b.number
 get_bustype(b::MockBus) = b.bustype
 
 # Mock Thermal Generator
-struct MockThermalGen
+struct MockThermalGen <: AbstractMockGenerator
     name::String
     available::Bool
     bus::MockBus
@@ -46,7 +46,7 @@ get_bus(g::MockThermalGen) = g.bus
 get_active_power_limits(g::MockThermalGen) = g.active_power_limits
 
 # Mock Renewable Generator
-struct MockRenewableGen
+struct MockRenewableGen <: AbstractMockGenerator
     name::String
     available::Bool
     bus::MockBus
@@ -59,7 +59,7 @@ get_bus(r::MockRenewableGen) = r.bus
 get_rating(r::MockRenewableGen) = r.rating
 
 # Mock Load
-struct MockLoad
+struct MockLoad <: AbstractMockDevice
     name::String
     available::Bool
     bus::MockBus
@@ -72,7 +72,7 @@ get_bus(l::MockLoad) = l.bus
 get_max_active_power(l::MockLoad) = l.max_active_power
 
 # Mock Branch
-struct MockBranch
+struct MockBranch <: AbstractMockDevice
     name::String
     available::Bool
     from_bus::MockBus
@@ -88,5 +88,5 @@ get_rate(b::MockBranch) = b.rating
 
 # Mock component type for use as type parameter in container keys
 # This replaces PSY.ThermalStandard etc. in tests that don't need real PSY types
-# Subtypes IS.InfrastructureSystemsType so it works with VariableKey, ConstraintKey, etc.
-struct MockComponentType <: IS.InfrastructureSystemsType end
+# Subtypes IS.InfrastructureSystemsComponent so it works with VariableKey, ConstraintKey, etc.
+struct MockComponentType <: IS.InfrastructureSystemsComponent end
