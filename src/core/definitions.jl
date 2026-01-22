@@ -5,7 +5,7 @@ abstract type AbstractAffectFeedforward end
 # Abstract type for sparse variables
 # Variables that subtype this use sparse arrays instead of dense arrays
 # This is used for piecewise linear variables and other sparse formulations
-# Note: VariableType is now defined locally in optimization_container_types.jl
+# Note: VariableType is imported from InfrastructureSystems.Optimization
 abstract type SparseVariableType <: VariableType end
 abstract type InterpolationVariableType <: SparseVariableType end
 abstract type BinaryInterpolationVariableType <: SparseVariableType end

@@ -114,6 +114,14 @@ export ParameterKey
 export ExpressionKey
 export AuxVarKey
 
+# Abstract Key Types (from InfrastructureSystems.Optimization)
+export VariableType
+export ConstraintType
+export AuxVariableType
+export ParameterType
+export InitialConditionType
+export ExpressionType
+
 # Status Enums (from InfrastructureSystems)
 export ModelBuildStatus
 export RunStatus
@@ -144,19 +152,46 @@ import InfrastructureSystems: @assert_op, TableFormat, list_recorder_events, get
 
 # IS.Optimization imports: base types that remain in InfrastructureSystems
 # Note: ModelBuildStatus is aliased in definitions.jl, so don't import it directly
+# TODO: some of these are device specific enough to belong in POM.
 import InfrastructureSystems.Optimization:
     AbstractOptimizationContainer,
     OptimizationKeyType,
     AbstractModelStoreParams,
+    # Key types - imported from IS.Optimization to avoid duplication
+    VariableType,
+    ConstraintType,
+    AuxVariableType,
+    ParameterType,
+    InitialConditionType,
+    ExpressionType,
+    RightHandSideParameter,
+    ObjectiveFunctionParameter,
+    TimeSeriesParameter,
+    ConstructStage,
+    ArgumentConstructStage,
+    ModelConstructStage,
+    # Formulation abstract types
     AbstractDeviceFormulation,
+    AbstractServiceFormulation,
+    AbstractReservesFormulation,
+    AbstractThermalFormulation,
+    AbstractRenewableFormulation,
+    AbstractStorageFormulation,
+    AbstractLoadFormulation,
     AbstractHVDCNetworkModel,
-    AbstractPowerModel
-
+    AbstractPowerModel,
+    AbstractPTDFModel,
+    AbstractSecurityConstrainedPTDFModel,
+    AbstractActivePowerModel,
+    AbstractACPowerModel,
+    AbstractACPModel,
+    ACPPowerModel,
+    AbstractPowerFlowEvaluationModel,
+    AbstractPowerFlowEvaluationData
 
 import InfrastructureSystems:
     @scoped_enum,
     TableFormat,
-    get_results_base_power,
     get_variables,
     get_parameters,
     get_total_cost,
@@ -274,7 +309,9 @@ include("core/dataset_container.jl")
 include("core/results_by_time.jl")
 
 # Order Required
-include("core/power_flow_data_wrapper.jl")
+# Note: power_flow_data_wrapper.jl has been moved to PowerOperationsModels
+# as it depends on PowerFlows.jl types
+# include("core/power_flow_data_wrapper.jl")
 include("operation/problem_template.jl")
 include("core/optimization_container.jl")
 include("core/model_store_params.jl")

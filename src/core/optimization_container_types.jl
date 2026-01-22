@@ -1,15 +1,10 @@
-# Base types are imported from InfrastructureSystems.Optimization in the main module:
-# - AbstractOptimizationContainer
-# - OptimizationKeyType
+# Key types are imported from InfrastructureSystems.Optimization in the main module:
+# - AbstractOptimizationContainer, OptimizationKeyType
+# - VariableType, ConstraintType, AuxVariableType, ParameterType, InitialConditionType, ExpressionType
+# - RightHandSideParameter, ObjectiveFunctionParameter, TimeSeriesParameter
+# - ConstructStage, ArgumentConstructStage, ModelConstructStage
 
-# Extend OptimizationKeyType with concrete subtypes
-abstract type VariableType <: OptimizationKeyType end
-abstract type ConstraintType <: OptimizationKeyType end
-abstract type AuxVariableType <: OptimizationKeyType end
-abstract type ParameterType <: OptimizationKeyType end
-abstract type InitialConditionType <: OptimizationKeyType end
-abstract type ExpressionType <: OptimizationKeyType end
-
+# Utility functions for the imported types
 convert_result_to_natural_units(::Type{<:VariableType}) = false
 convert_result_to_natural_units(::Type{<:ConstraintType}) = false
 convert_result_to_natural_units(::Type{<:AuxVariableType}) = false
@@ -22,16 +17,3 @@ should_write_resulting_value(::Type{<:AuxVariableType}) = true
 should_write_resulting_value(::Type{<:ExpressionType}) = false
 # TODO: Piecewise linear parameter are broken to write
 should_write_resulting_value(::Type{<:ParameterType}) = false
-
-abstract type RightHandSideParameter <: ParameterType end
-abstract type ObjectiveFunctionParameter <: ParameterType end
-
-abstract type TimeSeriesParameter <: RightHandSideParameter end
-
-"""
-Optimization Container construction stage
-"""
-abstract type ConstructStage end
-
-struct ArgumentConstructStage <: ConstructStage end
-struct ModelConstructStage <: ConstructStage end

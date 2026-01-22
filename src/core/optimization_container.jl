@@ -80,9 +80,9 @@ mutable struct OptimizationContainer <: AbstractOptimizationContainer
     model_base_power::Float64
     optimizer_stats::OptimizerStats
     built_for_recurrent_solves::Bool
-    metadata::ISOPT.OptimizationContainerMetadata
+    metadata::OptimizationContainerMetadata
     default_time_series_type::Type
-    power_flow_evaluation_data::Vector{PowerFlowEvaluationData}
+    power_flow_evaluation_data::Vector{<:AbstractPowerFlowEvaluationData}
 end
 
 function OptimizationContainer(
@@ -125,7 +125,7 @@ function OptimizationContainer(
         false,
         OptimizationContainerMetadata(),
         T,
-        Vector{PowerFlowEvaluationData}[],
+        AbstractPowerFlowEvaluationData[],
     )
 end
 
@@ -188,7 +188,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ExpressionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -201,7 +201,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -214,7 +214,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: AuxVariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -227,7 +227,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -240,7 +240,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ParameterType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -253,7 +253,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: InitialConditionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -454,7 +454,7 @@ function _make_system_expressions!(
     container::OptimizationContainer,
     subnetworks::Dict{Int, Set{Int}},
     ::Vector{Int},
-    ::Type{<:PM.AbstractActivePowerModel},
+    ::Type{<:AbstractActivePowerModel},
     bus_reduction_map::Dict{Int64, Set{Int64}},
 )
     time_steps = get_time_steps(container)
@@ -1105,7 +1105,7 @@ function add_variable_container!(
     ::Type{U},
     axs...;
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1138,7 +1138,7 @@ function add_variable_container!(
     container::OptimizationContainer,
     ::T,
     ::Type{U};
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: SparseVariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1166,7 +1166,7 @@ function get_variable(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta::String = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1181,7 +1181,7 @@ function add_aux_variable_container!(
     ::Type{U},
     axs...;
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: AuxVariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1214,7 +1214,7 @@ function get_aux_variable(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta::String = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: AuxVariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1229,7 +1229,7 @@ function add_dual_container!(
     ::Type{U},
     axs...;
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1275,7 +1275,7 @@ function add_constraints_container!(
     ::Type{U},
     axs...;
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1303,7 +1303,7 @@ function get_constraint(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta::String = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1585,7 +1585,7 @@ function get_parameter(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ParameterType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1631,7 +1631,7 @@ function get_parameter_array(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ParameterType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1642,7 +1642,7 @@ function get_parameter_multiplier_array(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ParameterType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1654,7 +1654,7 @@ function get_parameter_attributes(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ParameterType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1718,7 +1718,7 @@ function add_expression_container!(
     axs...;
     expr_type = GAE,
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ExpressionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1775,7 +1775,7 @@ function get_expression(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ExpressionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -1822,7 +1822,7 @@ function add_initial_condition_container!(
     ::T,
     ::Type{U},
     axs;
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: InitialConditionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -2208,7 +2208,7 @@ function lazy_container_addition!(
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 }
-    meta = get(kwargs, :meta, ISOPT.CONTAINER_KEY_EMPTY_META)
+    meta = get(kwargs, :meta, CONTAINER_KEY_EMPTY_META)
     if !has_container_key(container, T, U, meta)
         cons_container =
             add_constraints_container!(container, constraint, U, axs...; kwargs...)

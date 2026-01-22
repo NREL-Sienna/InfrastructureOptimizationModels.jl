@@ -1,5 +1,5 @@
 const _CONTAINER_METADATA_FILE = "optimization_container_metadata.bin"
-
+# TODO: IS has the same definition. Where does it belong, here or in IS?
 struct OptimizationContainerMetadata
     container_key_lookup::Dict{String, <:OptimizationContainerKey}
 end
