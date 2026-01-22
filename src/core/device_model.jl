@@ -1,11 +1,11 @@
 """
 Formulation type to augment the power balance constraint expression with a time series parameter
 """
-struct FixedOutput <: AbstractDeviceFormulation end
+struct FixedOutput <: IS.AbstractDeviceFormulation end
 
 function _check_device_formulation(
     ::Type{D},
-) where {D <: Union{AbstractDeviceFormulation, PSY.Device}}
+) where {D <: Union{IS.AbstractDeviceFormulation, PSY.Device}}
     if !isconcretetype(D)
         throw(
             ArgumentError(

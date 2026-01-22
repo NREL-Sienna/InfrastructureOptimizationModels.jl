@@ -1,25 +1,3 @@
-#################################################################################
-# Abstract Formulation Types
-# These provide the base types for device and service formulations
-# Specific formulations are defined in PowerSimulations or other packages
-abstract type AbstractDeviceFormulation end
-abstract type AbstractServiceFormulation end
-abstract type AbstractReservesFormulation <: AbstractServiceFormulation end
-
-# Device-specific abstract formulation types
-# Concrete formulations (e.g., ThermalBasicUnitCommitment, ThermalStandardUnitCommitment)
-# should be defined in PowerSimulations
-abstract type AbstractThermalFormulation <: AbstractDeviceFormulation end
-
-# Abstract types for network models
-# These provide the base infrastructure for network modeling
-# Concrete types (CopperPlatePowerModel, PTDFPowerModel, SecurityConstrainedPTDFPowerModel,
-# TransportHVDCNetworkModel, VoltageDispatchHVDCNetworkModel, etc.)
-# should be defined in PowerSimulations
-abstract type AbstractHVDCNetworkModel end
-abstract type AbstractPTDFModel <: PM.AbstractDCPModel end
-abstract type AbstractSecurityConstrainedPTDFModel <: AbstractPTDFModel end
-
 # Abstract type for feedforward
 # Note: ParameterType and TimeSeriesParameter are imported from InfrastructureSystems.Optimization
 abstract type AbstractAffectFeedforward end

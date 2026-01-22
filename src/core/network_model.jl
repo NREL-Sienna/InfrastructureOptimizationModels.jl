@@ -1,7 +1,7 @@
 const DeviceModelForBranches = DeviceModel{<:PSY.Branch, <:AbstractDeviceFormulation}
 const BranchModelContainer = Dict{Symbol, DeviceModelForBranches}
 
-function _check_pm_formulation(::Type{T}) where {T <: PM.AbstractPowerModel}
+function _check_pm_formulation(::Type{T}) where {T <: IS.AbstractPowerModel}
     if !isconcretetype(T)
         throw(
             ArgumentError(
@@ -19,7 +19,7 @@ _maybe_flatten_pfem(pfem::PFS.PowerFlowEvaluationModel) =
 Establishes the NetworkModel for a given PowerModels formulation type.
 
 # Arguments
-- `::Type{T}` where `T <: PM.AbstractPowerModel`: the power-system formulation type.
+- `::Type{T}` where `T <: IS.AbstractPowerModel`: the power-system formulation type.
 
 # Accepted keyword arguments
 - `use_slacks::Bool` = false
@@ -54,7 +54,7 @@ Establishes the NetworkModel for a given PowerModels formulation type.
 #
 # nw2 = NetworkModel(CopperPlatePowerModel; subnetworks = Dict(1 => Set([1,2,3])))
 """
-mutable struct NetworkModel{T <: PM.AbstractPowerModel}
+mutable struct NetworkModel{T <: IS.AbstractPowerModel}
     use_slacks::Bool
     PTDF_matrix::Union{Nothing, PNM.PowerNetworkMatrix}
     LODF_matrix::Union{Nothing, PNM.PowerNetworkMatrix}
@@ -84,7 +84,7 @@ mutable struct NetworkModel{T <: PM.AbstractPowerModel}
             Vector{PFS.PowerFlowEvaluationModel},
         } = PFS.PowerFlowEvaluationModel[],
         hvdc_network_model = nothing,
-    ) where {T <: PM.AbstractPowerModel}
+    ) where {T <: IS.AbstractPowerModel}
         _check_pm_formulation(T)
         new{T}(
             use_slacks,
@@ -113,7 +113,7 @@ get_network_reduction(m::NetworkModel) = m.network_reduction
 get_duals(m::NetworkModel) = m.duals
 get_network_formulation(::NetworkModel{T}) where {T} = T
 get_reduced_branch_tracker(m::NetworkModel) = m.reduced_branch_tracker
-get_reference_buses(m::NetworkModel{T}) where {T <: PM.AbstractPowerModel} =
+get_reference_buses(m::NetworkModel{T}) where {T <: IS.AbstractPowerModel} =
     collect(keys(m.subnetworks))
 get_subnetworks(m::NetworkModel) = m.subnetworks
 get_bus_area_map(m::NetworkModel) = m.bus_area_map
@@ -136,7 +136,7 @@ end
 #= Not needed for now
 function check_network_reduction_compatibility(
     ::Type{T},
-) where {T <: PM.AbstractPowerModel}
+) where {T <: IS.AbstractPowerModel}
     if T ∈ INCOMPATIBLE_WITH_NETWORK_REDUCTION_POWERMODELS
         error("Network Model $T is not compatible with network reduction")
     end
@@ -157,7 +157,7 @@ function _check_branch_network_compatibility(
     ::NetworkModel{T},
     branch_models::BranchModelContainer,
     sys::PSY.System,
-) where {T <: PM.AbstractPowerModel}
+) where {T <: IS.AbstractPowerModel}
     if requires_all_branch_models(T)
         for d in PSY.get_existing_device_types(sys)
             if d <: PSY.ACTransmission && !haskey(branch_models, Symbol(d))
@@ -210,7 +210,7 @@ function instantiate_network_model!(
     branch_models::BranchModelContainer,
     number_of_steps::Int,
     sys::PSY.System,
-) where {T <: PM.AbstractPowerModel}
+) where {T <: IS.AbstractPowerModel}
     _check_branch_network_compatibility(model, branch_models, sys)
     if isempty(model.subnetworks)
         model.subnetworks = PNM.find_subnetworks(sys)
@@ -540,12 +540,12 @@ end
 _assign_subnetworks_to_buses(
     ::NetworkModel{T},
     ::PSY.System,
-) where {T <: PM.AbstractPowerModel} = nothing
+) where {T <: IS.AbstractPowerModel} = nothing
 
 function get_reference_bus(
     model::NetworkModel{T},
     b::PSY.ACBus,
-)::Int where {T <: PM.AbstractPowerModel}
+)::Int where {T <: IS.AbstractPowerModel}
     if isempty(model.bus_area_map)
         return first(keys(model.subnetworks))
     else

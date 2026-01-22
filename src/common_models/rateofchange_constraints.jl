@@ -80,7 +80,7 @@ function add_linear_ramp_constraints!(
     U::Type{S},
     devices::IS.FlattenIteratorWrapper{V},
     model::DeviceModel{V, W},
-    ::Type{<:PM.AbstractPowerModel},
+    ::Type{<:IS.AbstractPowerModel},
 ) where {
     S <: Union{PowerAboveMinimumVariable, ActivePowerVariable},
     V <: PSY.Component,
@@ -225,7 +225,7 @@ function add_linear_ramp_constraints!(
     U::Type{<:VariableType},
     devices::IS.FlattenIteratorWrapper{V},
     model::DeviceModel{V, W},
-    X::Type{<:PM.AbstractPowerModel},
+    X::Type{<:IS.AbstractPowerModel},
 ) where {V <: PSY.Component, W <: AbstractDeviceFormulation}
     return _add_linear_ramp_constraints_impl!(container, T, U, devices, model)
 end
@@ -236,7 +236,7 @@ function add_linear_ramp_constraints!(
     U::Type{ActivePowerVariable},
     devices::IS.FlattenIteratorWrapper{V},
     model::DeviceModel{V, W},
-    X::Type{<:PM.AbstractPowerModel},
+    X::Type{<:IS.AbstractPowerModel},
 ) where {V <: PSY.ThermalGen, W <: AbstractThermalDispatchFormulation}
 
     # Fallback to generic implementation if OnStatusParameter is not present
@@ -280,7 +280,7 @@ function add_linear_ramp_constraints!(
             ramp_limits.up * minutes_per_period + power_limits.max * (1 - ycur)
         )
 
-        # Ramp DOWN from IC  
+        # Ramp DOWN from IC
         con_down[name, 1] = JuMP.@constraint(jump_model,
             ic_power - variable[name, 1] - sl_lb <=
             ramp_limits.down * minutes_per_period + power_limits.max * (1 - ycur)
@@ -338,7 +338,7 @@ function add_semicontinuous_ramp_constraints!(
     U::Type{S},
     devices::IS.FlattenIteratorWrapper{V},
     model::DeviceModel{V, W},
-    ::Type{<:PM.AbstractPowerModel},
+    ::Type{<:IS.AbstractPowerModel},
 ) where {
     S <: Union{PowerAboveMinimumVariable, ActivePowerVariable},
     V <: PSY.Component,

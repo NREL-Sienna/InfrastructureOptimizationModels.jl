@@ -76,7 +76,7 @@ mutable struct OptimizationContainer <: AbstractOptimizationContainer
     initial_conditions::OrderedDict{InitialConditionKey, Vector{<:InitialCondition}}
     initial_conditions_data::InitialConditionsData
     infeasibility_conflict::Dict{Symbol, Array}
-    pm::Union{Nothing, PM.AbstractPowerModel}
+    pm::Union{Nothing, IS.AbstractPowerModel}
     model_base_power::Float64
     optimizer_stats::OptimizerStats
     built_for_recurrent_solves::Bool
@@ -318,7 +318,7 @@ function init_optimization_container!(
     container::OptimizationContainer,
     network_model::NetworkModel{T},
     sys::PSY.System,
-) where {T <: PM.AbstractPowerModel}
+) where {T <: IS.AbstractPowerModel}
     PSY.set_units_base_system!(sys, "SYSTEM_BASE")
     # The order of operations matter
     settings = get_settings(container)
@@ -414,7 +414,7 @@ function _make_system_expressions!(
     container::OptimizationContainer,
     subnetworks::Dict{Int, Set{Int}},
     ::Vector{Int},
-    ::Type{<:PM.AbstractPowerModel},
+    ::Type{<:IS.AbstractPowerModel},
     bus_reduction_map::Dict{Int64, Set{Int64}},
 )
     time_steps = get_time_steps(container)
@@ -597,7 +597,7 @@ function initialize_system_expressions!(
     subnetworks::Dict{Int, Set{Int}},
     system::PSY.System,
     bus_reduction_map::Dict{Int64, Set{Int64}},
-) where {T <: PM.AbstractPowerModel}
+) where {T <: IS.AbstractPowerModel}
     dc_bus_numbers = [
         PSY.get_number(b) for
         b in get_available_components(network_model, PSY.DCBus, system)
@@ -706,7 +706,7 @@ function initialize_hvdc_system!(
     network_model::NetworkModel{T},
     dc_model::Nothing,
     system::PSY.System,
-) where {T <: PM.AbstractPowerModel}
+) where {T <: IS.AbstractPowerModel}
     dc_buses = get_available_components(network_model, PSY.DCBus, system)
     if !isempty(dc_buses)
         @warn "HVDC Network Model is set to 'Nothing' but DC Buses are present in the system. \
@@ -722,7 +722,7 @@ end
 #     network_model::NetworkModel{T},
 #     dc_model::U,
 #     system::PSY.System,
-# ) where {T <: PM.AbstractPowerModel, U <: TransportHVDCNetworkModel}
+# ) where {T <: IS.AbstractPowerModel, U <: TransportHVDCNetworkModel}
 #     dc_buses = get_available_components(network_model, PSY.DCBus, system)
 #     @assert !isempty(dc_buses) "No DC buses found in the system. Consider adding DC Buses or removing HVDC network model."
 #     dc_bus_numbers = sort(PSY.get_number.(dc_buses))
@@ -738,7 +738,7 @@ end
 #     network_model::NetworkModel{T},
 #     dc_model::U,
 #     system::PSY.System,
-# ) where {T <: PM.AbstractPowerModel, U <: VoltageDispatchHVDCNetworkModel}
+# ) where {T <: IS.AbstractPowerModel, U <: VoltageDispatchHVDCNetworkModel}
 #     dc_buses = get_available_components(network_model, PSY.DCBus, system)
 #     @assert !isempty(dc_buses) "No DC buses found in the system. Consider adding DC Buses or removing HVDC network model."
 #     dc_bus_numbers = sort(PSY.get_number.(dc_buses))

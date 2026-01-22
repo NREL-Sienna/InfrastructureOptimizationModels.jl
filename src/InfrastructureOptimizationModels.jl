@@ -334,7 +334,6 @@ import LinearAlgebra
 import JSON3
 import PowerSystems
 import InfrastructureSystems
-import PowerFlows
 import PowerNetworkMatrices
 import PowerNetworkMatrices: PTDF, VirtualPTDF, LODF, VirtualLODF
 export PTDF
@@ -390,7 +389,6 @@ export get_optimizer_stats
 export get_timestamps
 export get_resolution
 
-import PowerModels
 import TimerOutputs
 
 # Base Imports
@@ -428,7 +426,6 @@ export QCLSPowerModel
 ################################################################################
 
 # Type Alias From other Packages
-const PM = PowerModels
 const PSY = PowerSystems
 const POM = InfrastructureOptimizationModels
 const IS = InfrastructureSystems
@@ -437,7 +434,6 @@ const MOI = MathOptInterface
 const MOIU = MathOptInterface.Utilities
 const MOPFM = MOI.FileFormats.Model
 const PNM = PowerNetworkMatrices
-const PFS = PowerFlows
 const TS = TimeSeries
 
 ################################################################################

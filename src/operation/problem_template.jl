@@ -18,11 +18,11 @@ Creates a model reference of the InfrastructureOptimizationModels Optimization P
 template = ProblemTemplate(CopperPlatePowerModel)
 """
 mutable struct ProblemTemplate <: AbstractProblemTemplate
-    network_model::NetworkModel{<:PM.AbstractPowerModel}
+    network_model::NetworkModel{<:IS.AbstractPowerModel}
     devices::DevicesModelContainer
     branches::BranchModelContainer
     services::ServicesModelContainer
-    function ProblemTemplate(network::NetworkModel{T}) where {T <: PM.AbstractPowerModel}
+    function ProblemTemplate(network::NetworkModel{T}) where {T <: IS.AbstractPowerModel}
         new(
             network,
             DevicesModelContainer(),
@@ -44,7 +44,7 @@ function Base.isempty(template::ProblemTemplate)
     end
 end
 
-ProblemTemplate(::Type{T}) where {T <: PM.AbstractPowerModel} =
+ProblemTemplate(::Type{T}) where {T <: IS.AbstractPowerModel} =
     ProblemTemplate(NetworkModel(T))
 
 get_device_models(template::ProblemTemplate) = template.devices
@@ -93,7 +93,7 @@ Sets the network model in a template.
 """
 function set_network_model!(
     template::ProblemTemplate,
-    model::NetworkModel{<:PM.AbstractPowerModel},
+    model::NetworkModel{<:IS.AbstractPowerModel},
 )
     template.network_model = model
     return
