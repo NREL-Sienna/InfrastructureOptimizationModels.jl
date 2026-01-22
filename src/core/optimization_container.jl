@@ -60,7 +60,7 @@ function ObjectiveFunction()
     )
 end
 
-mutable struct OptimizationContainer <: ISOPT.AbstractOptimizationContainer
+mutable struct OptimizationContainer <: AbstractOptimizationContainer
     JuMPmodel::JuMP.Model
     time_steps::UnitRange{Int}
     settings::Settings
@@ -80,7 +80,7 @@ mutable struct OptimizationContainer <: ISOPT.AbstractOptimizationContainer
     base_power::Float64
     optimizer_stats::OptimizerStats
     built_for_recurrent_solves::Bool
-    metadata::ISOPT.OptimizationContainerMetadata
+    metadata::OptimizationContainerMetadata
     default_time_series_type::Type{<:PSY.TimeSeriesData}
     power_flow_evaluation_data::Vector{PowerFlowEvaluationData}
 end
@@ -123,7 +123,7 @@ function OptimizationContainer(
         get_base_power(sys),
         OptimizerStats(),
         false,
-        ISOPT.OptimizationContainerMetadata(),
+        OptimizationContainerMetadata(),
         T,
         Vector{PowerFlowEvaluationData}[],
     )
@@ -188,7 +188,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ExpressionType, U <: Union{PSY.Component, PSY.System}}
     key = ExpressionKey(T, U, meta)
     return haskey(container.expressions, key)
@@ -198,7 +198,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: VariableType, U <: Union{PSY.Component, PSY.System}}
     key = VariableKey(T, U, meta)
     return haskey(container.variables, key)
@@ -208,7 +208,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: AuxVariableType, U <: Union{PSY.Component, PSY.System}}
     key = AuxVarKey(T, U, meta)
     return haskey(container.aux_variables, key)
@@ -218,7 +218,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ConstraintType, U <: Union{PSY.Component, PSY.System}}
     key = ConstraintKey(T, U, meta)
     return haskey(container.constraints, key)
@@ -228,7 +228,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ParameterType, U <: Union{PSY.Component, PSY.System}}
     key = ParameterKey(T, U, meta)
     return haskey(container.parameters, key)
@@ -238,7 +238,7 @@ function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: InitialConditionType, U <: Union{PSY.Component, PSY.System}}
     key = InitialConditionKey(T, U, meta)
     return haskey(container.initial_conditions, key)
@@ -972,7 +972,7 @@ function compute_conflict!(container::OptimizationContainer)
                 @info "Conflict Index returned empty for $key"
                 continue
             else
-                conflict[ISOPT.encode_key(key)] = conflict_indices
+                conflict[encode_key(key)] = conflict_indices
             end
         end
 
@@ -1019,15 +1019,15 @@ function serialize_metadata!(container::OptimizationContainer, output_dir::Strin
         keys(container.expressions),
     ))
         encoded_key = encode_key_as_string(key)
-        if ISOPT.has_container_key(container.metadata, encoded_key)
+        if has_container_key(container.metadata, encoded_key)
             # Constraints and Duals can store the same key.
             IS.@assert_op key ==
-                          ISOPT.get_container_key(container.metadata, encoded_key)
+                          get_container_key(container.metadata, encoded_key)
         end
-        ISOPT.add_container_key!(container.metadata, encoded_key, key)
+        add_container_key!(container.metadata, encoded_key, key)
     end
 
-    filename = ISOPT._make_metadata_filename(output_dir)
+    filename = _make_metadata_filename(output_dir)
     Serialization.serialize(filename, container.metadata)
     @debug "Serialized container keys to $filename" _group = IS.LOG_GROUP_SERIALIZATION
 end
@@ -1040,7 +1040,7 @@ function deserialize_metadata!(
     merge!(
         container.metadata.container_key_lookup,
         deserialize_metadata(
-            ISOPT.OptimizationContainerMetadata,
+            OptimizationContainerMetadata,
             output_dir,
             model_name,
         ),
@@ -1051,13 +1051,13 @@ end
 # PERF: compilation hotspot. from string conversion at the container[key] = value line?
 function _assign_container!(container::OrderedDict, key::OptimizationContainerKey, value)
     if haskey(container, key)
-        @error "$(ISOPT.encode_key(key)) is already stored" sort!(
-            ISOPT.encode_key.(keys(container)),
+        @error "$(encode_key(key)) is already stored" sort!(
+            encode_key.(keys(container)),
         )
         throw(IS.InvalidValue("$key is already stored"))
     end
     container[key] = value
-    @debug "Added container entry $(typeof(key)) $(ISOPT.encode_key(key))" _group =
+    @debug "Added container entry $(typeof(key)) $(encode_key(key))" _group =
         LOG_GROUP_OPTIMZATION_CONTAINER
     return
 end
@@ -1084,7 +1084,7 @@ function add_variable_container!(
     ::Type{U},
     axs...;
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: VariableType, U <: Union{PSY.Component, PSY.System}}
     var_key = VariableKey(T, U, meta)
     return _add_variable_container!(container, var_key, sparse, axs...)
@@ -1111,7 +1111,7 @@ function add_variable_container!(
     container::OptimizationContainer,
     ::T,
     ::Type{U};
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: SparseVariableType, U <: Union{PSY.Component, PSY.System}}
     var_key = VariableKey(T, U, meta)
     _assign_container!(container.variables, var_key, _get_pwl_variables_container())
@@ -1125,8 +1125,8 @@ end
 function get_variable(container::OptimizationContainer, key::VariableKey)
     var = get(container.variables, key, nothing)
     if var === nothing
-        name = ISOPT.encode_key(key)
-        keys = ISOPT.encode_key.(get_variable_keys(container))
+        name = encode_key(key)
+        keys = encode_key.(get_variable_keys(container))
         throw(IS.InvalidValue("variable $name is not stored. $keys"))
     end
     return var
@@ -1136,7 +1136,7 @@ function get_variable(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta::String = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {T <: VariableType, U <: Union{PSY.Component, PSY.System}}
     return get_variable(container, VariableKey(T, U, meta))
 end
@@ -1148,7 +1148,7 @@ function add_aux_variable_container!(
     ::Type{U},
     axs...;
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: AuxVariableType, U <: PSY.Component}
     var_key = AuxVarKey(T, U, meta)
     if sparse
@@ -1167,8 +1167,8 @@ end
 function get_aux_variable(container::OptimizationContainer, key::AuxVarKey)
     aux = get(container.aux_variables, key, nothing)
     if aux === nothing
-        name = ISOPT.encode_key(key)
-        keys = ISOPT.encode_key.(get_aux_variable_keys(container))
+        name = encode_key(key)
+        keys = encode_key.(get_aux_variable_keys(container))
         throw(IS.InvalidValue("Auxiliary variable $name is not stored. $keys"))
     end
     return aux
@@ -1178,7 +1178,7 @@ function get_aux_variable(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta::String = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {T <: AuxVariableType, U <: PSY.Component}
     return get_aux_variable(container, AuxVarKey(T, U, meta))
 end
@@ -1190,7 +1190,7 @@ function add_dual_container!(
     ::Type{U},
     axs...;
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ConstraintType, U <: Union{PSY.Component, PSY.System}}
     if is_milp(container)
         @warn("The model has resulted in a MILP, \\
@@ -1233,7 +1233,7 @@ function add_constraints_container!(
     ::Type{U},
     axs...;
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ConstraintType, U <: Union{PSY.Component, PSY.System}}
     cons_key = ConstraintKey(T, U, meta)
     return _add_constraints_container!(container, cons_key, axs...; sparse = sparse)
@@ -1246,8 +1246,8 @@ end
 function get_constraint(container::OptimizationContainer, key::ConstraintKey)
     var = get(container.constraints, key, nothing)
     if var === nothing
-        name = ISOPT.encode_key(key)
-        keys = ISOPT.encode_key.(get_constraint_keys(container))
+        name = encode_key(key)
+        keys = encode_key.(get_constraint_keys(container))
         throw(IS.InvalidValue("constraint $name is not stored. $keys"))
     end
 
@@ -1258,7 +1258,7 @@ function get_constraint(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta::String = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ConstraintType, U <: Union{PSY.Component, PSY.System}}
     return get_constraint(container, ConstraintKey(T, U, meta))
 end
@@ -1417,7 +1417,7 @@ end
 #     additional_axs,
 #     time_steps::UnitRange{Int};
 #     sparse = false,
-#     meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+#     meta = CONTAINER_KEY_EMPTY_META,
 # ) where {T <: TimeSeriesParameter, U <: PSY.Component, V <: PSY.TimeSeriesData}
 #     param_key = ParameterKey(T, U, meta)
 #     if isabstracttype(V)
@@ -1448,7 +1448,7 @@ end
 #     data_type::DataType = Float64,
 #     axs...;
 #     sparse = false,
-#     meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+#     meta = CONTAINER_KEY_EMPTY_META,
 # ) where {T <: ObjectiveFunctionParameter, U <: PSY.Component}
 #     param_key = ParameterKey(T, U, meta)
 #     attributes =
@@ -1465,7 +1465,7 @@ end
 #     ::Type{V},
 #     axs...;
 #     sparse = false,
-#     meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+#     meta = CONTAINER_KEY_EMPTY_META,
 # ) where {T <: EventParameter, U <: PSY.Component, V <: PSY.Contingency}
 #     param_key = ParameterKey(T, U, meta)
 #     attributes = EventParametersAttributes{V, T}(U[])
@@ -1481,7 +1481,7 @@ end
 #     source_key::V,
 #     axs...;
 #     sparse = false,
-#     meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+#     meta = CONTAINER_KEY_EMPTY_META,
 # ) where {T <: VariableValueParameter, U <: PSY.Component, V <: OptimizationContainerKey}
 #     param_key = ParameterKey(T, U, meta)
 #     attributes = VariableValueAttributes(source_key)
@@ -1499,9 +1499,9 @@ end
 #     source_key::V,
 #     axs...;
 #     sparse = false,
-#     meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+#     meta = CONTAINER_KEY_EMPTY_META,
 # ) where {T <: FixValueParameter, U <: PSY.Component, V <: OptimizationContainerKey}
-#     if meta == ISOPT.CONTAINER_KEY_EMPTY_META
+#     if meta == CONTAINER_KEY_EMPTY_META
 #         error("$T parameters require passing the VariableType to the meta field")
 #     end
 #     param_key = ParameterKey(T, U, meta)
@@ -1523,7 +1523,7 @@ end
 function get_parameter(container::OptimizationContainer, key::ParameterKey)
     param_container = get(container.parameters, key, nothing)
     if param_container === nothing
-        name = ISOPT.encode_key(key)
+        name = encode_key(key)
         throw(
             IS.InvalidValue(
                 "parameter $name is not stored. $(collect(keys(container.parameters)))",
@@ -1537,7 +1537,7 @@ function get_parameter(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ParameterType, U <: Union{PSY.Component, PSY.System}}
     return get_parameter(container, ParameterKey(T, U, meta))
 end
@@ -1571,7 +1571,7 @@ function get_parameter_array(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ParameterType, U <: Union{PSY.Component, PSY.System}}
     return get_parameter_array(container, ParameterKey(T, U, meta))
 end
@@ -1579,7 +1579,7 @@ function get_parameter_multiplier_array(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ParameterType, U <: Union{PSY.Component, PSY.System}}
     return get_multiplier_array(get_parameter(container, ParameterKey(T, U, meta)))
 end
@@ -1588,7 +1588,7 @@ function get_parameter_attributes(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ParameterType, U <: Union{PSY.Component, PSY.System}}
     return get_attributes(get_parameter(container, ParameterKey(T, U, meta)))
 end
@@ -1649,7 +1649,7 @@ function add_expression_container!(
     axs...;
     expr_type = GAE,
     sparse = false,
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ExpressionType, U <: Union{PSY.Component, PSY.System}}
     expr_key = ExpressionKey(T, U, meta)
     return _add_expression_container!(
@@ -1669,7 +1669,7 @@ end
 #     ::Type{U},
 #     axs...;
 #     sparse = false,
-#     meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+#     meta = CONTAINER_KEY_EMPTY_META,
 # ) where {T <: ProductionCostExpression, U <: Union{PSY.Component, PSY.System}}
 #     expr_key = ExpressionKey(T, U, meta)
 #     expr_type = JuMP.QuadExpr
@@ -1703,7 +1703,7 @@ function get_expression(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ExpressionType, U <: Union{PSY.Component, PSY.System}}
     return get_expression(container, ExpressionKey(T, U, meta))
 end
@@ -1744,7 +1744,7 @@ function add_initial_condition_container!(
     ::T,
     ::Type{U},
     axs;
-    meta = ISOPT.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: InitialConditionType, U <: Union{PSY.Component, PSY.System}}
     ic_key = InitialConditionKey(T, U, meta)
     @debug "add_initial_condition_container" ic_key _group = LOG_GROUP_SERVICE_CONSTUCTORS
@@ -2109,7 +2109,7 @@ function lazy_container_addition!(
     axs...;
     kwargs...,
 ) where {T <: ConstraintType, U <: Union{PSY.Component, PSY.System}}
-    meta = get(kwargs, :meta, ISOPT.CONTAINER_KEY_EMPTY_META)
+    meta = get(kwargs, :meta, CONTAINER_KEY_EMPTY_META)
     if !has_container_key(container, T, U, meta)
         cons_container =
             add_constraints_container!(container, constraint, U, axs...; kwargs...)

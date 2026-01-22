@@ -343,51 +343,40 @@ export LODF
 export VirtualLODF
 import InfrastructureSystems: @assert_op, TableFormat, list_recorder_events, get_name
 
-# IS.Optimization imports: functions that have PSY methods that IS needs to access (therefore necessary)
-import InfrastructureSystems.Optimization: get_data_field
+# IS.Optimization imports: base types that remain in InfrastructureSystems
+# Note: ModelBuildStatus is aliased in definitions.jl, so don't import it directly
+import InfrastructureSystems.Optimization:
+    AbstractOptimizationContainer,
+    OptimizationKeyType,
+    AbstractModelStoreParams
 
-# IS.Optimization imports that get reexported: no additional methods in InfrastructureOptimizationModels (therefore necessary)
-import InfrastructureSystems.Optimization:
-    OptimizationProblemResults, OptimizationProblemResultsExport, OptimizerStats
-import InfrastructureSystems.Optimization:
-    read_variables, read_duals, read_parameters, read_aux_variables, read_expressions
-import InfrastructureSystems.Optimization: get_variable_values, get_dual_values,
-    get_parameter_values, get_aux_variable_values, get_expression_values, get_value
-import InfrastructureSystems.Optimization:
-    get_objective_value, export_realized_results, export_optimizer_stats
 
-# IS.Optimization imports that get reexported: yes additional methods in InfrastructureOptimizationModels (therefore may or may not be desired)
-import InfrastructureSystems.Optimization:
-    read_variable, read_dual, read_parameter, read_aux_variable, read_expression
-import InfrastructureSystems.Optimization: list_variable_keys, list_dual_keys,
-    list_parameter_keys, list_aux_variable_keys, list_expression_keys
-import InfrastructureSystems.Optimization: list_variable_names, list_dual_names,
-    list_parameter_names, list_aux_variable_names, list_expression_names
-import InfrastructureSystems.Optimization: read_optimizer_stats, get_optimizer_stats,
-    export_results, serialize_results, get_timestamps, get_model_base_power
-import InfrastructureSystems.Optimization: get_resolution, get_forecast_horizon
-
-# IS.Optimization imports that stay private, may or may not be additional methods in InfrastructureOptimizationModels
-import InfrastructureSystems.Optimization: ArgumentConstructStage, ModelConstructStage
-import InfrastructureSystems.Optimization: STORE_CONTAINERS, STORE_CONTAINER_DUALS,
-    STORE_CONTAINER_EXPRESSIONS, STORE_CONTAINER_PARAMETERS, STORE_CONTAINER_VARIABLES,
-    STORE_CONTAINER_AUX_VARIABLES
-import InfrastructureSystems.Optimization: OptimizationContainerKey, VariableKey,
-    ConstraintKey, ExpressionKey, AuxVarKey, InitialConditionKey, ParameterKey
-import InfrastructureSystems.Optimization:
-    RightHandSideParameter, ObjectiveFunctionParameter, TimeSeriesParameter
-import InfrastructureSystems.Optimization: VariableType, ConstraintType, AuxVariableType,
-    ParameterType, InitialConditionType, ExpressionType
-import InfrastructureSystems.Optimization: should_export_variable, should_export_dual,
-    should_export_parameter, should_export_aux_variable, should_export_expression
-import InfrastructureSystems.Optimization:
-    get_entry_type, get_component_type, get_output_dir
-import InfrastructureSystems.Optimization: read_results_with_keys, deserialize_key,
-    encode_key_as_string, encode_keys_as_strings, should_write_resulting_value,
-    convert_result_to_natural_units, to_matrix, get_store_container_type
-import InfrastructureSystems.Optimization: get_source_data
-
-# IS.Optimization imports that stay private, may or may not be additional methods in InfrastructureOptimizationModels
+import InfrastructureSystems:
+    @scoped_enum,
+    TableFormat,
+    get_base_power,
+    get_variables,
+    get_parameters,
+    get_total_cost,
+    get_optimizer_stats,
+    get_timestamp,
+    write_results,
+    get_source_data,
+    configure_logging,
+    strip_module_name,
+    to_namedtuple,
+    get_uuid,
+    compute_file_hash,
+    convert_for_path,
+    COMPONENT_NAME_DELIMITER,
+    # Additional imports needed by core optimization files
+    InfrastructureSystemsType,
+    InfrastructureSystemsComponent,
+    Results,
+    TimeSeriesCacheKey,
+    TimeSeriesCache,
+    InvalidValue,
+    ConflictingInputsError
 
 # PowerSystems imports
 import PowerSystems:
@@ -416,6 +405,7 @@ import Dates
 import TimeSeries
 
 # I/O Imports
+import CSV
 import DataFrames
 import DataFrames: DataFrame, DataFrameRow, Not, innerjoin
 import DataFramesMeta: @chain, @orderby, @rename, @select, @subset, @transform
@@ -450,9 +440,6 @@ const PNM = PowerNetworkMatrices
 const PFS = PowerFlows
 const TS = TimeSeries
 
-# Import parameter types from InfrastructureSystems.Optimization
-import InfrastructureSystems.Optimization: ParameterType, TimeSeriesParameter
-
 ################################################################################
 
 using DocStringExtensions
@@ -462,7 +449,17 @@ using DocStringExtensions
                     $(DOCSTRING)
                     """
 # Includes
-include("core/definitions.jl")
+# Core optimization types must come first
+include("core/optimization_container_types.jl")       # Abstract types (VariableType, etc.)
+include("core/definitions.jl")                        # Aliases and enums (needs VariableType)
+include("core/optimization_container_keys.jl")        # Keys depend on types
+include("core/abstract_model_store.jl")               # Store depends on keys
+include("core/optimizer_stats.jl")                    # Stats standalone
+include("core/optimization_container_metadata.jl")    # Metadata depends on keys
+include("core/optimization_problem_results_export.jl") # Export config
+include("core/optimization_problem_results.jl")       # Results depends on all above
+include("core/model_internal.jl")                     # Internal state (needs ModelBuildStatus)
+
 include("core/time_series_parameter_types.jl")
 
 # Core components

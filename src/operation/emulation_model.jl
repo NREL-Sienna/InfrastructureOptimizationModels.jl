@@ -54,7 +54,7 @@ mutable struct EmulationModel{M <: EmulationProblem} <: OperationModel
     name::Symbol
     template::AbstractProblemTemplate
     sys::PSY.System
-    internal::ISOPT.ModelInternal
+    internal::ModelInternal
     simulation_info::SimulationInfo
     store::EmulationModelStore # might be extended to other stores for simulation
     ext::Dict{String, Any}
@@ -72,7 +72,7 @@ mutable struct EmulationModel{M <: EmulationProblem} <: OperationModel
             name = Symbol(name)
         end
         finalize_template!(template, sys)
-        internal = ISOPT.ModelInternal(
+        internal = ModelInternal(
             OptimizationContainer(sys, settings, jump_model, PSY.SingleTimeSeries),
         )
         new{M}(
@@ -283,7 +283,7 @@ function init_model_store_params!(model::EmulationModel)
     horizon = interval = resolution = get_resolution(settings)
     base_power = PSY.get_base_power(system)
     sys_uuid = IS.get_uuid(system)
-    ISOPT.set_store_params!(
+    set_store_params!(
         get_internal(model),
         ModelStoreParams(
             num_executions,
@@ -354,7 +354,7 @@ function build!(
     file_mode = "w"
     add_recorders!(model, recorders)
     register_recorders!(model, file_mode)
-    logger = ISOPT.configure_logging(
+    logger = configure_logging(
         get_internal(model),
         PROBLEM_LOG_FILENAME,
         file_mode,
@@ -395,7 +395,7 @@ function reset!(model::EmulationModel{<:EmulationProblem})
     if built_for_recurrent_solves(model)
         set_execution_count!(model, 0)
     end
-    ISOPT.set_container!(
+    set_container!(
         get_internal(model),
         OptimizationContainer(
             get_system(model),
@@ -404,7 +404,7 @@ function reset!(model::EmulationModel{<:EmulationProblem})
             PSY.SingleTimeSeries,
         ),
     )
-    ISOPT.set_initial_conditions_model_container!(get_internal(model), nothing)
+    set_initial_conditions_model_container!(get_internal(model), nothing)
     empty_time_series_cache!(model)
     empty!(get_store(model))
     set_status!(model, ModelBuildStatus.EMPTY)
@@ -475,7 +475,7 @@ function run_impl!(
 )
     _pre_solve_model_checks(model, optimizer)
     internal = get_internal(model)
-    executions = ISOPT.get_executions(internal)
+    executions = get_executions(internal)
     # Temporary check. Needs better way to manage re-runs of the same model
     if internal.execution_count > 0
         error("Call build! again")
@@ -546,7 +546,7 @@ function run!(
     disable_timer_outputs && TimerOutputs.disable_timer!(RUN_OPERATION_MODEL_TIMER)
     file_mode = "a"
     register_recorders!(model, file_mode)
-    logger = ISOPT.configure_logging(
+    logger = configure_logging(
         get_internal(model),
         PROBLEM_LOG_FILENAME,
         file_mode,
@@ -640,7 +640,7 @@ function handle_initial_conditions!(model::EmulationModel{<:EmulationProblem})
             build_initial_conditions!(model)
             initialize!(model)
         end
-        ISOPT.set_initial_conditions_model_container!(
+        set_initial_conditions_model_container!(
             get_internal(model),
             nothing,
         )

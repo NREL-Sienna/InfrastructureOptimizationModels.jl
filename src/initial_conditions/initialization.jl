@@ -77,11 +77,11 @@ end
 
 function build_initial_conditions_model!(model::T) where {T <: OperationModel}
     internal = get_internal(model)
-    ISOPT.set_initial_conditions_model_container!(
+    set_initial_conditions_model_container!(
         internal,
         deepcopy(get_optimization_container(model)),
     )
-    ic_container = ISOPT.get_initial_conditions_model_container(internal)
+    ic_container = get_initial_conditions_model_container(internal)
     ic_settings = deepcopy(get_settings(ic_container))
     main_problem_horizon = get_horizon(ic_settings)
     # TODO: add an interface to allow user to configure initial_conditions problem
@@ -94,12 +94,12 @@ function build_initial_conditions_model!(model::T) where {T <: OperationModel}
     ic_container.built_for_recurrent_solves = false
     set_horizon!(ic_settings, number_of_steps)
     init_optimization_container!(
-        ISOPT.get_initial_conditions_model_container(internal),
+        get_initial_conditions_model_container(internal),
         get_network_model(get_template(model)),
         get_system(model),
     )
     JuMP.set_string_names_on_creation(
-        get_jump_model(ISOPT.get_initial_conditions_model_container(internal)),
+        get_jump_model(get_initial_conditions_model_container(internal)),
         false,
     )
     TimerOutputs.disable_timer!(BUILD_PROBLEMS_TIMER)
