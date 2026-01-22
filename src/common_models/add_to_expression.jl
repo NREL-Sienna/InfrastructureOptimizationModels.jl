@@ -6,7 +6,7 @@
 # _system_expression_type(::Type{AreaPTDFPowerModel}) = PSY.Area
 # _system_expression_type(::Type{SecurityConstrainedAreaPTDFPowerModel}) = PSY.Area
 
-function _ref_index(network_model::NetworkModel{<:IS.AbstractPowerModel}, bus::PSY.ACBus)
+function _ref_index(network_model::NetworkModel{<:AbstractPowerModel}, bus::PSY.ACBus)
     return get_reference_bus(network_model, bus)
 end
 
@@ -150,7 +150,7 @@ function add_to_expression!(
     U <: TimeSeriesParameter,
     V <: PSY.Device,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     param_container = get_parameter(container, U(), V)
     multiplier = get_multiplier_array(param_container)
@@ -197,7 +197,7 @@ function add_to_expression!(
     U <: ActivePowerTimeSeriesParameter,
     V <: PSY.MotorLoad,
     W <: StaticPowerLoad,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     network_reduction = get_network_reduction(network_model)
     for d in devices
@@ -315,7 +315,7 @@ function add_to_expression!(
     U <: OnStatusParameter,
     V <: PSY.ThermalGen,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     parameter = get_parameter_array(container, U(), V)
     network_reduction = get_network_reduction(network_model)
@@ -347,7 +347,7 @@ function add_to_expression!(
     U <: VariableType,
     V <: PSY.StaticInjection,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     variable = get_variable(container, U(), V)
     expression = get_expression(container, T(), PSY.ACBus)
@@ -818,7 +818,7 @@ function add_to_expression!(
     U <: FlowActivePowerFromToVariable,
     V <: PSY.Branch,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     variable = get_variable(container, U(), V)
     expression = get_expression(container, T(), PSY.ACBus)
@@ -853,7 +853,7 @@ function add_to_expression!(
     U <: FlowActivePowerToFromVariable,
     V <: PSY.ACBranch,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     variable = get_variable(container, U(), V)
     expression = get_expression(container, T(), PSY.ACBus)
@@ -1055,7 +1055,7 @@ function add_to_expression!(
     U <: OnVariable,
     V <: PSY.ThermalGen,
     W <: AbstractCompactUnitCommitment,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     _add_to_expression!(
         container,
@@ -1080,7 +1080,7 @@ function _add_to_expression!(
     U <: OnVariable,
     V <: PSY.ThermalGen,
     W <: AbstractCompactUnitCommitment,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     variable = get_variable(container, U(), V)
     expression = get_expression(container, T(), PSY.ACBus)
@@ -1775,7 +1775,7 @@ function add_to_expression!(
     U <: VariableType,
     V <: PSY.Device,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     variable = get_variable(container, U(), V)
     if !has_container_key(container, T, V)
@@ -2342,7 +2342,7 @@ function add_to_expression!(
 ) where {
     T <: ActivePowerBalance,
     U <: Union{SystemBalanceSlackUp, SystemBalanceSlackDown},
-    W <: IS.AbstractPowerModel,
+    W <: AbstractPowerModel,
 }
     variable = get_variable(container, U(), PSY.ACBus, "P")
     expression = get_expression(container, T(), PSY.ACBus)
@@ -2366,7 +2366,7 @@ function add_to_expression!(
 ) where {
     T <: ReactivePowerBalance,
     U <: Union{SystemBalanceSlackUp, SystemBalanceSlackDown},
-    W <: IS.AbstractPowerModel,
+    W <: AbstractPowerModel,
 }
     variable = get_variable(container, U(), PSY.ACBus, "Q")
     expression = get_expression(container, T(), PSY.ACBus)

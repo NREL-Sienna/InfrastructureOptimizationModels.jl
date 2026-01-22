@@ -50,7 +50,7 @@ function add_range_constraints!(
     U <: VariableType,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_variable(container, U(), V)
     _add_lower_bound_range_constraints_impl!(container, T, array, devices, model)
@@ -70,7 +70,7 @@ function add_range_constraints!(
     U <: RangeConstraintLBExpressions,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_expression(container, U(), V)
     _add_lower_bound_range_constraints_impl!(container, T, array, devices, model)
@@ -89,7 +89,7 @@ function add_range_constraints!(
     U <: RangeConstraintUBExpressions,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_expression(container, U(), V)
     _add_upper_bound_range_constraints_impl!(container, T, array, devices, model)
@@ -176,7 +176,7 @@ function add_semicontinuous_range_constraints!(
     U <: VariableType,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_variable(container, U(), V)
     _add_semicontinuous_lower_bound_range_constraints_impl!(
@@ -208,7 +208,7 @@ function add_semicontinuous_range_constraints!(
     U <: RangeConstraintLBExpressions,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_expression(container, U(), V)
     _add_semicontinuous_lower_bound_range_constraints_impl!(
@@ -233,7 +233,7 @@ function add_semicontinuous_range_constraints!(
     U <: RangeConstraintUBExpressions,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_expression(container, U(), V)
     _add_semicontinuous_upper_bound_range_constraints_impl!(
@@ -391,7 +391,7 @@ function add_reserve_range_constraints!(
     U <: VariableType,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_variable(container, U(), V)
     _add_reserve_upper_bound_range_constraints!(container, T, array, devices, model)
@@ -411,7 +411,7 @@ function add_reserve_range_constraints!(
     U <: ExpressionType,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_expression(container, U(), W)
     _add_ub(U()) &&
@@ -521,7 +521,7 @@ function add_reserve_range_constraints!(
     U <: VariableType,
     W <: PSY.Component,
     X <: AbstractDeviceFormulation,
-    Y <: IS.AbstractPowerModel,
+    Y <: AbstractPowerModel,
 }
     array = get_variable(container, U(), W)
     _add_reserve_upper_bound_range_constraints!(container, T, array, devices, model)
@@ -561,7 +561,7 @@ function add_reserve_range_constraints!(
     U <: ExpressionType,
     W <: PSY.Component,
     X <: AbstractDeviceFormulation,
-    Y <: IS.AbstractPowerModel,
+    Y <: AbstractPowerModel,
 }
     array = get_expression(container, U(), W)
     _add_ub(U()) &&
@@ -657,7 +657,7 @@ function add_parameterized_lower_bound_range_constraints(
     P <: ParameterType,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_expression(container, U(), V)
     _add_parameterized_lower_bound_range_constraints_impl!(
@@ -685,7 +685,7 @@ function add_parameterized_lower_bound_range_constraints(
     P <: ParameterType,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_variable(container, U(), V)
     _add_parameterized_lower_bound_range_constraints_impl!(
@@ -802,7 +802,7 @@ function add_parameterized_upper_bound_range_constraints(
     P <: ParameterType,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_expression(container, U(), V)
     _add_parameterized_upper_bound_range_constraints_impl!(
@@ -830,7 +830,7 @@ function add_parameterized_upper_bound_range_constraints(
     P <: ParameterType,
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
-    X <: IS.AbstractPowerModel,
+    X <: AbstractPowerModel,
 }
     array = get_variable(container, U(), V)
     _add_parameterized_upper_bound_range_constraints_impl!(

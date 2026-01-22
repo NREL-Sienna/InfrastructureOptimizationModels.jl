@@ -18,7 +18,7 @@ function add_constraint_dual!(
     container::OptimizationContainer,
     sys::PSY.System,
     model::NetworkModel{T},
-) where {T <: IS.AbstractPowerModel}
+) where {T <: AbstractPowerModel}
     if !isempty(get_duals(model))
         devices = get_available_components(model, PSY.ACBus, sys)
         for constraint_type in get_duals(model)
@@ -87,7 +87,7 @@ function assign_dual_variable!(
     container::OptimizationContainer,
     constraint_type::Type{<:ConstraintType},
     devices::U,
-    ::NetworkModel{<:IS.AbstractPowerModel},
+    ::NetworkModel{<:AbstractPowerModel},
 ) where {U <: Union{Vector{D}, IS.FlattenIteratorWrapper{D}}} where {D <: PSY.ACBus}
     @assert !isempty(devices)
     time_steps = get_time_steps(container)

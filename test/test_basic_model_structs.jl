@@ -1,11 +1,11 @@
 @testset "DeviceModel Tests" begin
     @test_throws ArgumentError DeviceModel(ThermalGen, ThermalStandardUnitCommitment)
     @test_throws ArgumentError DeviceModel(ThermalStandard, PSI.AbstractThermalFormulation)
-    @test_throws ArgumentError NetworkModel(IS.AbstractPowerModel)
+    @test_throws ArgumentError NetworkModel(AbstractPowerModel)
 end
 
 @testset "NetworkModel Tests" begin
-    @test_throws ArgumentError NetworkModel(IS.AbstractPowerModel)
+    @test_throws ArgumentError NetworkModel(AbstractPowerModel)
     @test NetworkModel(
         PTDFPowerModel;
         use_slacks = true,

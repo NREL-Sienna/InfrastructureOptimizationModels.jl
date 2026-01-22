@@ -80,7 +80,7 @@ function add_linear_ramp_constraints!(
     U::Type{S},
     devices::IS.FlattenIteratorWrapper{V},
     model::DeviceModel{V, W},
-    ::Type{<:IS.AbstractPowerModel},
+    ::Type{<:AbstractPowerModel},
 ) where {
     S <: Union{PowerAboveMinimumVariable, ActivePowerVariable},
     V <: PSY.Component,
@@ -225,7 +225,7 @@ function add_linear_ramp_constraints!(
     U::Type{<:VariableType},
     devices::IS.FlattenIteratorWrapper{V},
     model::DeviceModel{V, W},
-    X::Type{<:IS.AbstractPowerModel},
+    X::Type{<:AbstractPowerModel},
 ) where {V <: PSY.Component, W <: AbstractDeviceFormulation}
     return _add_linear_ramp_constraints_impl!(container, T, U, devices, model)
 end
@@ -236,7 +236,7 @@ function add_linear_ramp_constraints!(
     U::Type{ActivePowerVariable},
     devices::IS.FlattenIteratorWrapper{V},
     model::DeviceModel{V, W},
-    X::Type{<:IS.AbstractPowerModel},
+    X::Type{<:AbstractPowerModel},
 ) where {V <: PSY.ThermalGen, W <: AbstractThermalDispatchFormulation}
 
     # Fallback to generic implementation if OnStatusParameter is not present
@@ -338,7 +338,7 @@ function add_semicontinuous_ramp_constraints!(
     U::Type{S},
     devices::IS.FlattenIteratorWrapper{V},
     model::DeviceModel{V, W},
-    ::Type{<:IS.AbstractPowerModel},
+    ::Type{<:AbstractPowerModel},
 ) where {
     S <: Union{PowerAboveMinimumVariable, ActivePowerVariable},
     V <: PSY.Component,
