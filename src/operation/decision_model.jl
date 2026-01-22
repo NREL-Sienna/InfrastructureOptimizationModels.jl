@@ -13,7 +13,7 @@ mutable struct DecisionModel{M <: DecisionProblem} <: OperationModel
     name::Symbol
     template::AbstractProblemTemplate
     sys::PSY.System
-    internal::Union{Nothing, ISOPT.ModelInternal}
+    internal::Union{Nothing, ModelInternal}
     simulation_info::Union{Nothing, SimulationInfo}
     store::DecisionModelStore
     ext::Dict{String, Any}
@@ -75,7 +75,7 @@ function DecisionModel{M}(
         name = Symbol(name)
     end
     ts_type = get_deterministic_time_series_type(sys)
-    internal = ISOPT.ModelInternal(
+    internal = ModelInternal(
         OptimizationContainer(sys, settings, jump_model, ts_type),
     )
 
@@ -273,7 +273,7 @@ function init_model_store_params!(model::DecisionModel)
         sys_uuid,
         get_metadata(get_optimization_container(model)),
     )
-    ISOPT.set_store_params!(get_internal(model), store_params)
+    set_store_params!(get_internal(model), store_params)
     return
 end
 
@@ -416,7 +416,7 @@ function reset!(model::DecisionModel{<:DefaultDecisionProblem})
     end
     sys = get_system(model)
     ts_type = get_deterministic_time_series_type(sys)
-    ISOPT.set_container!(
+    set_container!(
         get_internal(model),
         OptimizationContainer(
             get_system(model),
@@ -428,7 +428,7 @@ function reset!(model::DecisionModel{<:DefaultDecisionProblem})
     get_optimization_container(model).built_for_recurrent_solves =
         was_built_for_recurrent_solves
     internal = get_internal(model)
-    ISOPT.set_initial_conditions_model_container!(internal, nothing)
+    set_initial_conditions_model_container!(internal, nothing)
     empty_time_series_cache!(model)
     empty!(get_store(model))
     set_status!(model, ModelBuildStatus.EMPTY)
@@ -480,7 +480,7 @@ function solve!(
     disable_timer_outputs && TimerOutputs.disable_timer!(RUN_OPERATION_MODEL_TIMER)
     file_mode = "a"
     register_recorders!(model, file_mode)
-    logger = ISOPT.configure_logging(
+    logger = configure_logging(
         get_internal(model),
         PROBLEM_LOG_FILENAME,
         file_mode,
@@ -577,7 +577,7 @@ function handle_initial_conditions!(model::DecisionModel{<:DecisionProblem})
             build_initial_conditions!(model)
             initialize!(model)
         end
-        ISOPT.set_initial_conditions_model_container!(
+        set_initial_conditions_model_container!(
             get_internal(model),
             nothing,
         )

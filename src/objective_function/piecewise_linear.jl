@@ -282,7 +282,7 @@ function _get_pwl_cost_expression(
     value_curve = PSY.get_value_curve(cost_function)
     power_units = PSY.get_power_units(cost_function)
     cost_component = PSY.get_function_data(value_curve)
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     device_base_power = PSY.get_base_power(component)
     cost_data_normalized = get_piecewise_pointcurve_per_system_unit(
         cost_component,
@@ -313,7 +313,7 @@ function _get_pwl_cost_expression(
     value_curve = PSY.get_value_curve(cost_function)
     power_units = PSY.get_power_units(cost_function)
     cost_component = PSY.get_function_data(value_curve)
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     device_base_power = PSY.get_base_power(component)
     cost_data_normalized = get_piecewise_pointcurve_per_system_unit(
         cost_component,
@@ -355,7 +355,7 @@ function _add_pwl_term!(
     name = PSY.get_name(component)
     value_curve = PSY.get_value_curve(cost_function)
     cost_component = PSY.get_function_data(value_curve)
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     device_base_power = PSY.get_base_power(component)
     power_units = PSY.get_power_units(cost_function)
 
@@ -409,7 +409,7 @@ function _add_pwl_term!(
     name = PSY.get_name(component)
     value_curve = PSY.get_value_curve(cost_function)
     cost_component = PSY.get_function_data(value_curve)
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     device_base_power = PSY.get_base_power(component)
     power_units = PSY.get_power_units(cost_function)
 

@@ -1,11 +1,11 @@
 mutable struct BranchReductionOptimizationTracker
     variable_dict::Dict{
-        Type{<:ISOPT.VariableType},
+        Type{<:VariableType},
         Dict{Tuple{Int, Int}, Vector{JuMP.VariableRef}},
     }
-    constraint_dict::Dict{Type{<:ISOPT.ConstraintType}, Set{Tuple{Int, Int}}}
+    constraint_dict::Dict{Type{<:ConstraintType}, Set{Tuple{Int, Int}}}
     constraint_map_by_type::Dict{
-        Type{<:ISOPT.ConstraintType},
+        Type{<:ConstraintType},
         Dict{
             Type{<:PSY.ACTransmission},
             SortedDict{String, Tuple{Tuple{Int, Int}, String}},
@@ -100,7 +100,7 @@ function get_branch_argument_constraint_axis(
     reduced_branch_tracker::BranchReductionOptimizationTracker,
     ::IS.FlattenIteratorWrapper{T},
     ::Type{U},
-) where {T <: PSY.ACTransmission, U <: ISOPT.ConstraintType}
+) where {T <: PSY.ACTransmission, U <: ConstraintType}
     return get_branch_argument_constraint_axis(
         net_reduction_data,
         reduced_branch_tracker,
@@ -114,7 +114,7 @@ function get_branch_argument_constraint_axis(
     reduced_branch_tracker::BranchReductionOptimizationTracker,
     ::Type{T},
     ::Type{U},
-) where {T <: PSY.ACTransmission, U <: ISOPT.ConstraintType}
+) where {T <: PSY.ACTransmission, U <: ConstraintType}
     constraint_tracker = get_constraint_dict(reduced_branch_tracker)
     constraint_map_by_type = get_constraint_map_by_type(reduced_branch_tracker)
     name_axis = net_reduction_data.name_to_arc_map[T]

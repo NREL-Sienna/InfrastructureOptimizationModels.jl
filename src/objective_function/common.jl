@@ -177,7 +177,7 @@ function _add_vom_cost_to_objective!(
     multiplier = 1.0 # VOM Cost is always positive
     cost_term = PSY.get_proportional_term(vom_cost)
     iszero(cost_term) && return
-    base_power = get_base_power(container)
+    base_power = get_model_base_power(container)
     device_base_power = PSY.get_base_power(component)
     cost_term_normalized = get_proportional_cost_per_system_unit(
         cost_term,

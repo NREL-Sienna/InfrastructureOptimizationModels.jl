@@ -1,7 +1,7 @@
 """
 Stores results data for one DecisionModel
 """
-mutable struct DecisionModelStore <: ISOPT.AbstractModelStore
+mutable struct DecisionModelStore <: AbstractModelStore
     # All DenseAxisArrays have axes (column names, row indexes)
     duals::Dict{ConstraintKey, OrderedDict{Dates.DateTime, DenseAxisArray{Float64}}}
     parameters::Dict{ParameterKey, OrderedDict{Dates.DateTime, DenseAxisArray{Float64}}}
@@ -24,7 +24,7 @@ end
 
 function initialize_storage!(
     store::DecisionModelStore,
-    container::ISOPT.AbstractOptimizationContainer,
+    container::AbstractOptimizationContainer,
     params::ModelStoreParams,
 )
     num_of_executions = get_num_executions(params)

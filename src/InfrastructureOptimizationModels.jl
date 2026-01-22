@@ -118,206 +118,6 @@ export AuxVarKey
 export ModelBuildStatus
 export RunStatus
 
-# Variables
-export ActivePowerVariable
-export ActivePowerInVariable
-export ActivePowerOutVariable
-export HotStartVariable
-export WarmStartVariable
-export ColdStartVariable
-export EnergyVariable
-export LiftVariable
-export OnVariable
-export ReactivePowerVariable
-export ReservationVariable
-export ActivePowerReserveVariable
-export ServiceRequirementVariable
-export StartVariable
-export StopVariable
-export SteadyStateFrequencyDeviation
-export AreaMismatchVariable
-export DeltaActivePowerUpVariable
-export DeltaActivePowerDownVariable
-export AdditionalDeltaActivePowerUpVariable
-export AdditionalDeltaActivePowerDownVariable
-export SmoothACE
-export SystemBalanceSlackUp
-export SystemBalanceSlackDown
-export ReserveRequirementSlack
-export VoltageMagnitude
-export VoltageAngle
-export FlowActivePowerVariable
-export FlowActivePowerSlackUpperBound
-export FlowActivePowerSlackLowerBound
-export FlowActivePowerFromToVariable
-export FlowActivePowerToFromVariable
-export FlowReactivePowerFromToVariable
-export FlowReactivePowerToFromVariable
-export PowerAboveMinimumVariable
-export PhaseShifterAngle
-export UpperBoundFeedForwardSlack
-export LowerBoundFeedForwardSlack
-export InterfaceFlowSlackUp
-export InterfaceFlowSlackDown
-export PiecewiseLinearCostVariable
-export RateofChangeConstraintSlackUp
-export RateofChangeConstraintSlackDown
-export PostContingencyActivePowerChangeVariable
-export PostContingencyActivePowerReserveDeploymentVariable
-export DCVoltage
-export DCLineCurrent
-export ConverterPowerDirection
-export ConverterCurrent
-export SquaredConverterCurrent
-export InterpolationSquaredCurrentVariable
-export InterpolationBinarySquaredCurrentVariable
-export ConverterPositiveCurrent
-export ConverterNegativeCurrent
-export SquaredDCVoltage
-export InterpolationSquaredVoltageVariable
-export InterpolationBinarySquaredVoltageVariable
-export AuxBilinearConverterVariable
-export AuxBilinearSquaredConverterVariable
-export InterpolationSquaredBilinearVariable
-export InterpolationBinarySquaredBilinearVariable
-
-# Auxiliary variables
-export TimeDurationOn
-export TimeDurationOff
-export PowerOutput
-export PowerFlowVoltageAngle
-export PowerFlowVoltageMagnitude
-export PowerFlowLineReactivePowerFromTo, PowerFlowLineReactivePowerToFrom
-export PowerFlowLineActivePowerFromTo, PowerFlowLineActivePowerToFrom
-export PowerFlowLossFactors
-export PowerFlowVoltageStabilityFactors
-
-# Constraints
-export AbsoluteValueConstraint
-export ActivePowerVariableTimeSeriesLimitsConstraint
-export LineFlowBoundConstraint
-export ActivePowerVariableLimitsConstraint
-export ActivePowerInVariableTimeSeriesLimitsConstraint
-export ActivePowerOutVariableTimeSeriesLimitsConstraint
-export ActiveRangeICConstraint
-export AreaParticipationAssignmentConstraint
-export BalanceAuxConstraint
-export CommitmentConstraint
-export CopperPlateBalanceConstraint
-export DurationConstraint
-export EnergyBalanceConstraint
-export EqualityConstraint
-export FeedforwardSemiContinuousConstraint
-export FeedforwardUpperBoundConstraint
-export FeedforwardLowerBoundConstraint
-export FeedforwardIntegralLimitConstraint
-export FlowActivePowerConstraint
-export FlowActivePowerFromToConstraint
-export FlowActivePowerToFromConstraint
-export FlowLimitConstraint
-export FlowLimitFromToConstraint
-export FlowLimitToFromConstraint
-export FlowReactivePowerConstraint
-export FlowReactivePowerFromToConstraint
-export FlowReactivePowerToFromConstraint
-export FrequencyResponseConstraint
-export HVDCPowerBalance
-export HVDCLosses
-export HVDCFlowDirectionVariable
-export InputActivePowerVariableLimitsConstraint
-export InterfaceFlowLimit
-export NetworkFlowConstraint
-export NodalBalanceActiveConstraint
-export NodalBalanceReactiveConstraint
-export OutputActivePowerVariableLimitsConstraint
-export PiecewiseLinearCostConstraint
-export ParticipationAssignmentConstraint
-export ParticipationFractionConstraint
-export PhaseAngleControlLimit
-export RampConstraint
-export RampLimitConstraint
-export RangeLimitConstraint
-export FlowRateConstraint
-export FlowRateConstraintFromTo
-export FlowRateConstraintToFrom
-export PostContingencyEmergencyRateLimitConstrain
-export ReactivePowerVariableLimitsConstraint
-export RegulationLimitsConstraint
-export RequirementConstraint
-export ReserveEnergyCoverageConstraint
-export ReservePowerConstraint
-export SACEPIDAreaConstraint
-export StartTypeConstraint
-export StartupInitialConditionConstraint
-export StartupTimeLimitTemperatureConstraint
-export PostContingencyActivePowerVariableLimitsConstraint
-export PostContingencyActivePowerReserveDeploymentVariableLimitsConstraint
-export PostContingencyGenerationBalanceConstraint
-export PostContingencyRampConstraint
-export ImportExportBudgetConstraint
-export PiecewiseLinearBlockIncrementalOfferConstraint
-export PiecewiseLinearBlockDecrementalOfferConstraint
-export NodalBalanceCurrentConstraint
-export DCLineCurrentConstraint
-export ConverterPowerCalculationConstraint
-export ConverterMcCormickEnvelopes
-export InterpolationVoltageConstraints
-export InterpolationCurrentConstraints
-export InterpolationBilinearConstraints
-export ConverterLossConstraint
-export CurrentAbsoluteValueConstraint
-
-# Parameters
-# Time Series Parameters
-export ActivePowerTimeSeriesParameter
-export ActivePowerOutTimeSeriesParameter
-export ActivePowerInTimeSeriesParameter
-export ReactivePowerTimeSeriesParameter
-export DynamicBranchRatingTimeSeriesParameter
-export FuelCostParameter
-export PostContingencyDynamicBranchRatingTimeSeriesParameter
-export RequirementTimeSeriesParameter
-export FromToFlowLimitParameter
-export ToFromFlowLimitParameter
-
-# NOTE: Datacenter-specific parameters removed - they belong in DataCenterModels.jl, not here
-# If you need these parameters, define them in your domain-specific package that imports InfrastructureOptimizationModels
-
-# Cost Parameters
-export CostFunctionParameter
-
-# Feedforward Parameters
-export OnStatusParameter
-export UpperBoundValueParameter
-export LowerBoundValueParameter
-export FixValueParameter
-
-# Event Parameters
-export AvailableStatusParameter
-export AvailableStatusChangeCountdownParameter
-export ActivePowerOffsetParameter
-export ReactivePowerOffsetParameter
-
-# Expressions
-export SystemBalanceExpressions
-export RangeConstraintLBExpressions
-export RangeConstraintUBExpressions
-export CostExpressions
-export ActivePowerBalance
-export ReactivePowerBalance
-export EmergencyUp
-export EmergencyDown
-export RawACE
-export ProductionCostExpression
-export FuelConsumptionExpression
-export ActivePowerRangeExpressionLB
-export ActivePowerRangeExpressionUB
-export PostContingencyBranchFlow
-export PostContingencyActivePowerGeneration
-export PostContingencyActivePowerBalance
-export NetActivePower
-export DCCurrentBalance
-
 #################################################################################
 # Imports
 import DataStructures: OrderedDict, Deque, SortedDict
@@ -334,7 +134,6 @@ import LinearAlgebra
 import JSON3
 import PowerSystems
 import InfrastructureSystems
-import PowerFlows
 import PowerNetworkMatrices
 import PowerNetworkMatrices: PTDF, VirtualPTDF, LODF, VirtualLODF
 export PTDF
@@ -343,51 +142,43 @@ export LODF
 export VirtualLODF
 import InfrastructureSystems: @assert_op, TableFormat, list_recorder_events, get_name
 
-# IS.Optimization imports: functions that have PSY methods that IS needs to access (therefore necessary)
-import InfrastructureSystems.Optimization: get_data_field
+# IS.Optimization imports: base types that remain in InfrastructureSystems
+# Note: ModelBuildStatus is aliased in definitions.jl, so don't import it directly
+import InfrastructureSystems.Optimization:
+    AbstractOptimizationContainer,
+    OptimizationKeyType,
+    AbstractModelStoreParams,
+    AbstractDeviceFormulation,
+    AbstractHVDCNetworkModel,
+    AbstractPowerModel
 
-# IS.Optimization imports that get reexported: no additional methods in InfrastructureOptimizationModels (therefore necessary)
-import InfrastructureSystems.Optimization:
-    OptimizationProblemResults, OptimizationProblemResultsExport, OptimizerStats
-import InfrastructureSystems.Optimization:
-    read_variables, read_duals, read_parameters, read_aux_variables, read_expressions
-import InfrastructureSystems.Optimization: get_variable_values, get_dual_values,
-    get_parameter_values, get_aux_variable_values, get_expression_values, get_value
-import InfrastructureSystems.Optimization:
-    get_objective_value, export_realized_results, export_optimizer_stats
 
-# IS.Optimization imports that get reexported: yes additional methods in InfrastructureOptimizationModels (therefore may or may not be desired)
-import InfrastructureSystems.Optimization:
-    read_variable, read_dual, read_parameter, read_aux_variable, read_expression
-import InfrastructureSystems.Optimization: list_variable_keys, list_dual_keys,
-    list_parameter_keys, list_aux_variable_keys, list_expression_keys
-import InfrastructureSystems.Optimization: list_variable_names, list_dual_names,
-    list_parameter_names, list_aux_variable_names, list_expression_names
-import InfrastructureSystems.Optimization: read_optimizer_stats, get_optimizer_stats,
-    export_results, serialize_results, get_timestamps, get_model_base_power
-import InfrastructureSystems.Optimization: get_resolution, get_forecast_horizon
-
-# IS.Optimization imports that stay private, may or may not be additional methods in InfrastructureOptimizationModels
-import InfrastructureSystems.Optimization: ArgumentConstructStage, ModelConstructStage
-import InfrastructureSystems.Optimization: STORE_CONTAINERS, STORE_CONTAINER_DUALS,
-    STORE_CONTAINER_EXPRESSIONS, STORE_CONTAINER_PARAMETERS, STORE_CONTAINER_VARIABLES,
-    STORE_CONTAINER_AUX_VARIABLES
-import InfrastructureSystems.Optimization: OptimizationContainerKey, VariableKey,
-    ConstraintKey, ExpressionKey, AuxVarKey, InitialConditionKey, ParameterKey
-import InfrastructureSystems.Optimization:
-    RightHandSideParameter, ObjectiveFunctionParameter, TimeSeriesParameter
-import InfrastructureSystems.Optimization: VariableType, ConstraintType, AuxVariableType,
-    ParameterType, InitialConditionType, ExpressionType
-import InfrastructureSystems.Optimization: should_export_variable, should_export_dual,
-    should_export_parameter, should_export_aux_variable, should_export_expression
-import InfrastructureSystems.Optimization:
-    get_entry_type, get_component_type, get_output_dir
-import InfrastructureSystems.Optimization: read_results_with_keys, deserialize_key,
-    encode_key_as_string, encode_keys_as_strings, should_write_resulting_value,
-    convert_result_to_natural_units, to_matrix, get_store_container_type
-import InfrastructureSystems.Optimization: get_source_data
-
-# IS.Optimization imports that stay private, may or may not be additional methods in InfrastructureOptimizationModels
+import InfrastructureSystems:
+    @scoped_enum,
+    TableFormat,
+    get_results_base_power,
+    get_variables,
+    get_parameters,
+    get_total_cost,
+    get_optimizer_stats,
+    get_timestamp,
+    write_results,
+    get_source_data,
+    configure_logging,
+    strip_module_name,
+    to_namedtuple,
+    get_uuid,
+    compute_file_hash,
+    convert_for_path,
+    COMPONENT_NAME_DELIMITER,
+    # Additional imports needed by core optimization files
+    InfrastructureSystemsType,
+    InfrastructureSystemsComponent,
+    Results,
+    TimeSeriesCacheKey,
+    TimeSeriesCache,
+    InvalidValue,
+    ConflictingInputsError
 
 # PowerSystems imports
 import PowerSystems:
@@ -401,7 +192,6 @@ export get_optimizer_stats
 export get_timestamps
 export get_resolution
 
-import PowerModels
 import TimerOutputs
 
 # Base Imports
@@ -416,6 +206,7 @@ import Dates
 import TimeSeries
 
 # I/O Imports
+import CSV
 import DataFrames
 import DataFrames: DataFrame, DataFrameRow, Not, innerjoin
 import DataFramesMeta: @chain, @orderby, @rename, @select, @subset, @transform
@@ -438,7 +229,6 @@ export QCLSPowerModel
 ################################################################################
 
 # Type Alias From other Packages
-const PM = PowerModels
 const PSY = PowerSystems
 const POM = InfrastructureOptimizationModels
 const IS = InfrastructureSystems
@@ -447,11 +237,7 @@ const MOI = MathOptInterface
 const MOIU = MathOptInterface.Utilities
 const MOPFM = MOI.FileFormats.Model
 const PNM = PowerNetworkMatrices
-const PFS = PowerFlows
 const TS = TimeSeries
-
-# Import parameter types from InfrastructureSystems.Optimization
-import InfrastructureSystems.Optimization: ParameterType, TimeSeriesParameter
 
 ################################################################################
 
@@ -462,7 +248,17 @@ using DocStringExtensions
                     $(DOCSTRING)
                     """
 # Includes
-include("core/definitions.jl")
+# Core optimization types must come first
+include("core/optimization_container_types.jl")       # Abstract types (VariableType, etc.)
+include("core/definitions.jl")                        # Aliases and enums (needs VariableType)
+include("core/optimization_container_keys.jl")        # Keys depend on types
+include("core/abstract_model_store.jl")               # Store depends on keys
+include("core/optimizer_stats.jl")                    # Stats standalone
+include("core/optimization_container_metadata.jl")    # Metadata depends on keys
+include("core/optimization_problem_results_export.jl") # Export config
+include("core/optimization_problem_results.jl")       # Results depends on all above
+include("core/model_internal.jl")                     # Internal state (needs ModelBuildStatus)
+
 include("core/time_series_parameter_types.jl")
 
 # Core components

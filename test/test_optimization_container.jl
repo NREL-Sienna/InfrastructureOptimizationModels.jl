@@ -40,7 +40,7 @@ struct MockExpressionType <: ISOPT.ExpressionType end
             PSY.Deterministic,
         )
 
-        @test PSI.get_base_power(container) == 100.0
+        @test PSI.get_model_base_power(container) == 100.0
         @test isempty(PSI.get_variables(container))
         @test isempty(PSI.get_constraints(container))
         @test isempty(PSI.get_expressions(container))

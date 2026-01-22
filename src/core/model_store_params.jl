@@ -1,11 +1,11 @@
-struct ModelStoreParams <: ISOPT.AbstractModelStoreParams
+struct ModelStoreParams <: AbstractModelStoreParams
     num_executions::Int
     horizon_count::Int
     interval::Dates.Millisecond
     resolution::Dates.Millisecond
     base_power::Float64
     system_uuid::Base.UUID
-    container_metadata::ISOPT.OptimizationContainerMetadata
+    container_metadata::OptimizationContainerMetadata
 
     function ModelStoreParams(
         num_executions::Int,
@@ -14,7 +14,7 @@ struct ModelStoreParams <: ISOPT.AbstractModelStoreParams
         resolution::Dates.Millisecond,
         base_power::Float64,
         system_uuid::Base.UUID,
-        container_metadata = ISOPT.OptimizationContainerMetadata(),
+        container_metadata = OptimizationContainerMetadata(),
     )
         new(
             num_executions,
@@ -35,7 +35,7 @@ function ModelStoreParams(
     resolution::Dates.Millisecond,
     base_power::Float64,
     system_uuid::Base.UUID,
-    container_metadata = ISOPT.OptimizationContainerMetadata(),
+    container_metadata = OptimizationContainerMetadata(),
 )
     return ModelStoreParams(
         num_executions,

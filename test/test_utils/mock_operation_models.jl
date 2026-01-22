@@ -1,8 +1,8 @@
 # NOTE: None of the models and function in this file are functional. All of these are used for testing purposes and do not represent valid examples either to develop custom
 # models. Please refer to the documentation.
 
-struct MockOperationProblem <: PSI.DefaultDecisionProblem end
-struct MockEmulationProblem <: PSI.DefaultEmulationProblem end
+struct MockOperationProblem <: POM.DefaultDecisionProblem end
+struct MockEmulationProblem <: POM.DefaultEmulationProblem end
 
 function PSI.DecisionModel(
     ::Type{MockOperationProblem},
@@ -10,7 +10,7 @@ function PSI.DecisionModel(
     sys::PSY.System;
     name = nothing,
     kwargs...,
-) where {T <: PM.AbstractPowerModel}
+) where {T <: AbstractPowerModel}
     settings = PSI.Settings(sys; kwargs...)
     available_resolutions = PSY.get_time_series_resolutions(sys)
     if length(available_resolutions) == 1
