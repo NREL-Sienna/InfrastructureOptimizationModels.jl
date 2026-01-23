@@ -2,7 +2,7 @@ function _get_time_series(
     container::OptimizationContainer,
     component::PSY.Component,
     attributes::TimeSeriesAttributes{T},
-) where {T <: PSY.TimeSeriesData}
+) where {T <: IS.TimeSeriesData}
     return get_time_series_initial_values!(
         container,
         T,

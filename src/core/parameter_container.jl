@@ -6,7 +6,7 @@ abstract type ParameterAttributes end
 
 struct NoAttributes end
 
-struct TimeSeriesAttributes{T <: PSY.TimeSeriesData} <: ParameterAttributes
+struct TimeSeriesAttributes{T <: IS.TimeSeriesData} <: ParameterAttributes
     name::String
     multiplier_id::Base.RefValue{Int}
     component_name_to_ts_uuid::Dict{String, String}
@@ -18,7 +18,7 @@ function TimeSeriesAttributes(
     name::String,
     multiplier_id::Int = 1,
     component_name_to_ts_uuid = Dict{String, String}(),
-) where {T <: PSY.TimeSeriesData}
+) where {T <: IS.TimeSeriesData}
     return TimeSeriesAttributes{T}(
         name,
         Base.RefValue{Int}(multiplier_id),
@@ -27,7 +27,7 @@ function TimeSeriesAttributes(
     )
 end
 
-get_time_series_type(::TimeSeriesAttributes{T}) where {T <: PSY.TimeSeriesData} = T
+get_time_series_type(::TimeSeriesAttributes{T}) where {T <: IS.TimeSeriesData} = T
 get_time_series_name(attr::TimeSeriesAttributes) = attr.name
 get_time_series_multiplier_id(attr::TimeSeriesAttributes) = attr.multiplier_id[]
 
@@ -161,7 +161,7 @@ function get_parameter_column_refs(
     attributes::TimeSeriesAttributes{T},
     param_array::DenseAxisArray,
     column,
-) where {T <: PSY.TimeSeriesData}
+) where {T <: IS.TimeSeriesData}
     expand_ixs((_get_ts_uuid(attributes, column),), param_array)
     return param_array[expand_ixs((_get_ts_uuid(attributes, column),), param_array)...]
 end
@@ -200,7 +200,7 @@ function get_parameter_values(
     attributes::TimeSeriesAttributes{T},
     param_array::DenseAxisArray,
     multiplier_array::DenseAxisArray,
-) where {T <: PSY.TimeSeriesData}
+) where {T <: IS.TimeSeriesData}
     exploded_param_array = DenseAxisArray{Float64}(undef, axes(multiplier_array)...)
     for name in axes(multiplier_array)[1]
         param_col = param_array[_get_ts_uuid(attributes, name), axes(param_array)[2:end]...]

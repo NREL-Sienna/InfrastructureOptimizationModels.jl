@@ -1373,7 +1373,7 @@ end
 #     additional_axs,
 #     time_steps::UnitRange{Int};
 #     sparse = false,
-# ) where {T <: TimeSeriesParameter, U <: PSY.Component, V <: PSY.TimeSeriesData}
+# ) where {T <: TimeSeriesParameter, U <: PSY.Component, V <: IS.TimeSeriesData}
 #     if built_for_recurrent_solves(container) && !get_rebuild_model(get_settings(container))
 #         param_type = JuMP.VariableRef
 #     else
@@ -1466,7 +1466,7 @@ end
 #     time_steps::UnitRange{Int};
 #     sparse = false,
 #     meta = CONTAINER_KEY_EMPTY_META,
-# ) where {T <: TimeSeriesParameter, U <: PSY.Component, V <: PSY.TimeSeriesData}
+# ) where {T <: TimeSeriesParameter, U <: PSY.Component, V <: IS.TimeSeriesData}
 #     param_key = ParameterKey(T, U, meta)
 #     if isabstracttype(V)
 #         error("$V can't be abstract: $param_key")
@@ -2243,7 +2243,7 @@ function get_time_series_initial_values!(
     ::Type{T},
     component::PSY.Component,
     time_series_name::AbstractString,
-) where {T <: PSY.TimeSeriesData}
+) where {T <: IS.TimeSeriesData}
     initial_time = get_initial_time(container)
     time_steps = get_time_steps(container)
     forecast = PSY.get_time_series(
