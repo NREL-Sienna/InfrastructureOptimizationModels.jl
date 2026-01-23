@@ -44,6 +44,22 @@ function get_available_components(
     end
 end
 
+"""
+Default implementation for validating that a device model has available devices.
+Can be extended in downstream packages for additional validation logic.
+"""
+function validate_available_devices(
+    model::DeviceModel{T, <:AbstractDeviceFormulation},
+    sys::PSY.System,
+) where {T <: PSY.Component}
+    devices = get_available_components(model, sys)
+    if isempty(devices)
+        return false
+    end
+    PSY.check_components(sys, devices)
+    return true
+end
+
 _filter_function(x::PSY.ACBus) =
     PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED && PSY.get_available(x)
 

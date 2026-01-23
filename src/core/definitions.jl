@@ -32,26 +32,6 @@ get_run_status(::SimulationInfo) = RunStatus.NOT_READY
 set_run_status!(::SimulationInfo, status) = nothing
 
 #################################################################################
-# Parameter Container Type
-# Stores parameter arrays and their attributes for optimization problems
-struct ParameterContainer{
-    T,
-    U <: Union{JuMP.Containers.DenseAxisArray, JuMP.Containers.SparseAxisArray},
-}
-    attributes::T
-    parameter_array::U
-    multiplier_array::Union{
-        JuMP.Containers.DenseAxisArray{Float64},
-        JuMP.Containers.SparseAxisArray{Float64},
-    }
-end
-
-# Accessor functions for ParameterContainer
-get_attributes(pc::ParameterContainer) = pc.attributes
-get_parameter_array(pc::ParameterContainer) = pc.parameter_array
-get_multiplier_array(pc::ParameterContainer) = pc.multiplier_array
-
-#################################################################################
 # Type Alias for long type signatures
 const MinMax = NamedTuple{(:min, :max), NTuple{2, Float64}}
 const NamedMinMax = Tuple{String, MinMax}
@@ -145,6 +125,9 @@ const NO_SERVICE_NAME_PROVIDED = ""
 const UPPER_BOUND = "ub"
 const LOWER_BOUND = "lb"
 const MAX_OPTIMIZE_TRIES = 2
+
+# Required recorders for operation models
+const REQUIRED_RECORDERS = (:simulation_status, :execution)
 
 # File Names definitions
 const PROBLEM_SERIALIZATION_FILENAME = "operation_problem.bin"

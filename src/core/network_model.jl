@@ -154,6 +154,12 @@ function _model_has_branch_filters(branch_models::BranchModelContainer)
     return false
 end
 
+# Default implementations for network model compatibility checks
+# These can be extended in PowerOperationsModels for specific network formulations
+requires_all_branch_models(::Type{<:AbstractPowerModel}) = true
+supports_branch_filtering(::Type{<:AbstractPowerModel}) = false
+ignores_branch_filtering(::Type{<:AbstractPowerModel}) = false
+
 function _check_branch_network_compatibility(
     ::NetworkModel{T},
     branch_models::BranchModelContainer,

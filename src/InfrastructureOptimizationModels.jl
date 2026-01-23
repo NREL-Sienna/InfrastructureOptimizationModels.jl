@@ -17,6 +17,17 @@ export NetworkModel
 ######## Model Container Types ########
 export DeviceModel
 export ServiceModel
+export FixedOutput
+
+# Parameter Container Infrastructure
+export ParameterContainer
+export ParameterAttributes
+export NoAttributes
+export TimeSeriesAttributes
+export VariableValueAttributes
+export CostFunctionAttributes
+export EventParametersAttributes
+export ValidDataParamEltypes
 
 # Initial Conditions Quantities
 export DevicePower
@@ -43,6 +54,16 @@ export set_network_model!
 export get_network_formulation
 export get_hvdc_network_model
 export set_hvdc_network_model!
+
+# Extension points for downstream packages (e.g., PowerOperationsModels)
+# These functions have fallback implementations in IOM but are meant to be
+# extended with device-specific methods in POM
+export construct_device!
+export construct_service!
+export add_variables!
+export add_constraints!
+export add_to_expression!
+export objective_function!
 ## Results interfaces
 
 export get_variable_values
@@ -107,7 +128,8 @@ export list_recorder_events
 export show_recorder_events
 export get_num_partitions
 
-# Key Types (from InfrastructureSystems.Optimization)
+# Key Types (defined in IOM)
+export OptimizationContainerKey
 export VariableKey
 export ConstraintKey
 export ParameterKey
@@ -121,6 +143,9 @@ export AuxVariableType
 export ParameterType
 export InitialConditionType
 export ExpressionType
+
+# Abstract types for extensions (from InfrastructureSystems.Optimization)
+export AbstractPowerFlowEvaluationData
 
 # Status Enums (from InfrastructureSystems)
 export ModelBuildStatus
@@ -287,6 +312,7 @@ using DocStringExtensions
 include("core/optimization_container_types.jl")       # Abstract types (VariableType, etc.)
 include("core/definitions.jl")                        # Aliases and enums (needs VariableType)
 include("core/optimization_container_keys.jl")        # Keys depend on types
+include("core/parameter_container.jl")                # Parameter container infrastructure
 include("core/abstract_model_store.jl")               # Store depends on keys
 include("core/optimizer_stats.jl")                    # Stats standalone
 include("core/optimization_container_metadata.jl")    # Metadata depends on keys
