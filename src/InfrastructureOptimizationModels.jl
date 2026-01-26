@@ -65,6 +65,10 @@ export construct_service!
 export add_variables!
 export add_constraints!
 export add_to_expression!
+export add_expressions!
+export add_constant_to_jump_expression!
+export add_proportional_to_jump_expression!
+export add_linear_to_jump_expression!
 export objective_function!
 export initial_condition_variable
 export initial_condition_default
@@ -145,6 +149,20 @@ export get_objective_expression
 export get_formulation
 export get_settings
 export get_rebuild_model
+
+# Expression infrastructure (needed by add_to_expression.jl implementations)
+export get_parameter
+export get_parameter_array
+export get_network_reduction
+export get_multiplier_array
+export get_parameter_column_refs
+export get_service_name
+export get_default_time_series_type
+export get_reference_bus
+export get_expression_multiplier
+export get_variable_multiplier
+export get_multiplier_value
+export add_expression_container!
 
 # Initial condition infrastructure (extension points for POM)
 export get_initial_conditions_value
@@ -409,7 +427,8 @@ include("common_models/add_auxiliary_variable.jl")
 include("common_models/add_parameters.jl")
 include("common_models/add_constraints.jl")
 include("common_models/add_constraint_dual.jl")
-# include("common_models/add_to_expression.jl")
+# include("common_models/add_to_expression.jl")  # Device-specific methods moved to POM
+include("common_models/add_expressions.jl")  # Generic add_expressions! and JuMP helpers
 include("common_models/set_expression.jl")
 include("common_models/construct_device.jl")
 # include("common_models/get_time_series.jl")  # requires TimeSeriesAttributes
