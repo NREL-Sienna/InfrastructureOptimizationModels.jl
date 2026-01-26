@@ -2381,7 +2381,12 @@ function add_to_expression!(
     return
 end
 
-function add_to_expression!(
+# this forces CostExpressions and FuelConsumptionExpression to be defined here.
+"""
+Add a cost expression term to a cost-related expression container.
+This is distinct from the device-form add_to_expression! methods.
+"""
+function add_cost_to_expression!(
     container::OptimizationContainer,
     ::Type{S},
     cost_expression::JuMPOrFloat,
@@ -2399,7 +2404,7 @@ function add_to_expression!(
     return
 end
 
-function add_to_expression!(
+function add_cost_to_expression!(
     container::OptimizationContainer,
     ::Type{S},
     cost_expression::JuMP.AbstractJuMPScalar,

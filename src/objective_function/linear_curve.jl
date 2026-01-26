@@ -15,7 +15,7 @@ function _add_linearcurve_variable_term_to_model!(
         proportional_term_per_unit * dt,
         time_period,
     )
-    add_to_expression!(
+    add_cost_to_expression!(
         container,
         ProductionCostExpression,
         linear_cost,

@@ -1733,26 +1733,8 @@ function add_expression_container!(
     )
 end
 
-# NOTE: Commented out because it references ProductionCostExpression concrete type
-# This should be defined in PowerSimulations if needed
-# function add_expression_container!(
-#     container::OptimizationContainer,
-#     ::T,
-#     ::Type{U},
-#     axs...;
-#     sparse = false,
-#     meta = CONTAINER_KEY_EMPTY_META,
-# ) where {T <: ProductionCostExpression, U <: Union{PSY.Component, PSY.System}}
-#     expr_key = ExpressionKey(T, U, meta)
-#     expr_type = JuMP.QuadExpr
-#     return _add_expression_container!(
-#         container,
-#         expr_key,
-#         expr_type,
-#         axs...;
-#         sparse = sparse,
-#     )
-# end
+# NOTE: add_expression_container! for ProductionCostExpression is in standard_variables_expressions.jl
+# because it requires the type to be defined first
 
 function get_expression_keys(container::OptimizationContainer)
     return collect(keys(container.expressions))

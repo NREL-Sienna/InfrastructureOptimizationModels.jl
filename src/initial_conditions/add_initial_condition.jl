@@ -1,3 +1,48 @@
+# if we move add_initial_condition! out of this package, then won't need this stub.
+# TODO: the only difference between JUMP and Float64 in the return statement.
+"""
+Extension point for downstream packages to define how to map initial condition types
+to variable types for specific device formulations.
+
+This function should be implemented by packages like PowerOperationsModels to specify
+which variable type corresponds to a given initial condition type for a particular
+device and formulation.
+
+# Arguments
+- `ic_type`: An instance of an InitialConditionType (e.g., DeviceStatus(), DevicePower())
+- `component`: The device component
+- `formulation`: An instance of the device formulation
+
+# Returns
+A VariableType instance that corresponds to this initial condition.
+"""
+function initial_condition_variable(
+    ic_type::InitialConditionType,
+    component::PSY.Component,
+    formulation::Union{AbstractDeviceFormulation, AbstractServiceFormulation},
+)
+    error(
+        "initial_condition_variable not implemented for initial condition type " *
+        "$(typeof(ic_type)) with device $(typeof(component)) and formulation " *
+        "$(typeof(formulation)). Implement this method in PowerOperationsModels.",
+    )
+end
+
+"""
+Extension point for downstream packages to define default values for initial conditions.
+"""
+function initial_condition_default(
+    ic_type::InitialConditionType,
+    component::PSY.Component,
+    formulation::Union{AbstractDeviceFormulation, AbstractServiceFormulation},
+)
+    error(
+        "initial_condition_default not implemented for initial condition type " *
+        "$(typeof(ic_type)) with device $(typeof(component)) and formulation " *
+        "$(typeof(formulation)). Implement this method in PowerOperationsModels.",
+    )
+end
+
 function _get_initial_conditions_value(
     ::Vector{T},
     component::W,
@@ -19,7 +64,7 @@ function _get_initial_conditions_value(
     ::V,
     container::OptimizationContainer,
 ) where {
-    T <: Union{InitialCondition{U, Float64}, InitialCondition{U, Nothing}},
+    T <: InitialCondition{U, Float64},
     V <: Union{AbstractDeviceFormulation, AbstractServiceFormulation},
     W <: PSY.Component,
 } where {U <: InitialConditionType}
@@ -42,7 +87,7 @@ function _get_initial_conditions_value(
     ::V,
     container::OptimizationContainer,
 ) where {
-    T <: Union{InitialCondition{U, JuMP.VariableRef}, InitialCondition{U, Nothing}},
+    T <: InitialCondition{U, JuMP.VariableRef},
     V <: AbstractDeviceFormulation,
     W <: PSY.Component,
 } where {U <: InitialConditionType}
@@ -55,12 +100,14 @@ function _get_initial_conditions_value(
     end
     @debug "Device $(PSY.get_name(component)) initialized $U as $val" _group =
         LOG_GROUP_BUILD_INITIAL_CONDITIONS
+    # this is the only difference from above.
     return InitialCondition{U, JuMP.VariableRef}(
         component,
         add_jump_parameter(get_jump_model(container), val),
     )
 end
 
+# TODO : device-specific, probably move into POM.
 function _get_initial_conditions_value(
     ::Vector{Union{InitialCondition{U, Float64}, InitialCondition{U, Nothing}}},
     component::W,
@@ -87,6 +134,7 @@ function _get_initial_conditions_value(
     return InitialCondition{U, Float64}(component, val)
 end
 
+# TODO: device-specific, probably move into POM.
 function _get_initial_conditions_value(
     ::Vector{Union{InitialCondition{U, JuMP.VariableRef}, InitialCondition{U, Nothing}}},
     component::W,
@@ -116,6 +164,7 @@ function _get_initial_conditions_value(
     )
 end
 
+# TODO : device-specific, probably move into POM.
 function _get_initial_conditions_value(
     ::Vector{Union{InitialCondition{U, Float64}, InitialCondition{U, Nothing}}},
     component::W,
@@ -142,6 +191,7 @@ function _get_initial_conditions_value(
     return InitialCondition{U, Float64}(component, val)
 end
 
+# TODO : device-specific, probably move into POM.
 function _get_initial_conditions_value(
     ::Vector{Union{InitialCondition{U, JuMP.VariableRef}, InitialCondition{U, Nothing}}},
     component::W,
@@ -229,6 +279,7 @@ function add_initial_condition!(
     return
 end
 
+# TODO : device-specific, probably move into POM.
 function add_initial_condition!(
     container::OptimizationContainer,
     components::Union{Vector{T}, IS.FlattenIteratorWrapper{T}},

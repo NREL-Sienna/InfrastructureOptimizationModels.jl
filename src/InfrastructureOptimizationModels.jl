@@ -38,6 +38,8 @@ export InitialEnergyLevel
 
 # Functions
 export build!
+export validate_time_series!
+export init_optimization_container!
 ## Op Model Exports
 export get_initial_conditions
 export serialize_problem
@@ -64,6 +66,9 @@ export add_variables!
 export add_constraints!
 export add_to_expression!
 export objective_function!
+export initial_condition_variable
+export initial_condition_default
+export process_market_bid_parameters!
 ## Results interfaces
 
 export get_variable_values
@@ -131,6 +136,18 @@ export jump_value
 export ConstraintBounds
 export VariableBounds
 
+# Internal accessors needed by downstream packages
+export get_network_model
+export get_value
+export get_initial_conditions_data
+export get_initial_condition_value
+export get_objective_expression
+export get_formulation
+
+# Initial condition time types
+export TimeDurationOn
+export TimeDurationOff
+
 # Key Types (defined in IOM)
 export OptimizationContainerKey
 export VariableKey
@@ -146,6 +163,27 @@ export AuxVariableType
 export ParameterType
 export InitialConditionType
 export ExpressionType
+
+# Standard Expression Types (abstract and concrete)
+export SystemBalanceExpressions
+export RangeConstraintLBExpressions
+export RangeConstraintUBExpressions
+export CostExpressions
+export PostContingencyExpressions
+export ActivePowerBalance
+export ReactivePowerBalance
+export EmergencyUp
+export EmergencyDown
+export RawACE
+export ProductionCostExpression
+export FuelConsumptionExpression
+export ActivePowerRangeExpressionLB
+export ActivePowerRangeExpressionUB
+export PostContingencyBranchFlow
+export PostContingencyActivePowerGeneration
+export NetActivePower
+export DCCurrentBalance
+export HVDCPowerBalance
 
 # Abstract types for extensions (from InfrastructureSystems.Optimization)
 export AbstractPowerFlowEvaluationData
