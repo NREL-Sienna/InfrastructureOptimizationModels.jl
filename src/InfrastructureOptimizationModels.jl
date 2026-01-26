@@ -427,7 +427,6 @@ include("common_models/add_auxiliary_variable.jl")
 include("common_models/add_parameters.jl")
 include("common_models/add_constraints.jl")
 include("common_models/add_constraint_dual.jl")
-# include("common_models/add_to_expression.jl")  # Device-specific methods moved to POM
 include("common_models/add_expressions.jl")  # Generic add_expressions! and JuMP helpers
 include("common_models/set_expression.jl")
 include("common_models/construct_device.jl")
