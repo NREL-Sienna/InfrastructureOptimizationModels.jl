@@ -205,7 +205,6 @@ export construct_service!
 export add_variables!
 export add_constraints!
 export add_to_expression!
-export add_expressions!
 export add_constant_to_jump_expression!
 export add_proportional_to_jump_expression!
 export add_linear_to_jump_expression!
@@ -298,7 +297,6 @@ export get_multiplier_array
 export get_parameter_column_refs
 export get_service_name
 export get_default_time_series_type
-export get_reference_bus
 export get_expression_multiplier
 export get_variable_multiplier
 export get_multiplier_value

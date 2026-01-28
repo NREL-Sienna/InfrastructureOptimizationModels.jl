@@ -548,14 +548,3 @@ _assign_subnetworks_to_buses(
     ::NetworkModel{T},
     ::PSY.System,
 ) where {T <: AbstractPowerModel} = nothing
-
-function get_reference_bus(
-    model::NetworkModel{T},
-    b::PSY.ACBus,
-)::Int where {T <: AbstractPowerModel}
-    if isempty(model.bus_area_map)
-        return first(keys(model.subnetworks))
-    else
-        return model.bus_area_map[b]
-    end
-end
