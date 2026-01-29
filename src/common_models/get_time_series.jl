@@ -35,3 +35,25 @@ function get_time_series(
         TimeSeriesAttributes(ts_type, forecast_name),
     )
 end
+
+# TODO better place for this? I'm reluctant to put it in interfaces.jl, because
+# it actually defines some meaningful behavior.
+"""
+Extension point: Get default time series name for a parameter type.
+Returns the name of the time series to look for in the component.
+"""
+function get_time_series_name(
+    ::T,
+    d::U,
+    model::DeviceModel{U, F},
+) where {T <: TimeSeriesParameter, U <: COMP_TYPE, F <: AbstractDeviceFormulation}
+    # Check if model has time series names configured
+    ts_names = get_time_series_names(model)
+    if haskey(ts_names, T)
+        return ts_names[T]
+    end
+
+    # Default: use parameter type name without "TimeSeriesParameter" suffix
+    param_name = string(T)
+    return replace(param_name, "TimeSeriesParameter" => "")
+end

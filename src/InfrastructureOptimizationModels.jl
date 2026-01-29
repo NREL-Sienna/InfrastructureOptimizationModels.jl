@@ -430,23 +430,17 @@ include("core/model_store_params.jl")
 include("core/standard_variables_expressions.jl")
 
 # Common models - extension points for device formulations
-include("common_models/variable_properties.jl")
+include("common_models/interfaces.jl")
 include("common_models/add_variable.jl")
 include("common_models/add_auxiliary_variable.jl")
-include("common_models/add_parameters.jl")
-include("common_models/add_constraints.jl")
 include("common_models/add_constraint_dual.jl")
-include("common_models/add_expressions.jl")  # Generic add_expressions! and JuMP helpers
-include("common_models/set_expression.jl")
-include("common_models/construct_device.jl")
+include("common_models/add_jump_expressions.jl") # helpers only used in POM.
+include("common_models/set_expression.jl") # helpers only used in POM.
 # include("common_models/get_time_series.jl")  # requires TimeSeriesAttributes
-include("common_models/objective_function.jl")
 include("common_models/add_pwl_methods.jl")
 # include("common_models/range_constraint.jl")
 # include("common_models/duration_constraints.jl")
 # include("common_models/rateofchange_constraints.jl")
-include("common_models/get_default_attributes.jl")
-include("common_models/add_variable_cost.jl")
 
 # Objective function implementations
 # include("objective_function/common.jl")
