@@ -1,3 +1,6 @@
+# FIXME The only difference between the signature and the definition are plural
+# vs singular (add_variableS) and type vs instance (2nd argument). seems redundant/confusing.
+# also, identical to add_variable.jl except for AuxVariableType vs VariableType.
 """
 Add variables to the OptimizationContainer for any component.
 """

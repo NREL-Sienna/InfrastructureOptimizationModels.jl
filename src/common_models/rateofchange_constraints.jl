@@ -1,3 +1,4 @@
+# NOTE: not included currently.
 function _get_minutes_per_period(container::OptimizationContainer)
     resolution = get_resolution(container)
     if resolution > Dates.Minute(1)
@@ -230,6 +231,7 @@ function add_linear_ramp_constraints!(
     return _add_linear_ramp_constraints_impl!(container, T, U, devices, model)
 end
 
+# TODO thermal-specific: move to POM?
 function add_linear_ramp_constraints!(
     container::OptimizationContainer,
     T::Type{<:ConstraintType},

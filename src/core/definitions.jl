@@ -193,3 +193,6 @@ Base.convert(::Type{SimulationBuildStatus}, val::String) =
 Base.convert(::Type{ModelBuildStatus}, val::String) = get_enum_value(ModelBuildStatus, val)
 Base.convert(::Type{RunStatus}, val::String) = get_enum_value(RunStatus, val)
 Base.convert(::Type{SOSStatusVariable}, x::String) = get_enum_value(SOSStatusVariable, x)
+
+const SYSTEM_TYPE = IS.ComponentContainer
+const COMP_TYPE = IS.InfrastructureSystemsComponent

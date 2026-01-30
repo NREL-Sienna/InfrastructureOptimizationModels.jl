@@ -99,7 +99,7 @@ function add_sparse_pwl_interpolation_variables!(
     num_segments = DEFAULT_INTERPOLATION_LENGTH,
 ) where {
     T <: Union{InterpolationVariableType, BinaryInterpolationVariableType},
-    U <: PSY.Component,
+    U <: IS.InfrastructureSystemsComponent,
     V <: AbstractDeviceFormulation,
 }
     # TODO: Implement approach for deciding segment length
@@ -117,7 +117,7 @@ function add_sparse_pwl_interpolation_variables!(
 
     # Iterate over all devices to create PWL variables
     for d in devices
-        name = PSY.get_name(d)
+        name = get_name(d)
         # Create variables for each time step
         for t in time_steps
             # Pre-allocate array to store variable references for this device and time step
@@ -196,18 +196,18 @@ function _add_generic_incremental_interpolation_constraint!(
     devices::IS.FlattenIteratorWrapper{W},
     dic_var_bkpts::Dict{String, Vector{Float64}},
     dic_function_bkpts::Dict{String, Vector{Float64}};
-    meta = IS.Optimization.CONTAINER_KEY_EMPTY_META,
+    meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     R <: VariableType,
     S <: VariableType,
     T <: VariableType,
     U <: VariableType,
     V <: ConstraintType,
-    W <: PSY.Component,
+    W <: IS.InfrastructureSystemsComponent,
 }
     # Extract time steps and device names for constraint indexing
     time_steps = get_time_steps(container)
-    names = [PSY.get_name(d) for d in devices]
+    names = [get_name(d) for d in devices]
     JuMPmodel = get_jump_model(container)
 
     # Retrieve all required variables from the optimization container
@@ -244,10 +244,9 @@ function _add_generic_incremental_interpolation_constraint!(
 
     # Iterate over all devices to add constraints for each device and time step
     for d in devices
-        name = PSY.get_name(d)
-        bus_name = PSY.get_name(PSY.get_dc_bus(d))
+        name = get_name(d)
         # Get proper name for x variable (if is DCVoltage or not)
-        x_name = (R <: DCVoltage) ? bus_name : name
+        x_name = (R <: DCVoltage) ? get_name(PSY.get_dc_bus(d)) : name
         var_bkpts = dic_var_bkpts[name]        # Breakpoints in domain (x-values)
         function_bkpts = dic_function_bkpts[name]  # Function values at breakpoints (y-values)
         num_segments = length(var_bkpts) - 1   # Number of linear segments

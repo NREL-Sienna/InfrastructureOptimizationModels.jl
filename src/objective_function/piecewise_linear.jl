@@ -393,9 +393,11 @@ function _add_pwl_term!(
     return pwl_cost_expressions
 end
 
+# FIXME requires ThermalDispatchNoMin to be defined
 """
 Add PWL cost terms for data coming from a PiecewisePointCurve for ThermalDispatchNoMin formulation
 """
+#=
 function _add_pwl_term!(
     container::OptimizationContainer,
     component::T,
@@ -467,6 +469,7 @@ function _add_pwl_term!(
     end
     return pwl_cost_expressions
 end
+=#
 
 """
 Creates piecewise linear cost function using a sum of variables and expression with sign and time step included.
@@ -478,7 +481,7 @@ Creates piecewise linear cost function using a sum of variables and expression w
   - component_name::String: The component_name of the variable container
   - cost_function::PSY.CostCurve{PSY.PiecewisePointCurve}: container for piecewise linear cost
 """
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
@@ -510,6 +513,21 @@ function _add_variable_cost_to_objective!(
     return
 end
 
+# small helper, not called anywhere outside this file.
+get_fuel_cost_value(
+    container::OptimizationContainer,
+    component::PSY.Component,
+    time_period::Int,
+    is_time_variant_::Bool,
+) = _lookup_maybe_time_variant_param(
+    container,
+    component,
+    time_period,
+    Val(is_time_variant_),
+    PSY.get_fuel_cost,
+    FuelCostParameter(),
+)
+
 """
 Creates piecewise linear cost function using a sum of variables and expression with sign and time step included.
 # Arguments
@@ -518,7 +536,7 @@ Creates piecewise linear cost function using a sum of variables and expression w
   - component_name::String: The component_name of the variable container
   - cost_function::PSY.CostCurve{PSY.PiecewisePointCurve}: container for piecewise linear cost
 """
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
@@ -585,7 +603,7 @@ Creates piecewise linear cost function using a sum of variables and expression w
   - component_name::String: The component_name of the variable container
   - cost_function::PSY.Union{PSY.CostCurve{PSY.PiecewiseIncrementalCurve}, PSY.CostCurve{PSY.PiecewiseAverageCurve}}: container for piecewise linear cost
 """
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
@@ -606,7 +624,7 @@ function _add_variable_cost_to_objective!(
     pointbased_cost_function =
         PSY.CostCurve(; value_curve = pointbased_value_curve, power_units = power_units)
     # Call method for PiecewisePointCurve
-    _add_variable_cost_to_objective!(
+    add_variable_cost_to_objective!(
         container,
         T(),
         component,
@@ -631,7 +649,7 @@ Creates piecewise linear fuel cost function using a sum of variables and express
   - component_name::String: The component_name of the variable container
   - cost_function::PSY.Union{PSY.FuelCurve{PSY.PiecewiseIncrementalCurve}, PSY.FuelCurve{PSY.PiecewiseAverageCurve}}: container for piecewise linear cost
 """
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
@@ -657,7 +675,7 @@ function _add_variable_cost_to_objective!(
             fuel_cost = fuel_cost,
         )
     # Call method for PiecewisePointCurve
-    _add_variable_cost_to_objective!(
+    add_variable_cost_to_objective!(
         container,
         T(),
         component,

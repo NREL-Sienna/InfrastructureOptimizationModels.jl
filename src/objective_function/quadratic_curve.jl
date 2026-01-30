@@ -1,3 +1,20 @@
+function _add_quadratic_term!(
+    container::OptimizationContainer,
+    ::T,
+    component::U,
+    q_terms::NTuple{2, Float64},
+    expression_multiplier::Float64,
+    time_period::Int,
+) where {T <: VariableType, U <: PSY.Component}
+    component_name = PSY.get_name(component)
+    @debug "$component_name Quadratic Variable Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
+    var = get_variable(container, T(), U)[component_name, time_period]
+    q_cost_ = var .^ 2 * q_terms[1] + var * q_terms[2]
+    q_cost = q_cost_ * expression_multiplier
+    add_to_objective_invariant_expression!(container, q_cost)
+    return q_cost
+end
+
 # Add proportional terms to objective function and expression
 function _add_quadraticcurve_variable_term_to_model!(
     container::OptimizationContainer,
@@ -134,7 +151,7 @@ linear cost term `sum(variable)*cost_data[2]`
 * component_name::String: The component_name of the variable container
 * cost_component::PSY.CostCurve{PSY.QuadraticCurve} : container for quadratic factors
 """
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
@@ -172,7 +189,9 @@ function _add_variable_cost_to_objective!(
     return
 end
 
-function _add_variable_cost_to_objective!(
+# FIXME: requires AbstractCompactUnitCommitment and ThermalCompactDispatch to be defined
+#=
+function add_variable_cost_to_objective!(
     ::OptimizationContainer,
     ::T,
     component::PSY.Component,
@@ -189,6 +208,7 @@ function _add_variable_cost_to_objective!(
     )
     return
 end
+=#
 
 function _add_fuel_quadratic_variable_cost!(
     container::OptimizationContainer,
@@ -242,7 +262,7 @@ linear cost term `sum(variable)*cost_data[2]`
 * component_name::String: The component_name of the variable container
 * cost_component::PSY.FuelCurve{PSY.QuadraticCurve} : container for quadratic factors
 """
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
