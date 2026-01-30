@@ -1,3 +1,4 @@
+# NOTE not included currently.
 function _get_time_series(
     container::OptimizationContainer,
     component::PSY.Component,

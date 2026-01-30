@@ -67,7 +67,7 @@ function add_variable!(
 ) where {
     T <: VariableType,
     U <: Union{Vector{D}, IS.FlattenIteratorWrapper{D}},
-} where {D <: PSY.Component}
+} where {D <: IS.InfrastructureSystemsComponent}
     @assert !isempty(devices)
     time_steps = get_time_steps(container)
     settings = get_settings(container)
@@ -77,12 +77,12 @@ function add_variable!(
         container,
         variable_type,
         D,
-        PSY.get_name.(devices),
+        get_name.(devices),
         time_steps,
     )
 
     for t in time_steps, d in devices
-        name = PSY.get_name(d)
+        name = get_name(d)
         variable[name, t] = JuMP.@variable(
             get_jump_model(container),
             base_name = "$(T)_$(D)_{$(name), $(t)}",
