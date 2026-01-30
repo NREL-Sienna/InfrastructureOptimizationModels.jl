@@ -443,12 +443,18 @@ include("common_models/add_pwl_methods.jl")
 # include("common_models/rateofchange_constraints.jl")
 
 # Objective function implementations
+
+# add_variable_cost_to_objective! implementations and that's it (no other exported functions)
+# same 5 arguments: container, variable, component, cost_curve, formulation.
+include("objective_function/linear_curve.jl")
+include("objective_function/quadratic_curve.jl")
+include("objective_function/import_export.jl")
+
+# add_variable_cost! implementations, but "it's complicated." Other stuff exported too
+include("objective_function/piecewise_linear.jl")
 # include("objective_function/common.jl")
-# include("objective_function/linear_curve.jl")
-# include("objective_function/quadratic_curve.jl")
-# include("objective_function/piecewise_linear.jl")
 # include("objective_function/market_bid.jl")
-# include("objective_function/import_export.jl")
+
 
 include("operation/operation_model_interface.jl")
 include("operation/decision_model_store.jl")

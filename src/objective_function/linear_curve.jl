@@ -73,7 +73,7 @@ Adds to the cost function cost terms for sum of variables with common factor to 
   - component_name::String: The component_name of the variable container
   - cost_component::PSY.CostCurve{PSY.LinearCurve} : container for cost to be associated with variable
 """
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
@@ -133,7 +133,7 @@ Adds to the cost function cost terms for sum of variables with common factor to 
   - component_name::String: The component_name of the variable container
   - cost_component::PSY.FuelCurve{PSY.LinearCurve} : container for cost to be associated with variable
 """
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
