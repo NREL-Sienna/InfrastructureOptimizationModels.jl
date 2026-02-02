@@ -1,7 +1,7 @@
 precompile_time = @timed using InfrastructureOptimizationModels
 
 using InfrastructureOptimizationModels
-const POM = InfrastructureOptimizationModels
+const IOM = InfrastructureOptimizationModels
 using PowerSystems
 const PSY = PowerSystems
 using Logging

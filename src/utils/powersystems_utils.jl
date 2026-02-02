@@ -202,7 +202,7 @@ depending on the specified power units
 """
 function get_quadratic_cost_per_system_unit(
     cost_term::Float64,
-    unit_system::PSY.UnitSystem,
+    unit_system::IS.UnitSystem,
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -216,7 +216,7 @@ end
 
 function _get_quadratic_cost_per_system_unit(
     cost_term::Float64,
-    ::Val{PSY.UnitSystem.SYSTEM_BASE}, # SystemBase Unit
+    ::Val{IS.UnitSystem.SYSTEM_BASE}, # SystemBase Unit
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -225,7 +225,7 @@ end
 
 function _get_quadratic_cost_per_system_unit(
     cost_term::Float64,
-    ::Val{PSY.UnitSystem.DEVICE_BASE}, # DeviceBase Unit
+    ::Val{IS.UnitSystem.DEVICE_BASE}, # DeviceBase Unit
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -234,7 +234,7 @@ end
 
 function _get_quadratic_cost_per_system_unit(
     cost_term::Float64,
-    ::Val{PSY.UnitSystem.NATURAL_UNITS}, # Natural Units
+    ::Val{IS.UnitSystem.NATURAL_UNITS}, # Natural Units
     system_base_power::Float64,
     device_base_power::Float64,
 )

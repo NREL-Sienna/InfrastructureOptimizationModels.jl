@@ -112,3 +112,67 @@ function count_objective_terms(container::PSI.OptimizationContainer; variant = f
         return 0
     end
 end
+
+"""
+Get the quadratic coefficient of a variable (coefficient of var^2) in the objective.
+Returns 0.0 if the variable is not present in quadratic terms.
+"""
+function get_objective_quadratic_coefficient(
+    container::PSI.OptimizationContainer,
+    var_type::PSI.VariableType,
+    ::Type{T},
+    name::String,
+    t::Int,
+) where {T}
+    obj = PSI.get_objective_expression(container)
+    invariant = PSI.get_invariant_terms(obj)
+    var = PSI.get_variable(container, var_type, T)[name, t]
+    # JuMP.coefficient(expr, var, var) gets the coefficient of var^2
+    return JuMP.coefficient(invariant, var, var)
+end
+
+"""
+Verify that quadratic objective coefficients match expected values for all time steps.
+Checks both linear and quadratic coefficients.
+
+# Arguments
+- `container`: OptimizationContainer to check
+- `var_type`: Variable type instance
+- `T`: Component type
+- `name`: Device name
+- `expected_linear`: Either a scalar or vector of expected linear coefficients
+- `expected_quadratic`: Either a scalar or vector of expected quadratic coefficients
+- `atol`: Absolute tolerance for comparison (default 1e-10)
+
+Returns true if all coefficients match within tolerance.
+"""
+function verify_quadratic_objective_coefficients(
+    container::PSI.OptimizationContainer,
+    var_type::PSI.VariableType,
+    ::Type{T},
+    name::String,
+    expected_linear::Union{Float64, Vector{Float64}},
+    expected_quadratic::Union{Float64, Vector{Float64}};
+    atol = 1e-10,
+) where {T}
+    time_steps = PSI.get_time_steps(container)
+
+    for t in time_steps
+        exp_lin = expected_linear isa Vector ? expected_linear[t] : expected_linear
+        exp_quad =
+            expected_quadratic isa Vector ? expected_quadratic[t] : expected_quadratic
+
+        actual_lin = get_objective_coefficient(container, var_type, T, name, t)
+        actual_quad = get_objective_quadratic_coefficient(container, var_type, T, name, t)
+
+        if !isapprox(actual_lin, exp_lin; atol = atol)
+            @warn "Linear coefficient mismatch at t=$t: expected $exp_lin, got $actual_lin"
+            return false
+        end
+        if !isapprox(actual_quad, exp_quad; atol = atol)
+            @warn "Quadratic coefficient mismatch at t=$t: expected $exp_quad, got $actual_quad"
+            return false
+        end
+    end
+    return true
+end

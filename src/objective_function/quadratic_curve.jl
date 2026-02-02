@@ -5,8 +5,8 @@ function _add_quadratic_term!(
     q_terms::NTuple{2, Float64},
     expression_multiplier::Float64,
     time_period::Int,
-) where {T <: VariableType, U <: PSY.Component}
-    component_name = PSY.get_name(component)
+) where {T <: VariableType, U <: IS.InfrastructureSystemsComponent}
+    component_name = get_name(component)
     @debug "$component_name Quadratic Variable Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     var = get_variable(container, T(), U)[component_name, time_period]
     q_cost_ = var .^ 2 * q_terms[1] + var * q_terms[2]
@@ -19,7 +19,7 @@ end
 function _add_quadraticcurve_variable_term_to_model!(
     container::OptimizationContainer,
     ::T,
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     proportional_term_per_unit::Float64,
     quadratic_term_per_unit::Float64,
     time_period::Int,
@@ -59,14 +59,14 @@ function _add_quadraticcurve_variable_cost!(
     container::OptimizationContainer,
     ::T,
     ::U,
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     proportional_term_per_unit::Vector{Float64},
     quadratic_term_per_unit::Vector{Float64},
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
-    lb, ub = get_min_max_limits(component, ActivePowerVariableLimitsConstraint, U)
+    lb, ub = get_active_power_limits(component)
     for t in get_time_steps(container)
         _check_quadratic_monotonicity(
-            PSY.get_name(component),
+            get_name(component),
             quadratic_term_per_unit[t],
             proportional_term_per_unit[t],
             lb,
@@ -89,12 +89,12 @@ function _add_quadraticcurve_variable_cost!(
     container::OptimizationContainer,
     ::T,
     ::U,
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     proportional_term_per_unit::Float64,
     quadratic_term_per_unit::Float64,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
-    lb, ub = get_min_max_limits(component, ActivePowerVariableLimitsConstraint, U)
-    _check_quadratic_monotonicity(PSY.get_name(component),
+    lb, ub = get_active_power_limits(component)
+    _check_quadratic_monotonicity(get_name(component),
         quadratic_term_per_unit,
         proportional_term_per_unit,
         lb,
@@ -149,23 +149,23 @@ linear cost term `sum(variable)*cost_data[2]`
 * container::OptimizationContainer : the optimization_container model built in InfrastructureOptimizationModels
 * var_key::VariableKey: The variable name
 * component_name::String: The component_name of the variable container
-* cost_component::PSY.CostCurve{PSY.QuadraticCurve} : container for quadratic factors
+* cost_component::IS.CostCurve{IS.QuadraticCurve} : container for quadratic factors
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
-    component::PSY.Component,
-    cost_function::PSY.CostCurve{PSY.QuadraticCurve},
+    component::IS.InfrastructureSystemsComponent,
+    cost_function::IS.CostCurve{IS.QuadraticCurve},
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     multiplier = objective_function_multiplier(T(), U())
     base_power = get_model_base_power(container)
-    device_base_power = PSY.get_base_power(component)
-    value_curve = PSY.get_value_curve(cost_function)
-    power_units = PSY.get_power_units(cost_function)
-    cost_component = PSY.get_function_data(value_curve)
-    quadratic_term = PSY.get_quadratic_term(cost_component)
-    proportional_term = PSY.get_proportional_term(cost_component)
+    device_base_power = get_base_power(component)
+    value_curve = get_value_curve(cost_function)
+    power_units = get_power_units(cost_function)
+    cost_component = get_function_data(value_curve)
+    quadratic_term = get_quadratic_term(cost_component)
+    proportional_term = get_proportional_term(cost_component)
     proportional_term_per_unit = get_proportional_cost_per_system_unit(
         proportional_term,
         power_units,

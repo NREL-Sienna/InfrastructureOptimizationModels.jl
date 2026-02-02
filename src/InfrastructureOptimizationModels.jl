@@ -20,7 +20,8 @@ import PowerNetworkMatrices
 import PowerNetworkMatrices: PTDF, VirtualPTDF, LODF, VirtualLODF
 import InfrastructureSystems: @assert_op, TableFormat, list_recorder_events, get_name
 import InfrastructureSystems:
-    get_value_curve, get_power_units, get_function_data, get_proportional_term
+    get_value_curve, get_power_units, get_function_data, get_proportional_term,
+    get_quadratic_term
 
 # IS.Optimization imports: base types that remain in InfrastructureSystems
 # Note: ModelBuildStatus is aliased in definitions.jl, so don't import it directly
@@ -96,7 +97,8 @@ import PowerSystems:
     get_groups,
     get_available_groups,
     stores_time_series_in_memory,
-    get_base_power
+    get_base_power,
+    get_active_power_limits
 import PowerSystems: StartUpStages
 
 import TimerOutputs

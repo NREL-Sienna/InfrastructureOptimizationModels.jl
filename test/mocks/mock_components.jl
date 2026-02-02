@@ -48,8 +48,8 @@ MockThermalGen(name, available, bus, limits) =
 get_name(g::MockThermalGen) = g.name
 get_available(g::MockThermalGen) = g.available
 get_bus(g::MockThermalGen) = g.bus
-get_active_power_limits(g::MockThermalGen) = g.active_power_limits
-InfrastructureOptimizationModels.get_base_power(g::MockThermalGen) = g.base_power
+IOM.get_active_power_limits(g::MockThermalGen) = g.active_power_limits
+IOM.get_base_power(g::MockThermalGen) = g.base_power
 
 # Mock Renewable Generator
 struct MockRenewableGen <: AbstractMockGenerator

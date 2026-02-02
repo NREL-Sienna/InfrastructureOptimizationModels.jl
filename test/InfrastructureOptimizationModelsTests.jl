@@ -12,11 +12,14 @@ using Test
 using InfrastructureOptimizationModels
 using Logging
 using Dates
+using JuMP
+using HiGHS
 
 # Import InfrastructureSystems for logging utilities
 using InfrastructureSystems
 const IS = InfrastructureSystems
 const ISOPT = InfrastructureSystems.Optimization
+const IOM = InfrastructureOptimizationModels
 
 # Test directory path for includes
 const TEST_DIR = @__DIR__
@@ -28,18 +31,16 @@ include(joinpath(TEST_DIR, "mocks/mock_components.jl"))
 include(joinpath(TEST_DIR, "mocks/mock_time_series.jl"))
 include(joinpath(TEST_DIR, "mocks/mock_services.jl"))
 include(joinpath(TEST_DIR, "mocks/constructors.jl"))
+include(joinpath(TEST_DIR, "test_utils/objective_function_helpers.jl"))
 
 # Environment flags for test selection
-const RUN_UNIT_TESTS = get(ENV, "POM_RUN_UNIT_TESTS", "true") == "true"
-const RUN_INTEGRATION_TESTS = get(ENV, "POM_RUN_INTEGRATION_TESTS", "false") == "true"
+const RUN_UNIT_TESTS = get(ENV, "IOM_RUN_UNIT_TESTS", "true") == "true"
+const RUN_INTEGRATION_TESTS = get(ENV, "IOM_RUN_INTEGRATION_TESTS", "false") == "true"
 
 # Heavy dependencies - only load if we need tests that use them
 if RUN_INTEGRATION_TESTS
     using PowerSystems
-    using JuMP
-    using HiGHS
     const PSY = PowerSystems
-    include(joinpath(TEST_DIR, "test_utils/objective_function_helpers.jl"))
 end
 
 const LOG_FILE = "power-optimization-models-test.log"
@@ -95,6 +96,7 @@ function run_tests()
                         @info "Running tests that require PowerSystems..."
                         include(joinpath(TEST_DIR, "test_pwl_methods.jl")) # requires JuMP
                         include(joinpath(TEST_DIR, "test_linear_curve.jl"))
+                        include(joinpath(TEST_DIR, "test_quadratic_curve.jl"))
                     end
                 end
             end
