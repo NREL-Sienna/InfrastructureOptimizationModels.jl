@@ -43,7 +43,7 @@ function _lookup_maybe_time_variant_param(
     ::Val{false},  # not time variant
     getter_func::F,
     ::U,
-) where {T <: PSY.Component, F <: Function, U <: ParameterType}
+) where {T <: IS.InfrastructureSystemsComponent, F <: Function, U <: ParameterType}
     return getter_func(component)
 end
 
@@ -54,7 +54,7 @@ function _lookup_maybe_time_variant_param(
     ::Val{true},  # yes time variant
     ::F,
     ::U,
-) where {T <: PSY.Component, F <: Function, U <: ParameterType}
+) where {T <: IS.InfrastructureSystemsComponent, F <: Function, U <: ParameterType}
     # PERF this is modeled on the old get_fuel_cost_value function, but is it really
     # performant to be fetching the whole array and multiplier array anew for every time step?
     parameter_array = get_parameter_array(container, U(), T)
@@ -182,6 +182,11 @@ end
 ################## Fuel Cost #####################
 ##################################################
 
+"""
+Parameter to define fuel cost time series
+"""
+struct FuelCostParameter <: ObjectiveFunctionParameter end
+
 # used in quadratic_curve and piecewise_linear objective functions.
 function _add_time_varying_fuel_variable_cost!(
     container::OptimizationContainer,
@@ -217,7 +222,7 @@ function _onvar_cost(::PSY.CostCurve{PSY.PiecewisePointCurve})
 end
 
 function _onvar_cost(
-    cost_function::Union{PSY.CostCurve{PSY.LinearCurve}, PSY.CostCurve{PSY.QuadraticCurve}},
+    cost_function::Union{PSY.CostCurve{IS.LinearCurve}, PSY.CostCurve{IS.QuadraticCurve}},
 )
     value_curve = PSY.get_value_curve(cost_function)
     cost_component = PSY.get_function_data(value_curve)

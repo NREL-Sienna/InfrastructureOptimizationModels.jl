@@ -3,58 +3,69 @@ Unit tests for piecewise linear (PWL) approximation methods.
 Tests the mathematical correctness of breakpoint generation.
 """
 
-# Define aliases if not already defined by test harness
-if !@isdefined(PSI)
-    const PSI = InfrastructureOptimizationModels
-end
-
 # Test interpolation variable types
-struct TestInterpolationVariable <: PSI.InterpolationVariableType end
-struct TestBinaryInterpolationVariable <: PSI.BinaryInterpolationVariableType end
+struct TestInterpolationVariable <: IOM.InterpolationVariableType end
+struct TestBinaryInterpolationVariable <: IOM.BinaryInterpolationVariableType end
 
 # Test variable types for constraint testing
-struct TestOriginalVariable <: PSI.VariableType end
-struct TestApproximatedVariable <: PSI.VariableType end
-struct TestPWLConstraint <: PSI.ConstraintType end
+struct TestOriginalVariable <: IOM.VariableType end
+struct TestApproximatedVariable <: IOM.VariableType end
+struct TestPWLConstraint <: IOM.ConstraintType end
 
 # Test formulation type
-struct TestPWLFormulation <: PSI.AbstractDeviceFormulation end
+struct TestPWLFormulation <: IOM.AbstractDeviceFormulation end
+
+# Define sos_status for mock components - return NO_VARIABLE (no commitment tracking)
+IOM.sos_status(::MockThermalGen, ::TestPWLFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
 
 # Define required methods for test types (only non-default values)
-PSI.get_variable_binary(
+IOM.get_variable_binary(
     ::TestBinaryInterpolationVariable,
     ::Type{<:IS.InfrastructureSystemsComponent},
-    ::PSI.AbstractDeviceFormulation,
+    ::IOM.AbstractDeviceFormulation,
 ) = true
-PSI.get_variable_upper_bound(
+IOM.get_variable_upper_bound(
     ::TestInterpolationVariable,
     ::IS.InfrastructureSystemsComponent,
-    ::PSI.AbstractDeviceFormulation,
+    ::IOM.AbstractDeviceFormulation,
 ) = 1.0
-PSI.get_variable_lower_bound(
+IOM.get_variable_lower_bound(
     ::TestInterpolationVariable,
     ::IS.InfrastructureSystemsComponent,
-    ::PSI.AbstractDeviceFormulation,
+    ::IOM.AbstractDeviceFormulation,
 ) = 0.0
 
 #==============================================================================#
 # Helper functions
 #==============================================================================#
 
-function make_mock_thermal_pwl(name::String; min_power = 10.0, max_power = 100.0)
+function make_mock_thermal_pwl(
+    name::String;
+    min_power = 10.0,
+    max_power = 100.0,
+    fuel_cost = 0.0,
+)
     bus = MockBus("bus1", 1, :PV)
-    return MockThermalGen(name, true, bus, (min = min_power, max = max_power))
+    op_cost = MockOperationCost(0.0, false, fuel_cost)
+    return MockThermalGen(
+        name,
+        true,
+        bus,
+        (min = min_power, max = max_power),
+        100.0,
+        op_cost,
+    )
 end
 
 function setup_pwl_test_container(time_steps::UnitRange{Int})
     sys = MockSystem(100.0)
-    settings = PSI.Settings(
+    settings = IOM.Settings(
         sys;
         horizon = Dates.Hour(length(time_steps)),
         resolution = Dates.Hour(1),
     )
-    container = PSI.OptimizationContainer(sys, settings, JuMP.Model(), IS.Deterministic)
-    PSI.set_time_steps!(container, time_steps)
+    container = IOM.OptimizationContainer(sys, settings, JuMP.Model(), IS.Deterministic)
+    IOM.set_time_steps!(container, time_steps)
     return container
 end
 
@@ -64,7 +75,7 @@ Checks common invariants: correct count, domain boundaries.
 """
 function test_breakpoints(f, min_val, max_val, num_segments)
     x_bkpts, y_bkpts =
-        PSI._get_breakpoints_for_pwl_function(min_val, max_val, f; num_segments)
+        IOM._get_breakpoints_for_pwl_function(min_val, max_val, f; num_segments)
     expected_count = num_segments + 1
 
     @test length(x_bkpts) == expected_count
@@ -80,9 +91,9 @@ Set up container, add PWL interpolation variables, and return relevant objects.
 """
 function setup_and_add_pwl_variables(var_type, devices, time_steps, num_segments)
     container = setup_pwl_test_container(time_steps)
-    model = PSI.DeviceModel(MockThermalGen, TestPWLFormulation)
+    model = IOM.DeviceModel(MockThermalGen, TestPWLFormulation)
 
-    PSI.add_sparse_pwl_interpolation_variables!(
+    IOM.add_sparse_pwl_interpolation_variables!(
         container,
         var_type,
         devices,
@@ -90,8 +101,8 @@ function setup_and_add_pwl_variables(var_type, devices, time_steps, num_segments
         num_segments,
     )
 
-    var_container = PSI.get_variable(container, var_type, MockThermalGen)
-    jump_model = PSI.get_jump_model(container)
+    var_container = IOM.get_variable(container, var_type, MockThermalGen)
+    jump_model = IOM.get_jump_model(container)
 
     return (; container, var_container, jump_model)
 end
@@ -141,19 +152,19 @@ function setup_pwl_constraint_test(;
     # Setup container with all required variables
     container = setup_pwl_test_container(time_steps)
     formulation = TestPWLFormulation()
-    model = PSI.DeviceModel(MockThermalGen, TestPWLFormulation)
+    model = IOM.DeviceModel(MockThermalGen, TestPWLFormulation)
 
-    PSI.add_variable!(container, TestOriginalVariable(), devices, formulation)
-    PSI.add_variable!(container, TestApproximatedVariable(), devices, formulation)
-    PSI.add_sparse_pwl_interpolation_variables!(
+    IOM.add_variable!(container, TestOriginalVariable(), devices, formulation)
+    IOM.add_variable!(container, TestApproximatedVariable(), devices, formulation)
+    IOM.add_sparse_pwl_interpolation_variables!(
         container, TestInterpolationVariable(), devices, model, num_segments,
     )
-    PSI.add_sparse_pwl_interpolation_variables!(
+    IOM.add_sparse_pwl_interpolation_variables!(
         container, TestBinaryInterpolationVariable(), devices, model, num_segments,
     )
 
     # Generate breakpoints
-    x_bkpts, y_bkpts = PSI._get_breakpoints_for_pwl_function(
+    x_bkpts, y_bkpts = IOM._get_breakpoints_for_pwl_function(
         domain[1], domain[2], f; num_segments,
     )
 
@@ -163,7 +174,7 @@ function setup_pwl_constraint_test(;
     # Add constraints
     wrapped_devices = IS.FlattenIteratorWrapper(MockThermalGen, (devices,))
 
-    PSI._add_generic_incremental_interpolation_constraint!(
+    IOM._add_generic_incremental_interpolation_constraint!(
         container,
         TestOriginalVariable(),
         TestApproximatedVariable(),
@@ -177,15 +188,15 @@ function setup_pwl_constraint_test(;
 
     return (;
         container,
-        x_var = PSI.get_variable(container, TestOriginalVariable(), MockThermalGen),
-        y_var = PSI.get_variable(container, TestApproximatedVariable(), MockThermalGen),
-        δ_var = PSI.get_variable(container, TestInterpolationVariable(), MockThermalGen),
-        z_var = PSI.get_variable(
+        x_var = IOM.get_variable(container, TestOriginalVariable(), MockThermalGen),
+        y_var = IOM.get_variable(container, TestApproximatedVariable(), MockThermalGen),
+        δ_var = IOM.get_variable(container, TestInterpolationVariable(), MockThermalGen),
+        z_var = IOM.get_variable(
             container,
             TestBinaryInterpolationVariable(),
             MockThermalGen,
         ),
-        jump_model = PSI.get_jump_model(container),
+        jump_model = IOM.get_jump_model(container),
         x_bkpts,
         y_bkpts,
         devices,
@@ -316,13 +327,13 @@ end
                 f = x -> x^2,
             )
 
-            @test PSI.has_container_key(
+            @test IOM.has_container_key(
                 test.container,
                 TestPWLConstraint,
                 MockThermalGen,
                 "pwl_variable",
             )
-            @test PSI.has_container_key(
+            @test IOM.has_container_key(
                 test.container,
                 TestPWLConstraint,
                 MockThermalGen,
@@ -395,10 +406,10 @@ end
                 domain = (0.0, 6.0),
             )
 
-            var_constraints = PSI.get_constraint(
+            var_constraints = IOM.get_constraint(
                 test.container, TestPWLConstraint(), MockThermalGen, "pwl_variable",
             )
-            func_constraints = PSI.get_constraint(
+            func_constraints = IOM.get_constraint(
                 test.container, TestPWLConstraint(), MockThermalGen, "pwl_function",
             )
 
@@ -406,6 +417,83 @@ end
                 @test name in axes(var_constraints, 1) && t in axes(var_constraints, 2)
                 @test name in axes(func_constraints, 1) && t in axes(func_constraints, 2)
             end
+        end
+    end
+
+    @testset "add_variable_cost_to_objective! with FuelCurve{PiecewisePointCurve}" begin
+        time_steps = 1:2
+        # fuel_cost must match what's in the FuelCurve below
+        device = make_mock_thermal_pwl(
+            "gen1";
+            min_power = 0.0,
+            max_power = 100.0,
+            fuel_cost = 3.0,
+        )
+        container = setup_pwl_test_container(time_steps)
+
+        device_name = IOM.get_name(device)
+        num_points = 3  # (0, 50, 100) -> 3 breakpoints
+
+        # Add the main variable container for the device
+        var_container = IOM.add_variable_container!(
+            container,
+            TestOriginalVariable(),
+            MockThermalGen,
+            [device_name],
+            time_steps,
+        )
+
+        # Pre-create PWL variable container with axes: (name, segment_idx, time)
+        IOM.add_variable_container!(
+            container,
+            IOM.PiecewiseLinearCostVariable(),
+            MockThermalGen,
+            [device_name],
+            1:num_points,
+            time_steps,
+        )
+
+        # Populate main variables with actual JuMP variables
+        jump_model = IOM.get_jump_model(container)
+        for t in time_steps
+            var_container[device_name, t] = JuMP.@variable(
+                jump_model,
+                base_name = "TestPower_$(device_name)_$(t)",
+            )
+        end
+
+        # FuelCurve with piecewise linear fuel consumption
+        # Points: (0, 0), (50, 300), (100, 700) MMBTU
+        # Fuel cost: 3.0 $/MMBTU
+        fuel_curve = IS.FuelCurve(
+            IS.PiecewisePointCurve([(0.0, 0.0), (50.0, 300.0), (100.0, 700.0)]),
+            IS.UnitSystem.NATURAL_UNITS,
+            3.0,  # $/MMBTU
+        )
+
+        IOM.add_variable_cost_to_objective!(
+            container,
+            TestOriginalVariable(),
+            device,
+            fuel_curve,
+            TestPWLFormulation(),
+        )
+
+        # Verify PWL variables were created
+        pwl_vars =
+            IOM.get_variable(container, IOM.PiecewiseLinearCostVariable(), MockThermalGen)
+        for t in time_steps
+            for i in 1:num_points
+                @test pwl_vars[device_name, i, t] isa JuMP.VariableRef
+            end
+        end
+
+        # Verify PWL constraints were created
+        pwl_constraints = IOM.get_constraint(
+            container, IOM.PiecewiseLinearCostConstraint(), MockThermalGen,
+        )
+        for t in time_steps
+            @test pwl_constraints[device_name, t] isa JuMP.ConstraintRef
         end
     end
 end

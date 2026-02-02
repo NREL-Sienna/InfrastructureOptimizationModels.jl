@@ -298,4 +298,44 @@ end
             )
         end
     end
+
+    @testset "add_variable_cost_to_objective! with FuelCurve{LinearCurve}" begin
+        time_steps = 1:3
+        device = make_mock_thermal("gen1"; base_power = 50.0)
+        container = setup_container_with_variables(
+            time_steps,
+            device;
+            resolution = Dates.Hour(1),
+        )
+
+        # FuelCurve: fuel consumption rate (MMBTU/MWh) × fuel cost ($/MMBTU)
+        # Linear fuel consumption: 8.0 MMBTU/MWh
+        # Fuel cost: 5.0 $/MMBTU
+        # Total cost: 8.0 * 5.0 = 40.0 $/MWh
+        fuel_curve = IS.FuelCurve(
+            IS.LinearCurve(8.0),  # MMBTU/MWh
+            IS.UnitSystem.NATURAL_UNITS,
+            5.0,  # $/MMBTU
+        )
+
+        InfrastructureOptimizationModels.add_variable_cost_to_objective!(
+            container,
+            TestActivePowerVariable(),
+            device,
+            fuel_curve,
+            TestLinearFormulation(),
+        )
+
+        # NATURAL_UNITS: fuel_curve_per_unit = 8.0 * 100.0 (system_base) = 800.0
+        # Total cost coefficient = fuel_curve_per_unit * fuel_cost * dt
+        #                        = 800.0 * 5.0 * 1.0 = 4000.0
+        expected_coef = 8.0 * 100.0 * 5.0 * 1.0
+        @test verify_objective_coefficients(
+            container,
+            TestActivePowerVariable(),
+            MockThermalGen,
+            "gen1",
+            expected_coef,
+        )
+    end
 end

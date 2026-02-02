@@ -195,7 +195,7 @@ function add_variable_cost_to_objective!(
     ::OptimizationContainer,
     ::T,
     component::PSY.Component,
-    cost_function::PSY.CostCurve{PSY.QuadraticCurve},
+    cost_function::PSY.CostCurve{IS.QuadraticCurve},
     ::U,
 ) where {
     T <: PowerAboveMinimumVariable,
@@ -214,7 +214,7 @@ function _add_fuel_quadratic_variable_cost!(
     container::OptimizationContainer,
     ::T,
     ::U,
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     proportional_fuel_curve::Float64,
     quadratic_fuel_curve::Float64,
     fuel_cost::Float64,
@@ -233,7 +233,7 @@ function _add_fuel_quadratic_variable_cost!(
     container::OptimizationContainer,
     ::T,
     ::AbstractDeviceFormulation,
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     proportional_fuel_curve::Float64,
     quadratic_fuel_curve::Float64,
     fuel_cost::IS.TimeSeriesKey,
@@ -260,23 +260,23 @@ linear cost term `sum(variable)*cost_data[2]`
 * container::OptimizationContainer : the optimization_container model built in InfrastructureOptimizationModels
 * var_key::VariableKey: The variable name
 * component_name::String: The component_name of the variable container
-* cost_component::PSY.FuelCurve{PSY.QuadraticCurve} : container for quadratic factors
+* cost_component::IS.FuelCurve{IS.QuadraticCurve} : container for quadratic factors
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
-    component::PSY.Component,
-    cost_function::PSY.FuelCurve{PSY.QuadraticCurve},
+    component::IS.InfrastructureSystemsComponent,
+    cost_function::IS.FuelCurve{IS.QuadraticCurve},
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     multiplier = objective_function_multiplier(T(), U())
     base_power = get_model_base_power(container)
-    device_base_power = PSY.get_base_power(component)
-    value_curve = PSY.get_value_curve(cost_function)
-    power_units = PSY.get_power_units(cost_function)
-    cost_component = PSY.get_function_data(value_curve)
-    quadratic_term = PSY.get_quadratic_term(cost_component)
-    proportional_term = PSY.get_proportional_term(cost_component)
+    device_base_power = get_base_power(component)
+    value_curve = IS.get_value_curve(cost_function)
+    power_units = IS.get_power_units(cost_function)
+    cost_component = IS.get_function_data(value_curve)
+    quadratic_term = IS.get_quadratic_term(cost_component)
+    proportional_term = IS.get_proportional_term(cost_component)
     proportional_term_per_unit = get_proportional_cost_per_system_unit(
         proportional_term,
         power_units,
@@ -289,7 +289,7 @@ function add_variable_cost_to_objective!(
         base_power,
         device_base_power,
     )
-    fuel_cost = PSY.get_fuel_cost(cost_function)
+    fuel_cost = IS.get_fuel_cost(cost_function)
     # Multiplier is not necessary here. There is no negative cost for fuel curves.
     _add_fuel_quadratic_variable_cost!(
         container,

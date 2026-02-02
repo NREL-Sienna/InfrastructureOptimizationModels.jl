@@ -131,28 +131,28 @@ Adds to the cost function cost terms for sum of variables with common factor to 
   - container::OptimizationContainer : the optimization_container model built in InfrastructureOptimizationModels
   - var_key::VariableKey: The variable name
   - component_name::String: The component_name of the variable container
-  - cost_component::PSY.FuelCurve{PSY.LinearCurve} : container for cost to be associated with variable
+  - cost_component::IS.FuelCurve{IS.LinearCurve} : container for cost to be associated with variable
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::IS.InfrastructureSystemsComponent,
-    cost_function::PSY.FuelCurve{IS.LinearCurve},
+    cost_function::IS.FuelCurve{IS.LinearCurve},
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     base_power = get_model_base_power(container)
-    device_base_power = PSY.get_base_power(component)
-    value_curve = PSY.get_value_curve(cost_function)
-    power_units = PSY.get_power_units(cost_function)
-    cost_component = PSY.get_function_data(value_curve)
-    proportional_term = PSY.get_proportional_term(cost_component)
+    device_base_power = get_base_power(component)
+    value_curve = IS.get_value_curve(cost_function)
+    power_units = IS.get_power_units(cost_function)
+    cost_component = IS.get_function_data(value_curve)
+    proportional_term = IS.get_proportional_term(cost_component)
     fuel_curve_per_unit = get_proportional_cost_per_system_unit(
         proportional_term,
         power_units,
         base_power,
         device_base_power,
     )
-    fuel_cost = PSY.get_fuel_cost(cost_function)
+    fuel_cost = IS.get_fuel_cost(cost_function)
     # Multiplier is not necessary here. There is no negative cost for fuel curves.
     _add_fuel_linear_variable_cost!(
         container,

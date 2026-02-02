@@ -411,4 +411,51 @@ end
             @test lin_coef ≈ proportional_term * 1.0  # dt = 1.0
         end
     end
+
+    @testset "add_variable_cost_to_objective! with FuelCurve{QuadraticCurve}" begin
+        time_steps = 1:3
+        device = make_mock_thermal(
+            "gen1";
+            base_power = 50.0,
+            limits = (min = 0.0, max = 100.0),
+        )
+        container = setup_quadratic_test_container(
+            time_steps, device; resolution = Dates.Hour(1),
+        )
+
+        # FuelCurve with quadratic fuel consumption
+        # Quadratic: 0.02 MMBTU/MW²h, Linear: 7.0 MMBTU/MWh
+        # Fuel cost: 4.0 $/MMBTU
+        fuel_curve = IS.FuelCurve(
+            IS.QuadraticCurve(0.02, 7.0, 0.0),  # (quadratic, linear, constant)
+            IS.UnitSystem.NATURAL_UNITS,
+            4.0,  # $/MMBTU
+        )
+
+        InfrastructureOptimizationModels.add_variable_cost_to_objective!(
+            container,
+            TestActivePowerVariable(),
+            device,
+            fuel_curve,
+            TestQuadraticFormulation(),
+        )
+
+        # NATURAL_UNITS conversion:
+        # linear_per_unit = 7.0 * 100.0 (system_base) = 700.0
+        # quadratic_per_unit = 0.02 * 100.0^2 = 200.0
+        # With fuel_cost = 4.0 and dt = 1.0:
+        # final_linear = 700.0 * 4.0 * 1.0 = 2800.0
+        # final_quadratic = 200.0 * 4.0 * 1.0 = 800.0
+        expected_linear = 7.0 * 100.0 * 4.0 * 1.0
+        expected_quadratic = 0.02 * 100.0 * 100.0 * 4.0 * 1.0
+
+        @test verify_quadratic_objective_coefficients(
+            container,
+            TestActivePowerVariable(),
+            MockThermalGen,
+            "gen1",
+            expected_linear,
+            expected_quadratic,
+        )
+    end
 end

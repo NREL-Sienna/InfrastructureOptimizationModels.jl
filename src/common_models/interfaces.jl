@@ -309,3 +309,5 @@ end
 
 # stub so we can have operation cost in mock components
 get_operation_cost(::IS.InfrastructureSystemsComponent) = nothing
+
+sos_status(::Any, ::AbstractServiceFormulation) = SOSStatusVariable.NO_VARIABLE
