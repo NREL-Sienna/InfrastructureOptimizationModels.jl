@@ -35,7 +35,7 @@ include(joinpath(TEST_DIR, "test_utils/objective_function_helpers.jl"))
 
 # Environment flags for test selection
 const RUN_UNIT_TESTS = get(ENV, "IOM_RUN_UNIT_TESTS", "true") == "true"
-const RUN_INTEGRATION_TESTS = get(ENV, "IOM_RUN_INTEGRATION_TESTS", "false") == "true"
+const RUN_INTEGRATION_TESTS = true # get(ENV, "IOM_RUN_INTEGRATION_TESTS", "false") == "true"
 
 # Heavy dependencies - only load if we need tests that use them
 if RUN_INTEGRATION_TESTS
@@ -98,6 +98,7 @@ function run_tests()
                 if RUN_INTEGRATION_TESTS
                     @testset "Tests with PowerSystems" begin
                         @info "Running tests that require PowerSystems..."
+                        include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
                     end
                 end
             end

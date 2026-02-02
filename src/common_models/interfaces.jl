@@ -310,4 +310,17 @@ end
 # stub so we can have operation cost in mock components
 get_operation_cost(::IS.InfrastructureSystemsComponent) = nothing
 
+# stub for must_run check - device-specific implementations in POM
+get_must_run(::IS.InfrastructureSystemsComponent) = false
+
 sos_status(::Any, ::AbstractServiceFormulation) = SOSStatusVariable.NO_VARIABLE
+
+###############################
+###### Start-up Cost ##########
+###############################
+
+"""
+Extension point: Convert raw startup cost to a scalar value.
+Device-specific implementations (e.g., for StartUpStages, MultiStartVariable) are in POM.
+"""
+start_up_cost(cost::Float64, component, ::VariableType, ::AbstractDeviceFormulation) = cost

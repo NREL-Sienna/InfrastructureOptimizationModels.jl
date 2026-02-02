@@ -98,7 +98,11 @@ import PowerSystems:
     get_available_groups,
     stores_time_series_in_memory,
     get_base_power,
-    get_active_power_limits
+    get_active_power_limits,
+    get_start_up,
+    get_shut_down,
+    get_must_run,
+    get_operation_cost
 import PowerSystems: StartUpStages
 
 import TimerOutputs

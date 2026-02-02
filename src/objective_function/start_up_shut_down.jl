@@ -1,6 +1,13 @@
+# ideally would define in POM, but put here for now.
+"Parameter to define startup cost time series"
+struct StartupCostParameter <: ObjectiveFunctionParameter end
+
+"Parameter to define shutdown cost time series"
+struct ShutdownCostParameter <: ObjectiveFunctionParameter end
+
 get_shutdown_cost_value(
     container::OptimizationContainer,
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     time_period::Int,
     is_time_variant_::Bool,
 ) = _lookup_maybe_time_variant_param(
@@ -8,7 +15,7 @@ get_shutdown_cost_value(
     component,
     time_period,
     Val(is_time_variant_),
-    PSY.get_shut_down ∘ PSY.get_operation_cost,
+    get_shut_down ∘ get_operation_cost,
     ShutdownCostParameter(),
 )
 
@@ -17,12 +24,16 @@ function add_shut_down_cost!(
     ::U,
     devices::IS.FlattenIteratorWrapper{T},
     ::V,
-) where {T <: PSY.Component, U <: VariableType, V <: AbstractDeviceFormulation}
+) where {
+    T <: IS.InfrastructureSystemsComponent,
+    U <: VariableType,
+    V <: AbstractDeviceFormulation,
+}
     multiplier = objective_function_multiplier(U(), V())
     for d in devices
-        PSY.get_must_run(d) && continue
+        get_must_run(d) && continue
 
-        add_as_time_variant = is_time_variant(PSY.get_shut_down(PSY.get_operation_cost(d)))
+        add_as_time_variant = is_time_variant(get_shut_down(get_operation_cost(d)))
         for t in get_time_steps(container)
             my_cost_term = get_shutdown_cost_value(
                 container,
@@ -45,14 +56,21 @@ function add_start_up_cost!(
     ::U,
     devices::IS.FlattenIteratorWrapper{T},
     ::V,
-) where {T <: PSY.Component, U <: VariableType, V <: AbstractDeviceFormulation}
+) where {
+    T <: IS.InfrastructureSystemsComponent,
+    U <: VariableType,
+    V <: AbstractDeviceFormulation,
+}
     for d in devices
-        op_cost_data = PSY.get_operation_cost(d)
+        op_cost_data = get_operation_cost(d)
         _add_start_up_cost_to_objective!(container, U(), d, op_cost_data, V())
     end
     return
 end
 
+# NOTE: Type constraints PSY.ThermalGen and PSY.{ThermalGenerationCost, MarketBidCost}
+# are device/cost-specific and should eventually move to POM.
+# Alternative: replace with any component and any operation cost, then write thin wrapers in POM.
 function _add_start_up_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
@@ -61,8 +79,8 @@ function _add_start_up_cost_to_objective!(
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     multiplier = objective_function_multiplier(T(), U())
-    PSY.get_must_run(component) && return
-    add_as_time_variant = is_time_variant(PSY.get_start_up(op_cost))
+    get_must_run(component) && return
+    add_as_time_variant = is_time_variant(get_start_up(op_cost))
     for t in get_time_steps(container)
         my_cost_term = get_startup_cost_value(
             container,
@@ -88,13 +106,17 @@ function get_startup_cost_value(
     ::U,
     time_period::Int,
     is_time_variant_::Bool,
-) where {T <: VariableType, V <: PSY.Component, U <: AbstractDeviceFormulation}
+) where {
+    T <: VariableType,
+    V <: IS.InfrastructureSystemsComponent,
+    U <: AbstractDeviceFormulation,
+}
     raw_startup_cost = _lookup_maybe_time_variant_param(
         container,
         component,
         time_period,
         Val(is_time_variant_),
-        PSY.get_start_up ∘ PSY.get_operation_cost,
+        get_start_up ∘ get_operation_cost,
         StartupCostParameter(),
     )
     # TODO add stub for start_up_cost.
