@@ -1911,6 +1911,14 @@ function add_to_objective_invariant_expression!(
     return
 end
 
+function add_to_objective_invariant_expression!(
+    container::OptimizationContainer,
+    cost::Float64,
+)
+    JuMP.add_to_expression!(container.objective_function.invariant_terms, cost)
+    return
+end
+
 function add_to_objective_variant_expression!(
     container::OptimizationContainer,
     cost_expr::JuMP.AffExpr,

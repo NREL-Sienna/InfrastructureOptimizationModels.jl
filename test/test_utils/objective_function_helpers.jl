@@ -5,6 +5,124 @@ Provides utilities for inspecting and verifying objective function coefficients.
 
 using JuMP
 
+#######################################
+######## Common Test Types ############
+#######################################
+
+# Only define if not already defined (allows multiple test files to use these)
+if !@isdefined(TestVariableType)
+    struct TestVariableType <: IOM.VariableType end
+end
+if !@isdefined(TestExpressionType)
+    struct TestExpressionType <: IOM.ExpressionType end
+end
+if !@isdefined(TestConstraintType)
+    struct TestConstraintType <: IOM.ConstraintType end
+end
+if !@isdefined(TestParameterType)
+    struct TestParameterType <: IOM.ParameterType end
+end
+if !@isdefined(TestFormulation)
+    struct TestFormulation <: IOM.AbstractDeviceFormulation end
+end
+
+#######################################
+######## Container Setup Helpers ######
+#######################################
+
+"""
+Create an OptimizationContainer configured for testing.
+Returns container with time_steps already set.
+"""
+function make_test_container(
+    time_steps::UnitRange{Int};
+    base_power = 100.0,
+    resolution = Dates.Hour(1),
+)
+    sys = MockSystem(base_power)
+    settings = IOM.Settings(
+        sys;
+        horizon = Dates.Hour(length(time_steps)),
+        resolution = resolution,
+    )
+    container = IOM.OptimizationContainer(sys, settings, JuMP.Model(), MockDeterministic)
+    IOM.set_time_steps!(container, time_steps)
+    return container
+end
+
+"""
+Add a JuMP variable to the container and return it.
+Creates the variable container with proper axes if it doesn't exist.
+"""
+function add_test_variable!(
+    container::IOM.OptimizationContainer,
+    ::Type{V},
+    ::Type{C},
+    name::String,
+    t::Int,
+) where {V <: IOM.VariableType, C}
+    # Create container with proper axes if it doesn't exist
+    if !IOM.has_container_key(container, V, C)
+        time_steps = IOM.get_time_steps(container)
+        IOM.add_variable_container!(container, V(), C, [name], time_steps)
+    end
+    var_container = IOM.get_variable(container, V(), C)
+    jump_model = IOM.get_jump_model(container)
+    var = JuMP.@variable(jump_model, base_name = "$(V)_$(name)_$(t)")
+    var_container[name, t] = var
+    return var
+end
+
+"""
+Add an expression container for given names and time steps.
+"""
+function add_test_expression!(
+    container::IOM.OptimizationContainer,
+    ::Type{E},
+    ::Type{C},
+    names,
+    time_steps,
+) where {E <: IOM.ExpressionType, C}
+    IOM.add_expression_container!(container, E(), C, names, time_steps)
+end
+
+"""
+Add a parameter container with specified values.
+`values` should be a Matrix{Float64} of size (length(names), length(time_steps)).
+"""
+function add_test_parameter!(
+    container::IOM.OptimizationContainer,
+    ::Type{P},
+    ::Type{C},
+    names,
+    time_steps,
+    values::Matrix{Float64},
+) where {P <: IOM.ParameterType, C}
+    param_container = IOM.add_param_container!(
+        container,
+        P(),
+        C,
+        IOM.SOSStatusVariable.NO_VARIABLE,
+        false,  # uses_compact_power
+        Float64,
+        names,
+        time_steps,
+    )
+    for (i, name) in enumerate(names)
+        for t in time_steps
+            IOM.set_parameter!(
+                param_container,
+                JuMP.@variable(IOM.get_jump_model(container)),
+                name,
+                t,
+            )
+            IOM._set_parameter_value!(param_container, values[i, t], name, t)
+            IOM.set_multiplier!(param_container, 1.0, name, t)
+        end
+    end
+    return param_container
+end
+
 """
 Create an OptimizationContainer configured for testing.
 Returns container with time_steps already set.

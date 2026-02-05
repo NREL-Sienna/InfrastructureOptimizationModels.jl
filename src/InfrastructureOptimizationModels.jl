@@ -216,6 +216,14 @@ export add_to_expression!
 export add_constant_to_jump_expression!
 export add_proportional_to_jump_expression!
 export add_linear_to_jump_expression!
+# Cost term helpers (generic objective function building blocks)
+export add_cost_term_invariant!
+export add_cost_term_variant!
+export add_pwl_variables!
+export add_pwl_linking_constraint!
+export add_pwl_normalization_constraint!
+export add_pwl_sos2_constraint!
+export get_pwl_cost_expression
 export objective_function!
 export initial_condition_variable
 export initial_condition_default
@@ -449,6 +457,7 @@ include("common_models/add_pwl_methods.jl")
 # include("common_models/rateofchange_constraints.jl")
 
 # Objective function implementations
+include("objective_function/cost_term_helpers.jl") # generic helpers: add_cost_term_{invariant,variant}!, PWL helpers
 include("objective_function/common.jl")
 include("objective_function/proportional.jl") # _add_proportional_term! (called by others)
 # and add_proportional_cost! and add_proportional_cost_maybe_time_variant! (both exported)
