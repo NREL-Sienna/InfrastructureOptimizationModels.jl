@@ -5,26 +5,7 @@ Provides utilities for inspecting and verifying objective function coefficients.
 
 using JuMP
 
-#######################################
-######## Common Test Types ############
-#######################################
-
-# Only define if not already defined (allows multiple test files to use these)
-if !@isdefined(TestVariableType)
-    struct TestVariableType <: IOM.VariableType end
-end
-if !@isdefined(TestExpressionType)
-    struct TestExpressionType <: IOM.ExpressionType end
-end
-if !@isdefined(TestConstraintType)
-    struct TestConstraintType <: IOM.ConstraintType end
-end
-if !@isdefined(TestParameterType)
-    struct TestParameterType <: IOM.ParameterType end
-end
-if !@isdefined(TestFormulation)
-    struct TestFormulation <: IOM.AbstractDeviceFormulation end
-end
+# Test types are defined in test_utils/test_types.jl
 
 #######################################
 ######## Container Setup Helpers ######

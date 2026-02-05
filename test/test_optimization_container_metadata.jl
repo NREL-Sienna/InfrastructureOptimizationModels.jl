@@ -1,11 +1,8 @@
+# Test types defined in test_utils/test_types.jl
 import InfrastructureOptimizationModels:
     VariableKey,
     OptimizationContainerMetadata,
     encode_key_as_string
-
-if !isdefined(InfrastructureOptimizationModelsTests, :MockVariable)
-    struct MockVariable <: IOM.VariableType end
-end
 
 @testset "Testset Optimization Container Metadata" begin
     metadata = OptimizationContainerMetadata()

@@ -1,19 +1,10 @@
 """
 Unit tests for DatasetContainer in dataset_container.jl.
 Tests container operations for storing optimization results.
-Written entirely by Claude Code, so fairly surface-level, but serves its purpose of 
+Written entirely by Claude Code, so fairly surface-level, but serves its purpose of
 confirming that the code runs without errors.
 """
-# Mock types for testing container keys
-# Note: Key types (VariableKey, etc.) are in IOM, element types (VariableType, etc.) are in ISOPT
-struct TestVariableType <: IOM.VariableType end
-struct TestVariableType2 <: IOM.VariableType end
-struct TestConstraintType <: IOM.ConstraintType end
-struct TestAuxVariableType <: IOM.AuxVariableType end
-struct TestParameterType <: IOM.ParameterType end
-struct TestExpressionType <: IOM.ExpressionType end
-
-# Use IS.TestComponent as the component type (from InfrastructureSystems)
+# Test types are defined in test_utils/test_types.jl
 
 @testset "DatasetContainer" begin
     @testset "Constructor" begin

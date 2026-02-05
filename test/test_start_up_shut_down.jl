@@ -2,13 +2,9 @@
 Integration tests for start-up and shut-down cost objective function construction.
 Tests the functions in src/objective_function/start_up_shut_down.jl.
 Requires PowerSystems types (PSY.ThermalStandard, PSY.ThermalGenerationCost).
+Test types defined in test_utils/test_types.jl.
 """
 
-# Test-specific variable type for shutdown costs
-struct TestShutDownVariable <: IOM.VariableType end
-
-# Test-specific variable type for startup costs
-struct TestStartVariable <: IOM.VariableType end
 IOM.sos_status(::Any, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
 
 # Formulation already defined in mock_components.jl: TestDeviceFormulation

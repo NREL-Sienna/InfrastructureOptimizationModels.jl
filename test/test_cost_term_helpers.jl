@@ -4,16 +4,8 @@ Tests the generic building blocks for adding costs to expressions and objectives
 
 Uses common helpers from test_utils/objective_function_helpers.jl:
 - make_test_container, add_test_variable!, add_test_expression!, add_test_parameter!
+Test types defined in test_utils/test_types.jl.
 """
-
-# Test-specific types (unique to this file)
-struct TestCostVariable <: IOM.VariableType end
-struct TestCostExpression <: IOM.ExpressionType end
-struct TestCostConstraint <: IOM.ConstraintType end
-struct TestCostParameter <: IOM.ParameterType end
-if !isdefined(InfrastructureOptimizationModelsTests, :TestPWLVariable)
-    struct TestPWLVariable <: IOM.SparseVariableType end
-end
 
 @testset "Cost Term Helpers" begin
     @testset "add_cost_term_invariant!" begin

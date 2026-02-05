@@ -1,4 +1,5 @@
 # mostly a copy-paste from IS tests.
+# Test types defined in test_utils/test_types.jl
 import InfrastructureOptimizationModels:
     VariableKey,
     ConstraintKey,
@@ -7,15 +8,6 @@ import InfrastructureOptimizationModels:
     ParameterKey,
     InitialConditionKey
 import InfrastructureSystems as IS
-struct MockContainer <: IOM.AbstractOptimizationContainer end
-struct MockVariable <: IOM.VariableType end
-struct MockVariable2 <: IOM.VariableType end
-struct MockConstraint <: IOM.ConstraintType end
-struct MockAuxVariable <: IOM.AuxVariableType end
-struct MockExpression <: IOM.ExpressionType end
-struct MockExpression2 <: IOM.ExpressionType end
-struct MockParameter <: IOM.ParameterType end
-struct MockInitialCondition <: IOM.InitialConditionType end
 
 IOM.convert_result_to_natural_units(::Type{MockVariable2}) = true
 IOM.should_write_resulting_value(::Type{MockVariable2}) = false

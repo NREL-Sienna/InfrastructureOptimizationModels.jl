@@ -1,3 +1,4 @@
+# Test types defined in test_utils/test_types.jl
 import InfrastructureOptimizationModels:
     OptimizationContainerMetadata,
     OptimizationProblemResults,
@@ -9,11 +10,6 @@ import Dates:
     DateTime,
     Millisecond
 import InfrastructureSystems as IS
-
-if !isdefined(InfrastructureOptimizationModelsTests, :MockVariable)
-    struct MockVariable <: IOM.VariableType end
-    struct MockVariable2 <: IOM.VariableType end
-end
 
 @testset "Test OptimizationProblemResults long format" begin
     base_power = 10.0

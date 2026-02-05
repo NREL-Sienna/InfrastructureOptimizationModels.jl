@@ -1,24 +1,11 @@
 """
 Unit tests for piecewise linear (PWL) approximation methods.
 Tests the mathematical correctness of breakpoint generation.
+Test types defined in test_utils/test_types.jl.
 """
 
-# Test interpolation variable types
-struct TestInterpolationVariable <: IOM.InterpolationVariableType end
-struct TestBinaryInterpolationVariable <: IOM.BinaryInterpolationVariableType end
-
-# Test variable types for constraint testing
-struct TestOriginalVariable <: IOM.VariableType end
-struct TestApproximatedVariable <: IOM.VariableType end
-struct TestPWLConstraint <: IOM.ConstraintType end
-
-# Test formulation type
-if !isdefined(@__MODULE__, :TestPWLFormulation)
-    struct TestPWLFormulation <: IOM.AbstractDeviceFormulation end
-    # Define sos_status for mock components - return NO_VARIABLE (no commitment tracking)
-    IOM.sos_status(::MockThermalGen, ::TestPWLFormulation) =
-        IOM.SOSStatusVariable.NO_VARIABLE
-end
+# Define sos_status for mock components - return NO_VARIABLE (no commitment tracking)
+IOM.sos_status(::MockThermalGen, ::TestPWLFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
 
 # Define required methods for test types (only non-default values)
 IOM.get_variable_binary(
