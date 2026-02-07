@@ -97,7 +97,10 @@ function get_dataset(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: ConstraintType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: ConstraintType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset(container, ConstraintKey(T, U))
 end
 
@@ -105,7 +108,10 @@ function get_dataset(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: VariableType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: VariableType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset(container, VariableKey(T, U))
 end
 
@@ -113,7 +119,10 @@ function get_dataset(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: AuxVariableType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: AuxVariableType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset(container, AuxVarKey(T, U))
 end
 
@@ -121,7 +130,10 @@ function get_dataset(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: ParameterType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: ParameterType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset(container, ParameterKey(T, U))
 end
 
@@ -129,7 +141,10 @@ function get_dataset(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: ExpressionType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: ExpressionType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset(container, ExpressionKey(T, U))
 end
 
@@ -141,7 +156,10 @@ function get_dataset_values(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: ConstraintType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: ConstraintType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset_values(container, ConstraintKey(T, U))
 end
 
@@ -149,7 +167,10 @@ function get_dataset_values(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: VariableType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: VariableType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset_values(container, VariableKey(T, U))
 end
 
@@ -157,7 +178,10 @@ function get_dataset_values(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: AuxVariableType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: AuxVariableType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset_values(container, AuxVarKey(T, U))
 end
 
@@ -165,7 +189,10 @@ function get_dataset_values(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: ParameterType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: ParameterType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset_values(container, ParameterKey(T, U))
 end
 
@@ -173,7 +200,10 @@ function get_dataset_values(
     container::DatasetContainer,
     ::T,
     ::Type{U},
-) where {T <: ExpressionType, U <: Union{PSY.Component, PSY.System}}
+) where {
+    T <: ExpressionType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
     return get_dataset_values(container, ExpressionKey(T, U))
 end
 

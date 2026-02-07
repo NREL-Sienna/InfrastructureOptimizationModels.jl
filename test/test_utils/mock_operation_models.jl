@@ -1,8 +1,8 @@
 # NOTE: None of the models and function in this file are functional. All of these are used for testing purposes and do not represent valid examples either to develop custom
 # models. Please refer to the documentation.
 
-struct MockOperationProblem <: POM.DefaultDecisionProblem end
-struct MockEmulationProblem <: POM.DefaultEmulationProblem end
+struct MockOperationProblem <: IOM.DefaultDecisionProblem end
+struct MockEmulationProblem <: IOM.DefaultEmulationProblem end
 
 function PSI.DecisionModel(
     ::Type{MockOperationProblem},

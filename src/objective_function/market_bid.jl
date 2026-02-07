@@ -1,3 +1,44 @@
+# helper functions
+
+get_output_offer_curves(cost::PSY.ImportExportCost, args...; kwargs...) =
+    PSY.get_import_offer_curves(cost, args...; kwargs...)
+get_output_offer_curves(cost::PSY.MarketBidCost, args...; kwargs...) =
+    PSY.get_incremental_offer_curves(cost, args...; kwargs...)
+get_input_offer_curves(cost::PSY.ImportExportCost, args...; kwargs...) =
+    PSY.get_export_offer_curves(cost, args...; kwargs...)
+get_input_offer_curves(cost::PSY.MarketBidCost, args...; kwargs...) =
+    PSY.get_decremental_offer_curves(cost, args...; kwargs...)
+
+# TODO deduplicate, these signatures are getting out of hand
+get_output_offer_curves(
+    component::PSY.Component,
+    cost::PSY.ImportExportCost,
+    args...;
+    kwargs...,
+) =
+    PSY.get_import_offer_curves(component, cost, args...; kwargs...)
+get_output_offer_curves(
+    component::PSY.Component,
+    cost::PSY.MarketBidCost,
+    args...;
+    kwargs...,
+) =
+    PSY.get_incremental_offer_curves(component, cost, args...; kwargs...)
+get_input_offer_curves(
+    component::PSY.Component,
+    cost::PSY.ImportExportCost,
+    args...;
+    kwargs...,
+) =
+    PSY.get_export_offer_curves(component, cost, args...; kwargs...)
+get_input_offer_curves(
+    component::PSY.Component,
+    cost::PSY.MarketBidCost,
+    args...;
+    kwargs...,
+) =
+    PSY.get_decremental_offer_curves(component, cost, args...; kwargs...)
+
 ##################################################
 ################ PWL Parameters  #################
 ##################################################
@@ -34,6 +75,8 @@ const _PIECEWISE_BLOCK_CONSTRAINTS::Dict{
 # Determines whether we care about various types of costs, given the formulation
 # NOTE: currently works based on what has already been added to the container;
 # alternatively we could dispatch on the formulation directly
+
+# FIXME: requires moving Shutdown, startup, 
 
 _consider_parameter(
     ::StartupCostParameter,
@@ -409,6 +452,25 @@ function _process_occ_parameters_helper(
     end
 end
 
+"Validate ImportExportCosts and add the appropriate parameters"
+function process_import_export_parameters!(
+    container::OptimizationContainer,
+    devices_in,
+    model::DeviceModel,
+)
+    devices = filter(_has_import_export_cost, collect(devices_in))
+
+    for param in (
+        IncrementalPiecewiseLinearSlopeParameter(),
+        IncrementalPiecewiseLinearBreakpointParameter(),
+        DecrementalPiecewiseLinearSlopeParameter(),
+        DecrementalPiecewiseLinearBreakpointParameter(),
+    )
+        # Validate and add the parameters
+        _process_occ_parameters_helper(param, container, model, devices)
+    end
+end
+
 "Validate MarketBidCosts and add the appropriate parameters"
 function process_market_bid_parameters!(
     container::OptimizationContainer,
@@ -484,6 +546,16 @@ end
 # without this, you get "variable OnVariable__RenewableDispatch is not stored"
 # TODO: really this falls along the divide of
 # commitment (OnVariable + ActivePower) vs dispatch (ActivePower only)
+_include_min_gen_power_in_constraint(
+    ::PSY.Source,
+    ::ActivePowerOutVariable,
+    ::AbstractDeviceFormulation,
+) = false
+_include_min_gen_power_in_constraint(
+    ::PSY.Source,
+    ::ActivePowerInVariable,
+    ::AbstractDeviceFormulation,
+) = false
 _include_min_gen_power_in_constraint(
     ::PSY.RenewableDispatch,
     ::ActivePowerVariable,
@@ -573,7 +645,6 @@ function _add_pwl_constraint!(
     # just look up what it is currently fixed to and use that here without worrying about
     # updating.
     if _include_constant_min_gen_power_in_constraint(component, U(), D())
-        # TODO this seems kind of redundant with the
         sum_pwl_vars += jump_fixed_value(first(break_points))::Float64
     elseif _include_min_gen_power_in_constraint(component, U(), D())
         on_vars = get_variable(container, OnVariable(), T)
@@ -887,7 +958,7 @@ Decremental offers are not accepted for most components, except Storage systems 
   - component_name::String: The component_name of the variable container
   - cost_function::MarketBidCost : container for market bid cost
 """
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
@@ -900,7 +971,7 @@ function _add_variable_cost_to_objective!(
         error("Component $(component_name) is not allowed to participate as a demand.")
     end
     add_pwl_term!(
-        false, # I suspect this is a problem. could very well be decremental, storage
+        false,
         container,
         component,
         cost_function,
@@ -910,7 +981,7 @@ function _add_variable_cost_to_objective!(
     return
 end
 
-function _add_variable_cost_to_objective!(
+function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::PSY.Component,
@@ -934,6 +1005,8 @@ function _add_variable_cost_to_objective!(
     return
 end
 
+# TODO not actually called anywhere?!!
+#=
 function _add_service_bid_cost!(
     container::OptimizationContainer,
     component::PSY.Component,
@@ -973,6 +1046,7 @@ function _add_service_bid_cost!(
 end
 
 function _add_service_bid_cost!(::OptimizationContainer, ::PSY.Component, ::PSY.Service) end
+=#
 
 # "copy-paste and change incremental to decremental" here. Refactor?
 function _add_vom_cost_to_objective!(
@@ -1027,12 +1101,11 @@ end
 function _add_vom_cost_to_objective_helper!(
     container::OptimizationContainer,
     ::T,
-    component::PSY.Component,
+    component::C,
     ::PSY.OfferCurveCost,
     cost_data::PSY.CostCurve{PSY.PiecewiseIncrementalCurve},
     ::U,
-) where {T <: VariableType,
-    U <: AbstractDeviceFormulation}
+) where {T <: VariableType, C <: PSY.Component, U <: AbstractDeviceFormulation}
     power_units = PSY.get_power_units(cost_data)
     vom_cost = PSY.get_vom_cost(cost_data)
     multiplier = 1.0 # VOM Cost is always positive
@@ -1040,14 +1113,14 @@ function _add_vom_cost_to_objective_helper!(
     iszero(cost_term) && return
     base_power = get_model_base_power(container)
     device_base_power = PSY.get_base_power(component)
-    cost_term_normalized = get_proportional_cost_per_system_unit(cost_term,
-        power_units,
-        base_power,
-        device_base_power)
+    cost_term_normalized = get_proportional_cost_per_system_unit(
+        cost_term, power_units, base_power, device_base_power)
+    name = get_name(component)
+    rate = cost_term_normalized * multiplier
     for t in get_time_steps(container)
-        exp = _add_proportional_term!(container, T(), d, cost_term_normalized * multiplier,
-            t)
-        add_cost_to_expression!(container, ProductionCostExpression, exp, d, t)
+        variable = get_variable(container, T(), C)[name, t]
+        add_cost_term_invariant!(
+            container, variable, rate, ProductionCostExpression, C, name, t)
     end
     return
 end

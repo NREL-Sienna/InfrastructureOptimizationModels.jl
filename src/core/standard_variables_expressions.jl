@@ -64,7 +64,7 @@ struct InterfaceFlowSlackUp <: VariableType end
 struct InterfaceFlowSlackDown <: VariableType end
 
 # Cost Variables
-struct PiecewiseLinearCostVariable <: VariableType end
+struct PiecewiseLinearCostVariable <: SparseVariableType end
 
 # Rate Constraint Slack Variables
 struct RateofChangeConstraintSlackUp <: VariableType end

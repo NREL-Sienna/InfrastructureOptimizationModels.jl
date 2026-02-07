@@ -19,6 +19,9 @@ import InfrastructureSystems
 import PowerNetworkMatrices
 import PowerNetworkMatrices: PTDF, VirtualPTDF, LODF, VirtualLODF
 import InfrastructureSystems: @assert_op, TableFormat, list_recorder_events, get_name
+import InfrastructureSystems:
+    get_value_curve, get_power_units, get_function_data, get_proportional_term,
+    get_quadratic_term, get_fuel_cost
 
 # IS.Optimization imports: base types that remain in InfrastructureSystems
 # Note: ModelBuildStatus is aliased in definitions.jl, so don't import it directly
@@ -94,7 +97,12 @@ import PowerSystems:
     get_groups,
     get_available_groups,
     stores_time_series_in_memory,
-    get_base_power
+    get_base_power,
+    get_active_power_limits,
+    get_start_up,
+    get_shut_down,
+    get_must_run,
+    get_operation_cost
 import PowerSystems: StartUpStages
 
 import TimerOutputs
@@ -113,7 +121,7 @@ import TimeSeries
 # I/O Imports
 import CSV
 import DataFrames
-import DataFrames: DataFrame, DataFrameRow, Not, innerjoin
+import DataFrames: DataFrame, DataFrameRow, Not, innerjoin, select
 import DataFramesMeta: @chain, @orderby, @rename, @select, @subset, @transform
 import HDF5
 import PrettyTables
@@ -208,6 +216,14 @@ export add_to_expression!
 export add_constant_to_jump_expression!
 export add_proportional_to_jump_expression!
 export add_linear_to_jump_expression!
+# Cost term helpers (generic objective function building blocks)
+export add_cost_term_invariant!
+export add_cost_term_variant!
+export add_pwl_variables!
+export add_pwl_linking_constraint!
+export add_pwl_normalization_constraint!
+export add_pwl_sos2_constraint!
+export get_pwl_cost_expression
 export objective_function!
 export initial_condition_variable
 export initial_condition_default
@@ -391,6 +407,7 @@ export QCLSPowerModel
 
 #################################################################################
 # Includes
+# NOTE: all tracked files are either included here, or have a commented-out include.
 
 # Core optimization types must come first
 include("core/optimization_container_types.jl")       # Abstract types (VariableType, etc.)
@@ -419,9 +436,6 @@ include("core/dataset_container.jl")
 include("core/results_by_time.jl")
 
 # Order Required
-# Note: power_flow_data_wrapper.jl has been moved to PowerOperationsModels
-# as it depends on PowerFlows.jl types
-# include("core/power_flow_data_wrapper.jl")
 include("operation/problem_template.jl")
 include("core/optimization_container.jl")
 include("core/model_store_params.jl")
@@ -430,31 +444,34 @@ include("core/model_store_params.jl")
 include("core/standard_variables_expressions.jl")
 
 # Common models - extension points for device formulations
-include("common_models/variable_properties.jl")
+include("common_models/interfaces.jl")
 include("common_models/add_variable.jl")
 include("common_models/add_auxiliary_variable.jl")
-include("common_models/add_parameters.jl")
-include("common_models/add_constraints.jl")
 include("common_models/add_constraint_dual.jl")
-include("common_models/add_expressions.jl")  # Generic add_expressions! and JuMP helpers
-include("common_models/set_expression.jl")
-include("common_models/construct_device.jl")
-# include("common_models/get_time_series.jl")  # requires TimeSeriesAttributes
-include("common_models/objective_function.jl")
+include("common_models/add_jump_expressions.jl") # helpers only used in POM.
+include("common_models/set_expression.jl") # helpers only used in POM.
+include("common_models/get_time_series.jl")
 include("common_models/add_pwl_methods.jl")
+include("common_models/constraint_helpers.jl")
 # include("common_models/range_constraint.jl")
 # include("common_models/duration_constraints.jl")
 # include("common_models/rateofchange_constraints.jl")
-include("common_models/get_default_attributes.jl")
-include("common_models/add_variable_cost.jl")
 
 # Objective function implementations
-# include("objective_function/common.jl")
-# include("objective_function/linear_curve.jl")
-# include("objective_function/quadratic_curve.jl")
-# include("objective_function/piecewise_linear.jl")
+include("objective_function/cost_term_helpers.jl") # generic helpers: add_cost_term_{invariant,variant}!, PWL helpers
+include("objective_function/common.jl")
+include("objective_function/proportional.jl") # add_proportional_cost! and add_proportional_cost_maybe_time_variant!
+include("objective_function/start_up_shut_down.jl") # add_{start_up, shut_down}_cost!
+# add_variable_cost_to_objective! implementations and that's it (no other exported functions)
+# same 5 arguments: container, variable, component, cost_curve, formulation.
+include("objective_function/linear_curve.jl")
+include("objective_function/quadratic_curve.jl")
+include("objective_function/import_export.jl")
+
+# add_variable_cost! implementations, but "it's complicated." Other stuff exported too
+include("objective_function/piecewise_linear.jl")
+# this one is a mess.
 # include("objective_function/market_bid.jl")
-# include("objective_function/import_export.jl")
 
 include("operation/operation_model_interface.jl")
 include("operation/decision_model_store.jl")

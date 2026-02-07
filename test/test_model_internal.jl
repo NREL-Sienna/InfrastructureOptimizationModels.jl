@@ -1,23 +1,22 @@
-import InfrastructureSystems.Optimization: ModelInternal
-import InfrastructureSystems as IS
+import InfrastructureOptimizationModels: ModelInternal
 @testset "Test Model Internal" begin
     internal = ModelInternal(
         MockContainer(),
     )
-    @test IS.Optimization.get_status(internal) == IS.Optimization.ModelBuildStatus.EMPTY
-    IS.Optimization.set_initial_conditions_model_container!(
+    @test IOM.get_status(internal) == IOM.ModelBuildStatus.EMPTY
+    IOM.set_initial_conditions_model_container!(
         internal,
         MockContainer(),
     )
     @test isa(
-        IS.Optimization.get_initial_conditions_model_container(internal),
+        IOM.get_initial_conditions_model_container(internal),
         MockContainer,
     )
-    IS.Optimization.add_recorder!(internal, :MockRecorder)
-    @test IS.Optimization.get_recorders(internal)[1] == :MockRecorder
-    IS.Optimization.set_status!(internal, IS.Optimization.ModelBuildStatus.BUILT)
-    @test IS.Optimization.get_status(internal) == IS.Optimization.ModelBuildStatus.BUILT
-    IS.Optimization.set_output_dir!(internal, mktempdir())
-    log_config = IS.Optimization.configure_logging(internal, "test_log.log", "a")
+    IOM.add_recorder!(internal, :MockRecorder)
+    @test IOM.get_recorders(internal)[1] == :MockRecorder
+    IOM.set_status!(internal, IOM.ModelBuildStatus.BUILT)
+    @test IOM.get_status(internal) == IOM.ModelBuildStatus.BUILT
+    IOM.set_output_dir!(internal, mktempdir())
+    log_config = IOM.configure_logging(internal, "test_log.log", "a")
     @test !isempty(log_config.loggers)
 end

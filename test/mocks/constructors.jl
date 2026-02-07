@@ -62,3 +62,17 @@ function make_mock_time_series(;
         initial_timestamp,
     )
 end
+
+"""
+Create a single mock thermal generator with customizable properties.
+"""
+function make_mock_thermal(
+    name::String;
+    available = true,
+    bus = MockBus("bus1", 1, :PV),
+    limits = (min = 0.0, max = 100.0),
+    base_power = 100.0,
+    operation_cost = MockOperationCost(0.0),
+)
+    return MockThermalGen(name, available, bus, limits, base_power, operation_cost)
+end

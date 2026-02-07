@@ -11,11 +11,18 @@ Testing Strategy:
 using Test
 using InfrastructureOptimizationModels
 using Logging
+using DataFrames
+import DataFramesMeta: @rsubset
 using Dates
+using JuMP
+import JuMP.Containers: DenseAxisArray, SparseAxisArray
+using HiGHS
 
 # Import InfrastructureSystems for logging utilities
 using InfrastructureSystems
 const IS = InfrastructureSystems
+const ISOPT = InfrastructureSystems.Optimization
+const IOM = InfrastructureOptimizationModels
 
 # Test directory path for includes
 const TEST_DIR = @__DIR__
@@ -26,17 +33,25 @@ include(joinpath(TEST_DIR, "mocks/mock_system.jl"))
 include(joinpath(TEST_DIR, "mocks/mock_components.jl"))
 include(joinpath(TEST_DIR, "mocks/mock_time_series.jl"))
 include(joinpath(TEST_DIR, "mocks/mock_services.jl"))
+include(joinpath(TEST_DIR, "mocks/mock_container.jl"))
 include(joinpath(TEST_DIR, "mocks/constructors.jl"))
+include(joinpath(TEST_DIR, "test_utils/test_types.jl"))
+include(joinpath(TEST_DIR, "test_utils/objective_function_helpers.jl"))
+
+include(joinpath(TEST_DIR, "verify_mocks.jl"))
 
 # Environment flags for test selection
-const RUN_UNIT_TESTS = get(ENV, "POM_RUN_UNIT_TESTS", "true") == "true"
-const RUN_INTEGRATION_TESTS = get(ENV, "POM_RUN_INTEGRATION_TESTS", "false") == "true"
+const RUN_UNIT_TESTS = get(ENV, "IOM_RUN_UNIT_TESTS", "true") == "true"
+const RUN_INTEGRATION_TESTS = true #get(ENV, "IOM_RUN_INTEGRATION_TESTS", "true") == "true"
 
 # Heavy dependencies - only load if we need tests that use them
 if RUN_INTEGRATION_TESTS
     using PowerSystems
-    using JuMP
     const PSY = PowerSystems
+    using PowerSystemCaseBuilder
+    const PSB = PowerSystemCaseBuilder
+    # only requires JuMP, SCS, HiGHS
+    include(joinpath(TEST_DIR, "test_utils/solver_definitions.jl"))
 end
 
 const LOG_FILE = "power-optimization-models-test.log"
@@ -78,21 +93,83 @@ function run_tests()
         if RUN_UNIT_TESTS
             @info "Starting unit tests..."
             @time @testset "InfrastructureOptimizationModels Unit Tests" begin
-                # Lightweight tests (use only mock objects, no PSY types)
+                #=
+                ============================================================================
+                LIGHTWEIGHT TESTS (mocks only, no PSY types)
+                ============================================================================
+                =#
                 @testset "Lightweight Tests (mocks only)" begin
                     @info "Running lightweight tests..."
-                    include(joinpath(TEST_DIR, "test_settings.jl"))
+
+                    # --- core/ subfolder ---
+                    # abstract_model_store.jl: not worth testing - abstract type only
+                    include(joinpath(TEST_DIR, "test_dataset_container.jl"))
+                    # TODO dataset.jl
+                    # definitions.jl: no need for tests
                     include(joinpath(TEST_DIR, "test_device_model.jl"))
+                    # TODO: initial_conditions.jl
+                    include(joinpath(TEST_DIR, "test_model_internal.jl"))
+                    # model_store_params.jl: low-complexity
+                    # TODO: network_model.jl
+                    # TODO: network_reductions.jl
+                    # operation_model_abstract_types.jl: low complexity
+                    include(joinpath(TEST_DIR, "test_optimization_container_keys.jl"))
+                    include(joinpath(TEST_DIR, "test_optimization_container_metadata.jl"))
+                    # optimization_container_types.jl: no need for tests
                     include(joinpath(TEST_DIR, "test_optimization_container.jl"))
+                    # optimization_problem_results_export.jl: low-complexity
+                    include(joinpath(TEST_DIR, "test_optimization_results.jl"))
+                    include(joinpath(TEST_DIR, "test_optimizer_stats.jl"))
+                    # parameter_container.jl: low-complexity
+                    # TODO results_by_time.jl
+                    # TODO service_model.jl
+                    include(joinpath(TEST_DIR, "test_settings.jl"))
+                    # standard_variables_expressions.jl: low complexity
+                    # time_series_parameter_types.jl: low complexity
+
+                    # --- objective_function/ subfolder ---
+                    # import_export.jl: commented out
+                    include(joinpath(TEST_DIR, "test_cost_term_helpers.jl"))
+                    include(joinpath(TEST_DIR, "test_linear_curve.jl"))
+                    # market_bid.jl: needs more work
+                    include(joinpath(TEST_DIR, "test_piecewise_linear.jl"))
+                    include(joinpath(TEST_DIR, "test_proportional.jl"))
+                    include(joinpath(TEST_DIR, "test_quadratic_curve.jl"))
+                    # startup_shut_down.jl: in integration tests
+
+                    # --- common_models/, utils/, initial_conditions/ ---
+                    # TODO tests?
+                    include(joinpath(TEST_DIR, "test_jump_utils.jl"))
+                    include(joinpath(TEST_DIR, "test_pwl_methods.jl"))
                 end
 
-                # Tests requiring PowerSystems types
+                #=
+                ============================================================================
+                INTEGRATION TESTS (require PowerSystems types)
+                ============================================================================
+                =#
                 if RUN_INTEGRATION_TESTS
                     @testset "Tests with PowerSystems" begin
                         @info "Running tests that require PowerSystems..."
-                        include(joinpath(TEST_DIR, "test_pwl_methods.jl"))
+
+                        # --- objective_function/ subfolder ---
+                        # TODO integration tests for common.jl
+                        include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
+
+                        # --- operation/ subfolder ---
+                        include(joinpath(TEST_DIR, "test_model_store.jl"))
                     end
                 end
+
+                #=
+                ============================================================================
+                BROKEN/NEEDS-WORK TEST FILES (not included)
+                ============================================================================
+                - test_basic_model_structs.jl: Uses PSY types directly, 2 failures (missing types?)
+                - test_model_decision.jl: uses PowerModels.jl types, needs rework or move to POM
+                - test_model_emulation.jl: uses PowerModels.jl types, needs rework or move to POM
+                ============================================================================
+                =#
             end
         end
 

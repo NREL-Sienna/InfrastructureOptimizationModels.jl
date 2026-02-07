@@ -157,7 +157,7 @@ depending on the specified power units
 """
 function get_proportional_cost_per_system_unit(
     cost_term::Float64,
-    unit_system::PSY.UnitSystem,
+    unit_system::IS.UnitSystem,
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -171,7 +171,7 @@ end
 
 function _get_proportional_cost_per_system_unit(
     cost_term::Float64,
-    ::Val{PSY.UnitSystem.SYSTEM_BASE},
+    ::Val{IS.UnitSystem.SYSTEM_BASE},
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -180,7 +180,7 @@ end
 
 function _get_proportional_cost_per_system_unit(
     cost_term::Float64,
-    ::Val{PSY.UnitSystem.DEVICE_BASE},
+    ::Val{IS.UnitSystem.DEVICE_BASE},
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -189,7 +189,7 @@ end
 
 function _get_proportional_cost_per_system_unit(
     cost_term::Float64,
-    ::Val{PSY.UnitSystem.NATURAL_UNITS},
+    ::Val{IS.UnitSystem.NATURAL_UNITS},
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -202,7 +202,7 @@ depending on the specified power units
 """
 function get_quadratic_cost_per_system_unit(
     cost_term::Float64,
-    unit_system::PSY.UnitSystem,
+    unit_system::IS.UnitSystem,
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -216,7 +216,7 @@ end
 
 function _get_quadratic_cost_per_system_unit(
     cost_term::Float64,
-    ::Val{PSY.UnitSystem.SYSTEM_BASE}, # SystemBase Unit
+    ::Val{IS.UnitSystem.SYSTEM_BASE}, # SystemBase Unit
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -225,7 +225,7 @@ end
 
 function _get_quadratic_cost_per_system_unit(
     cost_term::Float64,
-    ::Val{PSY.UnitSystem.DEVICE_BASE}, # DeviceBase Unit
+    ::Val{IS.UnitSystem.DEVICE_BASE}, # DeviceBase Unit
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -234,7 +234,7 @@ end
 
 function _get_quadratic_cost_per_system_unit(
     cost_term::Float64,
-    ::Val{PSY.UnitSystem.NATURAL_UNITS}, # Natural Units
+    ::Val{IS.UnitSystem.NATURAL_UNITS}, # Natural Units
     system_base_power::Float64,
     device_base_power::Float64,
 )
@@ -397,7 +397,7 @@ function create_temporary_cost_function_in_system_per_unit(
         PSY.PiecewisePointCurve(new_data),
         PSY.UnitSystem.SYSTEM_BASE,
         PSY.get_fuel_cost(original_cost_function),
-        PSY.LinearCurve(0.0),  # setting fuel offtake cost to default value of 0
+        IS.LinearCurve(0.0),  # setting fuel offtake cost to default value of 0
         PSY.get_vom_cost(original_cost_function),
     )
 end

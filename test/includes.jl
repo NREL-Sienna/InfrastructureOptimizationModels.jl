@@ -32,7 +32,7 @@ import Serialization
 import LinearAlgebra
 
 const PSY = PowerSystems
-const POM = InfrastructureOptimizationModels
+const IOM = InfrastructureOptimizationModels
 const PFS = PowerFlows
 const PSB = PowerSystemCaseBuilder
 const PNM = PowerNetworkMatrices

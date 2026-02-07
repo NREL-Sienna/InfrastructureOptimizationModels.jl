@@ -1,0 +1,87 @@
+# Generic helpers for building constraints
+#
+# Design principles:
+# - Single timestep only - device looping stays in caller (POM)
+# - Pass limits directly, not devices
+# - Use binary_var argument to unify simple and semicontinuous cases
+# - Caller manages container creation (dense for bulk operations)
+
+#######################################
+######## Bound Direction (internal) ###
+#######################################
+
+"""
+Abstract type for bound direction. Used to unify upper/lower bound logic.
+"""
+abstract type BoundDirection end
+struct LowerBound <: BoundDirection end
+struct UpperBound <: BoundDirection end
+
+"""Meta tag for constraint container ("lb" or "ub")."""
+constraint_meta(::LowerBound) = "lb"
+constraint_meta(::UpperBound) = "ub"
+
+"""Extract the relevant bound from a (min=, max=) NamedTuple."""
+get_bound(::LowerBound, limits) = limits.min
+get_bound(::UpperBound, limits) = limits.max
+
+"""Create a bound constraint with the appropriate direction."""
+_make_bound_constraint(::LowerBound, model, lhs, rhs) = JuMP.@constraint(model, lhs >= rhs)
+_make_bound_constraint(::UpperBound, model, lhs, rhs) = JuMP.@constraint(model, lhs <= rhs)
+
+#######################################
+######## Range Constraint Helpers #####
+#######################################
+
+"""
+Add a range bound constraint.
+
+    LowerBound: variable >= bound * binary_var
+    UpperBound: variable <= bound * binary_var
+
+When `binary_var = 1.0` (default), this is a simple bound constraint.
+When `binary_var` is a JuMP variable, this is a semicontinuous constraint.
+
+# Arguments
+- `dir`: `LowerBound()` or `UpperBound()`
+- `jump_model`: the JuMP model
+- `con_container`: constraint container (DenseAxisArray or SparseAxisArray)
+- `name`: component name
+- `t`: time period
+- `variable`: the variable or expression to constrain
+- `bound`: the bound value
+- `binary_var`: multiplier for semicontinuous constraints (default: 1.0)
+"""
+function add_range_bound_constraint!(
+    dir::BoundDirection,
+    jump_model::JuMP.Model,
+    con_container,
+    name::String,
+    t::Int,
+    variable::JuMPOrFloat,
+    bound::Float64,
+    binary_var::JuMPOrFloat = 1.0,
+)
+    con_container[name, t] =
+        _make_bound_constraint(dir, jump_model, variable, bound * binary_var)
+    return
+end
+
+"""
+Add an equality constraint.
+
+    variable == value
+
+Use this for the fixed-value case when min ≈ max.
+"""
+function add_range_equality_constraint!(
+    jump_model::JuMP.Model,
+    con_container,
+    name::String,
+    t::Int,
+    variable::JuMPOrFloat,
+    value::Float64,
+)
+    con_container[name, t] = JuMP.@constraint(jump_model, variable == value)
+    return
+end

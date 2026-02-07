@@ -1,4 +1,5 @@
-import InfrastructureSystems.Optimization:
+# Test types defined in test_utils/test_types.jl
+import InfrastructureOptimizationModels:
     OptimizationContainerMetadata,
     OptimizationProblemResults,
     VariableKey,
@@ -23,8 +24,8 @@ import InfrastructureSystems as IS
     data = IS.SystemData()
     uuid = IS.make_uuid()
     aux_variable_values = Dict()
-    @test !IS.Optimization.convert_result_to_natural_units(MockVariable)
-    @test IS.Optimization.convert_result_to_natural_units(MockVariable2)
+    @test !IOM.convert_result_to_natural_units(MockVariable)
+    @test IOM.convert_result_to_natural_units(MockVariable2)
     var_key1 = VariableKey(MockVariable, IS.TestComponent)
     var_key2 = VariableKey(MockVariable2, IS.TestComponent)
     vals = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
@@ -42,10 +43,10 @@ import InfrastructureSystems as IS
     )
     dual_values = Dict()
     parameter_values = Dict()
-    @test !IS.Optimization.convert_result_to_natural_units(MockExpression)
-    @test IS.Optimization.convert_result_to_natural_units(MockExpression2)
+    @test !IOM.convert_result_to_natural_units(MockExpression)
+    @test IOM.convert_result_to_natural_units(MockExpression2)
     exp_key1 = ExpressionKey(MockExpression, IS.TestComponent)
-    exp_key2 = ExpressionKey(MockExpression2, ThermalGenerator)
+    exp_key2 = ExpressionKey(MockExpression2, MockThermalGen)
     # Expression only 1 time-step
     expression_values = Dict(
         exp_key1 => DataFrame(
@@ -55,7 +56,7 @@ import InfrastructureSystems as IS
         ),
         exp_key2 => DataFrame(
             "time_index" => [1, 2, 3, 4, 1, 2, 3, 4],
-            "custom_name" => ["c1", "c1", "c1", "c1", "c2", "c2", "c2", "c2"],
+            "name" => ["c1", "c1", "c1", "c1", "c2", "c2", "c2", "c2"],
             "value" => vals,
         ),
     )
@@ -147,12 +148,12 @@ import InfrastructureSystems as IS
     @test @rsubset(exp_res, :name == "c1")[!, :value] == [1.0, 2.0, 3.0, 4.0]
     @test @rsubset(exp_res, :name == "c2")[!, :value] == [5.0, 6.0, 7.0, 8.0]
     exp_res = read_expression(opt_res2, exp_key2)
-    @test @rsubset(exp_res, :custom_name == "c1")[!, :value] == [10.0, 20.0, 30.0, 40.0]
-    @test @rsubset(exp_res, :custom_name == "c2")[!, :value] == [50.0, 60.0, 70.0, 80.0]
+    @test @rsubset(exp_res, :name == "c1")[!, :value] == [10.0, 20.0, 30.0, 40.0]
+    @test @rsubset(exp_res, :name == "c2")[!, :value] == [50.0, 60.0, 70.0, 80.0]
 
-    @test IS.Optimization.get_resolution(opt_res1) == Millisecond(3600000)
-    @test IS.Optimization.get_resolution(opt_res2) == Millisecond(3600000)
-    @test isnothing(IS.Optimization.get_resolution(opt_res3))
+    @test IOM.get_resolution(opt_res1) == Millisecond(3600000)
+    @test IOM.get_resolution(opt_res2) == Millisecond(3600000)
+    @test isnothing(IOM.get_resolution(opt_res3))
 end
 
 @testset "Test OptimizationProblemResults 3d long format" begin
@@ -232,30 +233,30 @@ end
         mktempdir(),
         mktempdir(),
     )
-    @test IS.Optimization._process_timestamps(opt_res, nothing, nothing) ==
+    @test IOM._process_timestamps(opt_res, nothing, nothing) ==
           (time_ids, timestamps)
-    @test IS.Optimization._process_timestamps(opt_res, timestamps[2], nothing) ==
+    @test IOM._process_timestamps(opt_res, timestamps[2], nothing) ==
           (time_ids[2:end], timestamps[2:end])
-    @test IS.Optimization._process_timestamps(opt_res, timestamps[4], nothing) ==
+    @test IOM._process_timestamps(opt_res, timestamps[4], nothing) ==
           ([time_ids[4]], [timestamps[4]])
-    @test IS.Optimization._process_timestamps(opt_res, nothing, 3) ==
+    @test IOM._process_timestamps(opt_res, nothing, 3) ==
           (time_ids[1:3], timestamps[1:3])
-    @test IS.Optimization._process_timestamps(opt_res, timestamps[2], 2) ==
+    @test IOM._process_timestamps(opt_res, timestamps[2], 2) ==
           (time_ids[2:3], timestamps[2:3])
 
-    @test_throws IS.InvalidValue IS.Optimization._process_timestamps(
+    @test_throws IS.InvalidValue IOM._process_timestamps(
         opt_res,
         timestamps[1] - Hour(1),
         nothing,
     )
-    @test_throws IS.InvalidValue IS.Optimization._process_timestamps(
+    @test_throws IS.InvalidValue IOM._process_timestamps(
         opt_res,
         timestamps[4] + Hour(1),
         nothing,
     )
-    @test_throws IS.InvalidValue IS.Optimization._process_timestamps(opt_res, nothing, -1)
-    @test_throws IS.InvalidValue IS.Optimization._process_timestamps(opt_res, nothing, 10)
-    @test_throws IS.InvalidValue IS.Optimization._process_timestamps(
+    @test_throws IS.InvalidValue IOM._process_timestamps(opt_res, nothing, -1)
+    @test_throws IS.InvalidValue IOM._process_timestamps(opt_res, nothing, 10)
+    @test_throws IS.InvalidValue IOM._process_timestamps(
         opt_res,
         timestamps[2],
         10,
