@@ -85,3 +85,48 @@ function add_range_equality_constraint!(
     con_container[name, t] = JuMP.@constraint(jump_model, variable == value)
     return
 end
+
+#######################################
+######## Ramp Constraint Helpers ######
+#######################################
+
+"""
+Add a pair of ramp-up and ramp-down constraints for a single (name, t).
+
+    Ramp up:   current.up - previous <= limits.up * dt + slack.up + relax.up
+    Ramp down: previous - current.down <= limits.down * dt + slack.down + relax.down
+
+# Arguments
+- `jump_model`: the JuMP model
+- `cons`: UpDownPair of constraint containers (up=, down=)
+- `name`: component name
+- `t`: time period
+- `current`: UpDownPair of current values (up=, down=); use same value for both if not using expressions
+- `previous`: previous timestep value (ic_power for t=1, variable[t-1] for t>1)
+- `limits`: UpDown (Float64) ramp limits
+- `dt`: minutes per period
+- `slack`: UpDownPair of slack variables (default: (up=0.0, down=0.0))
+- `relax`: UpDownPair of relaxation terms (default: (up=0.0, down=0.0))
+"""
+@inline function add_ramp_constraint_pair!(
+    jump_model::JuMP.Model,
+    cons::UpDownPair{C}, # constraint containers
+    name::String,
+    t::Int,
+    current::UpDownPair{V},
+    previous::JuMPOrFloat,
+    limits::UpDown,
+    dt::Float64,
+    slack::UpDownPair{S} = (up = 0.0, down = 0.0),
+    relax::UpDownPair{R} = (up = 0.0, down = 0.0),
+) where {C, V <: JuMPOrFloat, S <: JuMPOrFloat, R <: JuMPOrFloat}
+    cons.up[name, t] = JuMP.@constraint(
+        jump_model,
+        current.up - previous <= limits.up * dt + slack.up + relax.up
+    )
+    cons.down[name, t] = JuMP.@constraint(
+        jump_model,
+        previous - current.down <= limits.down * dt + slack.down + relax.down
+    )
+    return
+end

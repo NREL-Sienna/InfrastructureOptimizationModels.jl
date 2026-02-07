@@ -35,7 +35,8 @@ set_run_status!(::SimulationInfo, status) = nothing
 # Type Alias for long type signatures
 const MinMax = NamedTuple{(:min, :max), NTuple{2, Float64}}
 const NamedMinMax = Tuple{String, MinMax}
-const UpDown = NamedTuple{(:up, :down), NTuple{2, Float64}}
+const UpDownPair{T} = NamedTuple{(:up, :down), NTuple{2, T}}
+const UpDown = UpDownPair{Float64}  # backwards compatible alias
 const InOut = NamedTuple{(:in, :out), NTuple{2, Float64}}
 
 # Type alias for decision model indices - used for indexing into result stores
