@@ -90,6 +90,27 @@ end
 ######## Ramp Constraint Helpers ######
 #######################################
 
+"""Create paired up/down constraint containers."""
+function add_updown_constraints_containers!(
+    container::OptimizationContainer,
+    ::Type{T},
+    ::Type{V},
+    names,
+    time_steps,
+) where {T <: ConstraintType, V <: PSY.Component}
+    return (
+        up = add_constraints_container!(container, T(), V, names, time_steps; meta = "up"),
+        down = add_constraints_container!(
+            container,
+            T(),
+            V,
+            names,
+            time_steps;
+            meta = "dn",
+        ),
+    )
+end
+
 """
 Add a pair of ramp-up and ramp-down constraints for a single (name, t).
 

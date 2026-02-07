@@ -84,35 +84,19 @@ function add_linear_ramp_constraints!(
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
 }
+    # common setup for all ramp constraints
     time_steps = get_time_steps(container)
     variable = get_variable(container, U(), V)
     ramp_devices = _get_ramp_constraint_devices(container, devices)
     minutes_per_period = _get_minutes_per_period(container)
     IC = _get_initial_condition_type(T, V, W)
     initial_conditions_power = get_initial_condition(container, IC(), V)
+    jump_model = get_jump_model(container)
+    device_name_set = PSY.get_name.(ramp_devices)
+    cons = add_updown_constraints_containers!(container, T, V, device_name_set, time_steps)
+
     expr_dn = get_expression(container, ActivePowerRangeExpressionLB(), V)
     expr_up = get_expression(container, ActivePowerRangeExpressionUB(), V)
-    jump_model = get_jump_model(container)
-
-    device_name_set = PSY.get_name.(ramp_devices)
-    cons = (
-        up = add_constraints_container!(
-            container,
-            T(),
-            V,
-            device_name_set,
-            time_steps;
-            meta = "up",
-        ),
-        down = add_constraints_container!(
-            container,
-            T(),
-            V,
-            device_name_set,
-            time_steps;
-            meta = "dn",
-        ),
-    )
 
     for ic in initial_conditions_power
         name = get_component_name(ic)
@@ -147,7 +131,7 @@ function _add_linear_ramp_constraints_impl!(
     devices::IS.FlattenIteratorWrapper{V},
     model::DeviceModel{V, W},
 ) where {V <: PSY.Component, W <: AbstractDeviceFormulation}
-    parameters = built_for_recurrent_solves(container)
+    # common setup for all ramp constraints
     time_steps = get_time_steps(container)
     variable = get_variable(container, U(), V)
     ramp_devices = _get_ramp_constraint_devices(container, devices)
@@ -155,26 +139,10 @@ function _add_linear_ramp_constraints_impl!(
     IC = _get_initial_condition_type(T, V, W)
     initial_conditions_power = get_initial_condition(container, IC(), V)
     jump_model = get_jump_model(container)
-
     device_name_set = PSY.get_name.(ramp_devices)
-    cons = (
-        up = add_constraints_container!(
-            container,
-            T(),
-            V,
-            device_name_set,
-            time_steps;
-            meta = "up",
-        ),
-        down = add_constraints_container!(
-            container,
-            T(),
-            V,
-            device_name_set,
-            time_steps;
-            meta = "dn",
-        ),
-    )
+    cons = add_updown_constraints_containers!(container, T, V, device_name_set, time_steps)
+
+    parameters = built_for_recurrent_solves(container)
 
     for ic in initial_conditions_power
         name = get_component_name(ic)
@@ -228,38 +196,20 @@ function add_linear_ramp_constraints!(
         return _add_linear_ramp_constraints_impl!(container, T, U, devices, model)
     end
 
+    # common setup for all ramp constraints
     time_steps = get_time_steps(container)
     variable = get_variable(container, U(), V)
     ramp_devices = _get_ramp_constraint_devices(container, devices)
     minutes_per_period = _get_minutes_per_period(container)
     IC = _get_initial_condition_type(T, V, W)
     initial_conditions_power = get_initial_condition(container, IC(), V)
+    jump_model = get_jump_model(container)
+    device_name_set = [PSY.get_name(r) for r in ramp_devices]
+    cons = add_updown_constraints_containers!(container, T, V, device_name_set, time_steps)
 
     # Commitment path from UC as a PARAMETER (fixed 0/1)
     on_param = get_parameter(container, OnStatusParameter(), V)
     on_status = on_param.parameter_array  # on_status[name, t] ∈ {0,1} (fixed)
-
-    set_name = [PSY.get_name(r) for r in ramp_devices]
-    cons = (
-        up = add_constraints_container!(
-            container,
-            T(),
-            V,
-            set_name,
-            time_steps;
-            meta = "up",
-        ),
-        down = add_constraints_container!(
-            container,
-            T(),
-            V,
-            set_name,
-            time_steps;
-            meta = "dn",
-        ),
-    )
-
-    jump_model = get_jump_model(container)
 
     for dev in ramp_devices
         name = PSY.get_name(dev)
@@ -329,38 +279,21 @@ function add_semicontinuous_ramp_constraints!(
     V <: PSY.Component,
     W <: AbstractDeviceFormulation,
 }
+    # common setup for all ramp constraints
     time_steps = get_time_steps(container)
     variable = get_variable(container, U(), V)
-    varstart = get_variable(container, StartVariable(), V)
-    varstop = get_variable(container, StopVariable(), V)
-
     ramp_devices = _get_ramp_constraint_devices(container, devices)
     minutes_per_period = _get_minutes_per_period(container)
     IC = _get_initial_condition_type(T, V, W)
     initial_conditions_power = get_initial_condition(container, IC(), V)
+    jump_model = get_jump_model(container)
+    device_name_set = PSY.get_name.(ramp_devices)
+    cons = add_updown_constraints_containers!(container, T, V, device_name_set, time_steps)
+
+    varstart = get_variable(container, StartVariable(), V)
+    varstop = get_variable(container, StopVariable(), V)
     expr_dn = get_expression(container, ActivePowerRangeExpressionLB(), V)
     expr_up = get_expression(container, ActivePowerRangeExpressionUB(), V)
-    jump_model = get_jump_model(container)
-
-    device_name_set = PSY.get_name.(ramp_devices)
-    cons = (
-        up = add_constraints_container!(
-            container,
-            T(),
-            V,
-            device_name_set,
-            time_steps;
-            meta = "up",
-        ),
-        down = add_constraints_container!(
-            container,
-            T(),
-            V,
-            device_name_set,
-            time_steps;
-            meta = "dn",
-        ),
-    )
 
     for ic in initial_conditions_power
         name = get_component_name(ic)
