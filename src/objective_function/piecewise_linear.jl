@@ -29,7 +29,7 @@ function _get_sos_value(
     if has_container_key(container, OnStatusParameter, T)
         sos_val = SOSStatusVariable.PARAMETER
     else
-        sos_val = sos_status(component, V())
+        sos_val = sos_status(T, V())
     end
     return sos_val
 end
@@ -76,46 +76,25 @@ end
 function _determine_bin_lhs(
     container::OptimizationContainer,
     sos_status::SOSStatusVariable,
-    component::T,
+    ::Type{T},
+    name::String,
     period::Int) where {T <: IS.InfrastructureSystemsComponent}
-    name = get_name(component)
     if sos_status == SOSStatusVariable.NO_VARIABLE
         return 1.0
         @debug "Using Piecewise Linear cost function but no variable/parameter ref for ON status is passed. Default status will be set to online (1.0)" _group =
             LOG_GROUP_COST_FUNCTIONS
-
     elseif sos_status == SOSStatusVariable.PARAMETER
-        param = get_default_on_parameter(component)
+        param = OnStatusParameter()
         return get_parameter(container, param, T).parameter_array[name, period]
         @debug "Using Piecewise Linear cost function with parameter OnStatusParameter, $T" _group =
             LOG_GROUP_COST_FUNCTIONS
     elseif sos_status == SOSStatusVariable.VARIABLE
-        var = get_default_on_variable(component)
+        var = OnVariable()
         return get_variable(container, var, T)[name, period]
         @debug "Using Piecewise Linear cost function with variable OnVariable $T" _group =
             LOG_GROUP_COST_FUNCTIONS
     else
         @assert false
-    end
-end
-
-function _get_bin_lhs(
-    container::OptimizationContainer,
-    sos_status::SOSStatusVariable,
-    component::T,
-    period::Int) where {T <: IS.InfrastructureSystemsComponent}
-    return _determine_bin_lhs(container, sos_status, component, period)
-end
-
-function _get_bin_lhs(
-    container::OptimizationContainer,
-    sos_status::SOSStatusVariable,
-    component::PSY.ThermalGen,
-    period::Int)
-    if PSY.get_must_run(component)
-        return 1.0
-    else
-        return _determine_bin_lhs(container, sos_status, component, period)
     end
 end
 
@@ -146,6 +125,7 @@ function _add_pwl_constraint_standard!(
     sos_status::SOSStatusVariable,
     period::Int,
     power_var::JuMP.VariableRef,
+    must_run::Bool = false,
 ) where {T <: IS.InfrastructureSystemsComponent}
     name = get_name(component)
     n_points = length(break_points)
@@ -167,7 +147,11 @@ function _add_pwl_constraint_standard!(
     )
 
     # Normalization constraint: sum(pwl_vars) == on_status
-    bin = _get_bin_lhs(container, sos_status, component, period)
+    if must_run
+        bin = 1.0
+    else
+        bin = _determine_bin_lhs(container, sos_status, T, name, period)
+    end
     add_pwl_normalization_constraint!(
         container,
         PiecewiseLinearCostNormalizationConstraint,
@@ -192,33 +176,22 @@ For standard form, use `_add_pwl_constraint_standard!` instead.
 """
 function _add_pwl_constraint_compact!(
     container::OptimizationContainer,
-    component::T,
+    ::T,
+    name::String,
     break_points::Vector{Float64},
     sos_status::SOSStatusVariable,
     period::Int,
     power_var::JuMP.VariableRef,
     P_min::Float64,
+    must_run::Bool = false,
 ) where {T <: IS.InfrastructureSystemsComponent}
-    name = get_name(component)
     n_points = length(break_points)
 
     # Get on-status for compact form (needed for both linking and normalization)
-    if sos_status == SOSStatusVariable.NO_VARIABLE
+    if must_run
         bin = 1.0
-        @debug "Using Piecewise Linear cost function but no variable/parameter ref for ON status is passed. Default status will be set to online (1.0)" _group =
-            LOG_GROUP_COST_FUNCTIONS
-    elseif sos_status == SOSStatusVariable.PARAMETER
-        param = get_default_on_parameter(component)
-        bin = get_parameter(container, param, T).parameter_array[name, period]
-        @debug "Using Piecewise Linear cost function with parameter OnStatusParameter, $T" _group =
-            LOG_GROUP_COST_FUNCTIONS
-    elseif sos_status == SOSStatusVariable.VARIABLE
-        var = get_default_on_variable(component)
-        bin = get_variable(container, var, T)[name, period]
-        @debug "Using Piecewise Linear cost function with variable OnVariable $T" _group =
-            LOG_GROUP_COST_FUNCTIONS
     else
-        @assert false
+        bin = _determine_bin_lhs(container, sos_status, T, name, period)
     end
 
     # Get PWL delta variables
@@ -262,14 +235,15 @@ end
 ################ PWL Expressions #################
 ##################################################
 
+# accepts scaled function data.
 function _get_pwl_cost_expression(
     container::OptimizationContainer,
-    component::T,
+    ::Type{T},
+    name::String,
     time_period::Int,
     cost_data::IS.PiecewiseLinearData,
     multiplier::Float64,
 ) where {T <: IS.InfrastructureSystemsComponent}
-    name = get_name(component)
     pwl_var_container = get_variable(container, PiecewiseLinearCostVariable(), T)
     gen_cost = JuMP.AffExpr(0.0)
     y_coords_cost_data = IS.get_y_coords(cost_data)
@@ -283,46 +257,26 @@ function _get_pwl_cost_expression(
     return gen_cost
 end
 
-function _get_pwl_cost_expression(
-    container::OptimizationContainer,
-    component::T,
-    time_period::Int,
-    cost_function::IS.CostCurve{IS.PiecewisePointCurve},
-    ::U,
-    ::V,
-) where {
-    T <: IS.InfrastructureSystemsComponent,
-    U <: VariableType,
-    V <: AbstractDeviceFormulation,
-}
-    value_curve = IS.get_value_curve(cost_function)
-    power_units = IS.get_power_units(cost_function)
-    cost_component = IS.get_function_data(value_curve)
-    base_power = get_model_base_power(container)
-    device_base_power = get_base_power(component)
-    cost_data_normalized = get_piecewise_pointcurve_per_system_unit(
-        cost_component,
-        power_units,
-        base_power,
-        device_base_power,
-    )
-    multiplier = objective_function_multiplier(U(), V())
-    resolution = get_resolution(container)
-    dt = Dates.value(resolution) / MILLISECONDS_IN_HOUR
-    return _get_pwl_cost_expression(
-        container,
-        component,
-        time_period,
-        cost_data_normalized,
-        multiplier * dt,
-    )
-end
+_get_pwl_cost_multiplier(::IS.FuelCurve{IS.PiecewisePointCurve},
+    ::VariableType,
+    ::AbstractDeviceFormulation,
+) = 1.0
 
+_get_pwl_cost_multiplier(::IS.CostCurve{IS.PiecewisePointCurve},
+    ::U,
+    ::V,
+) where {U <: VariableType, V <: AbstractDeviceFormulation} =
+    objective_function_multiplier(U(), V())
+
+# FuelCurve/CostCurve: scale for units, then call function data version
 function _get_pwl_cost_expression(
     container::OptimizationContainer,
     component::T,
     time_period::Int,
-    cost_function::IS.FuelCurve{IS.PiecewisePointCurve},
+    cost_function::Union{
+        IS.FuelCurve{IS.PiecewisePointCurve},
+        IS.CostCurve{IS.PiecewisePointCurve},
+    },
     ::U,
     ::V,
 ) where {
@@ -341,15 +295,17 @@ function _get_pwl_cost_expression(
         base_power,
         device_base_power,
     )
-    # Multiplier is not necessary here. There is no negative cost for fuel curves.
     resolution = get_resolution(container)
     dt = Dates.value(resolution) / MILLISECONDS_IN_HOUR
+    multiplier = _get_pwl_cost_multiplier(cost_function, U(), V())
+    name = get_name(component)
     fuel_consumption_expression = _get_pwl_cost_expression(
         container,
-        component,
+        T,
+        name,
         time_period,
         cost_data_normalized,
-        dt,
+        dt * multiplier,
     )
     return fuel_consumption_expression
 end
@@ -546,7 +502,8 @@ function add_variable_cost_to_objective!(
             container,
             ProductionCostExpression,
             pwl_cost_expressions[t],
-            component,
+            typeof(component),
+            component_name,
             t,
         )
         add_to_objective_invariant_expression!(container, pwl_cost_expressions[t])
@@ -601,14 +558,16 @@ function add_variable_cost_to_objective!(
             container,
             ProductionCostExpression,
             pwl_cost_expression,
-            component,
+            V,
+            component_name,
             t,
         )
         add_cost_to_expression!(
             container,
             FuelConsumptionExpression,
             pwl_fuel_consumption_expressions[t],
-            component,
+            V,
+            component_name,
             t,
         )
         if is_time_variant_

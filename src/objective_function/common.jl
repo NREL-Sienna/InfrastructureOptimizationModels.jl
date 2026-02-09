@@ -6,7 +6,8 @@ function add_cost_to_expression!(
     container::OptimizationContainer,
     ::Type{S},
     cost_expression::JuMPOrFloat,
-    component::T,
+    ::Type{T},
+    component_name::String,
     time_period::Int,
 ) where {
     S <: Union{CostExpressions, FuelConsumptionExpression},
@@ -14,7 +15,6 @@ function add_cost_to_expression!(
 }
     if has_container_key(container, S, T)
         device_cost_expression = get_expression(container, S(), T)
-        component_name = PSY.get_name(component)
         JuMP.add_to_expression!(
             device_cost_expression[component_name, time_period],
             cost_expression,
@@ -53,11 +53,15 @@ end
 function _add_vom_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
-    component::PSY.Component,
+    component::C,
     op_cost::PSY.OperationalCost,
     ::U,
-) where {T <: VariableType, U <: AbstractDeviceFormulation}
-    variable_cost_data = variable_cost(op_cost, T(), component, U())
+) where {
+    T <: VariableType,
+    U <: AbstractDeviceFormulation,
+    C <: IS.InfrastructureSystemsComponent,
+}
+    variable_cost_data = variable_cost(op_cost, T(), C, U())
     power_units = PSY.get_power_units(variable_cost_data)
     cost_term = PSY.get_proportional_term(PSY.get_vom_cost(variable_cost_data))
     add_proportional_cost_invariant!(container, T, component, cost_term, power_units)
@@ -65,57 +69,23 @@ function _add_vom_cost_to_objective!(
 end
 
 # FIXME move, thin wrapper around add_variable_cost_to_objective!.
+# variable_cost here is most complex for storage, where we need to map
+# ActivePower{In/Out} to {charge/discharge} variable cost
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
-    component::PSY.Component,
+    component::C,
     op_cost::PSY.OperationalCost,
     ::U,
-) where {T <: VariableType, U <: AbstractDeviceFormulation}
-    variable_cost_data = variable_cost(op_cost, T(), component, U())
+) where {
+    T <: VariableType,
+    U <: AbstractDeviceFormulation,
+    C <: IS.InfrastructureSystemsComponent,
+}
+    variable_cost_data = variable_cost(op_cost, T(), C, U())
     add_variable_cost_to_objective!(container, T(), component, variable_cost_data, U())
     return
 end
-
-# FIXME not actually called anywhere?
-
-#=
-function _get_cost_function_parameter_container(
-    container::OptimizationContainer,
-    ::S,
-    component::T,
-    ::U,
-    ::V,
-    cost_type::Type{W},
-) where {
-    S <: ObjectiveFunctionParameter,
-    T <: PSY.Component,
-    U <: VariableType,
-    V <: Union{AbstractDeviceFormulation, AbstractServiceFormulation},
-    W,
-}
-    if has_container_key(container, S, T)
-        return get_parameter(container, S(), T)
-    else
-        container_axes = axes(get_variable(container, U(), T))
-        if has_container_key(container, OnStatusParameter, T)
-            sos_val = SOSStatusVariable.PARAMETER
-        else
-            sos_val = sos_status(component, V())
-        end
-        return add_param_container!(
-            container,
-            S(),
-            T,
-            U,
-            sos_val,
-            uses_compact_power(component, V()),
-            W,
-            container_axes...,
-        )
-    end
-end
-=#
 
 ##################################################
 ################## Fuel Cost #####################

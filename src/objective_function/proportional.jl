@@ -75,11 +75,18 @@ function add_proportional_cost_maybe_time_variant!(
 
             if skip_proportional_cost(d)
                 # Only add to expression, not objective
-                add_cost_to_expression!(container, ProductionCostExpression, rate, d, t)
+                add_cost_to_expression!(
+                    container,
+                    ProductionCostExpression,
+                    rate,
+                    T,
+                    name,
+                    t,
+                )
             else
                 variable = get_variable(container, U(), T)[name, t]
                 add_as_time_variant =
-                    is_time_variant_term(container, op_cost_data, U(), d, V(), t)
+                    is_time_variant_term(container, op_cost_data, U(), T, V(), t)
                 if add_as_time_variant
                     add_cost_term_variant!(
                         container, variable, rate, ProductionCostExpression, T, name, t)

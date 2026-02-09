@@ -521,37 +521,37 @@ end
 # TODO: really this falls along the divide of
 # commitment (OnVariable + ActivePower) vs dispatch (ActivePower only)
 _include_min_gen_power_in_constraint(
-    ::PSY.Source,
+    ::Type{<:PSY.Source},
     ::ActivePowerOutVariable,
     ::AbstractDeviceFormulation,
 ) = false
 _include_min_gen_power_in_constraint(
-    ::PSY.Source,
+    ::Type{<:PSY.Source},
     ::ActivePowerInVariable,
     ::AbstractDeviceFormulation,
 ) = false
 _include_min_gen_power_in_constraint(
-    ::PSY.RenewableDispatch,
+    ::Type{<:PSY.RenewableDispatch},
     ::ActivePowerVariable,
     ::AbstractDeviceFormulation,
 ) = false
 _include_min_gen_power_in_constraint(
-    ::PSY.Generator,
+    ::Type{<:PSY.Generator},
     ::ActivePowerVariable,
     ::AbstractDeviceFormulation,
 ) = true
 _include_min_gen_power_in_constraint(
-    ::PSY.ControllableLoad,
+    ::Type{<:PSY.ControllableLoad},
     ::ActivePowerVariable,
     ::PowerLoadInterruption,
 ) = true
 _include_min_gen_power_in_constraint(
-    ::PSY.ControllableLoad,
+    ::Type{<:PSY.ControllableLoad},
     ::ActivePowerVariable,
     ::PowerLoadDispatch,
 ) = false
 _include_min_gen_power_in_constraint(
-    ::Any,
+    ::Type,
     ::PowerAboveMinimumVariable,
     ::AbstractDeviceFormulation,
 ) = false
@@ -560,22 +560,22 @@ _include_min_gen_power_in_constraint(
 # formulations where there's nonzero minimum power (first breakpoint), but no OnVariable.
 # TODO: cleaner way? e.g. can we just do this whenever there's no OnVariable?
 _include_constant_min_gen_power_in_constraint(
-    ::PSY.ControllableLoad,
+    ::Type{<:PSY.ControllableLoad},
     ::ActivePowerVariable,
     ::PowerLoadDispatch,
 ) = true
 _include_constant_min_gen_power_in_constraint(
-    ::PSY.ControllableLoad,
+    ::Type{<:PSY.ControllableLoad},
     ::ActivePowerVariable,
     ::PowerLoadInterruption,
 ) = false
 _include_constant_min_gen_power_in_constraint(
-    ::PSY.RenewableGen,
+    ::Type{<:PSY.RenewableGen},
     ::ActivePowerVariable,
     ::AbstractRenewableDispatchFormulation,
 ) = true
 _include_constant_min_gen_power_in_constraint(
-    ::Any,
+    ::Type,
     ::VariableType,
     ::AbstractDeviceFormulation,
 ) = false
@@ -614,9 +614,9 @@ function _add_pwl_constraint!(
     # time-variable P1 is problematic, so for now we require P1 to be constant. Thus we can
     # just look up what it is currently fixed to and use that here without worrying about
     # updating.
-    min_power_offset = if _include_constant_min_gen_power_in_constraint(component, U(), D())
+    min_power_offset = if _include_constant_min_gen_power_in_constraint(T, U(), D())
         jump_fixed_value(first(break_points))::Float64
-    elseif _include_min_gen_power_in_constraint(component, U(), D())
+    elseif _include_min_gen_power_in_constraint(T, U(), D())
         p1::Float64 = jump_fixed_value(first(break_points))
         on_vars = get_variable(container, OnVariable(), T)
         p1 * on_vars[name, period]
@@ -767,7 +767,8 @@ function add_pwl_term!(
             container,
             ProductionCostExpression,
             pwl_cost,
-            component,
+            T,
+            name,
             t,
         )
 

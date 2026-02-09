@@ -285,7 +285,7 @@ function proportional_cost(
     ::OptimizationContainer,
     op_cost,
     ::VariableType,
-    d::COMP_TYPE,
+    d::IS.InfrastructureSystemsComponent,
     ::AbstractDeviceFormulation,
     ::Int,
 )
@@ -300,7 +300,7 @@ function is_time_variant_term(
     ::OptimizationContainer,
     op_cost,
     ::VariableType,
-    d::COMP_TYPE,
+    ::Type{<:IS.InfrastructureSystemsComponent},
     ::AbstractDeviceFormulation,
     ::Int,
 )
@@ -323,4 +323,9 @@ sos_status(::Any, ::AbstractServiceFormulation) = SOSStatusVariable.NO_VARIABLE
 Extension point: Convert raw startup cost to a scalar value.
 Device-specific implementations (e.g., for StartUpStages, MultiStartVariable) are in POM.
 """
-start_up_cost(cost::Float64, component, ::VariableType, ::AbstractDeviceFormulation) = cost
+start_up_cost(
+    cost::Float64,
+    ::Type{<:IS.InfrastructureSystemsComponent},
+    ::VariableType,
+    ::AbstractDeviceFormulation,
+) = cost

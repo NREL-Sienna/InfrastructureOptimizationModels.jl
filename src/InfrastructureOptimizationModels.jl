@@ -339,6 +339,12 @@ export ParameterType
 export InitialConditionType
 export ExpressionType
 
+# objective_function folder exports
+export StartupCostParameter
+export ShutdownCostParameter
+export OnStatusParameter
+export _get_ramp_constraint_devices
+
 # Standard Expression Types (abstract and concrete)
 export SystemBalanceExpressions
 export RangeConstraintLBExpressions

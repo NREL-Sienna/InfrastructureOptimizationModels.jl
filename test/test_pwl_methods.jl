@@ -5,7 +5,8 @@ Test types defined in test_utils/test_types.jl.
 """
 
 # Define sos_status for mock components - return NO_VARIABLE (no commitment tracking)
-IOM.sos_status(::MockThermalGen, ::TestPWLFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
+IOM.sos_status(::Type{MockThermalGen}, ::TestPWLFormulation) =
+    IOM.SOSStatusVariable.NO_VARIABLE
 
 # Define required methods for test types (only non-default values)
 IOM.get_variable_binary(
