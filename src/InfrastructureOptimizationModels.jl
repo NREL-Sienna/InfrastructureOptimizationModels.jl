@@ -351,7 +351,8 @@ export _get_ramp_constraint_devices
 # core folder exports
 # optimization_container.jl refactor
 # add_param_container!
-export add_param_container_split_axes!,
+export add_param_container!,
+    add_param_container_split_axes!,
     add_param_container_shared_axes!, get_parameter_eltype
 export make_system_expressions!, remove_undef!
 export get_branch_argument_variable_axis
@@ -403,7 +404,7 @@ export ArgumentConstructStage, ModelConstructStage
 export EmulationModelStore, DeviceModelForBranches
 export DeviceAboveMinPower, StartUpStages, SOSStatusVariable
 # Parameter types
-export FuelCostParameter, VariableValueParameter
+export FuelCostParameter, VariableValueParameter, FixValueParameter
 # Logging
 export LOG_GROUP_BUILD_INITIAL_CONDITIONS,
     LOG_GROUP_COST_FUNCTIONS,
@@ -571,6 +572,7 @@ include("common_models/constraint_helpers.jl")
 include("common_models/range_constraint.jl")
 include("common_models/duration_constraints.jl")
 include("common_models/rateofchange_constraints.jl")
+include("common_models/add_param_container.jl")
 
 # Objective function implementations
 include("objective_function/cost_term_helpers.jl") # generic helpers: add_cost_term_{invariant,variant}!, PWL helpers

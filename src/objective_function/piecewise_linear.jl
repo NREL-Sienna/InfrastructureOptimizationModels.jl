@@ -10,6 +10,11 @@ Parameter to define unit commitment status updated from the system state
 struct OnStatusParameter <: VariableValueParameter end
 
 """
+Parameter to fix a variable value (e.g., from feedforward).
+"""
+struct FixValueParameter <: VariableValueParameter end
+
+"""
 Struct to create the PiecewiseLinearCostConstraint associated with a specified variable.
 
 See [Piecewise linear cost functions](@ref pwl_cost) for more information.
