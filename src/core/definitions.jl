@@ -14,22 +14,7 @@ abstract type BinaryInterpolationVariableType <: SparseVariableType end
 # Simulation Information Type
 # Stores metadata about the simulation context for operation models
 # Can be extended in PowerSimulations with additional fields as needed
-struct SimulationInfo
-    # Placeholder for simulation metadata
-    # Can be extended with fields like:
-    # - simulation_uuid::Union{Nothing, Base.UUID}
-    # - run_count::Int
-    # - etc.
-    SimulationInfo() = new()
-end
-
-# Stub methods for SimulationInfo (to be extended by PowerSimulations.jl)
-get_number(::SimulationInfo) = 0
-set_number!(::SimulationInfo, val) = nothing
-get_sequence_uuid(::SimulationInfo) = nothing
-set_sequence_uuid!(::SimulationInfo, val) = nothing
-get_run_status(::SimulationInfo) = RunStatus.NOT_READY
-set_run_status!(::SimulationInfo, status) = nothing
+# SimulationInfo is defined in core/simulation_info.jl
 
 #################################################################################
 # Type Alias for long type signatures

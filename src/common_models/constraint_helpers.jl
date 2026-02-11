@@ -59,7 +59,7 @@ function add_range_bound_constraint!(
     name::String,
     t::Int,
     variable::JuMPOrFloat,
-    bound::Float64,
+    bound::Real,
     binary_var::JuMPOrFloat = 1.0,
 )
     con_container[name, t] =
@@ -137,7 +137,7 @@ Add a pair of ramp-up and ramp-down constraints for a single (name, t).
     current::UpDownPair{V},
     previous::JuMPOrFloat,
     limits::UpDown,
-    dt::Float64,
+    dt::Number,
     slack::UpDownPair{S} = (up = 0.0, down = 0.0),
     relax::UpDownPair{R} = (up = 0.0, down = 0.0),
 ) where {C, V <: JuMPOrFloat, S <: JuMPOrFloat, R <: JuMPOrFloat}

@@ -79,16 +79,11 @@ function add_test_parameter!(
     time_steps,
     values::Matrix{Float64},
 ) where {P <: IOM.ParameterType, C}
-    param_container = IOM.add_param_container!(
-        container,
-        P(),
-        C,
-        IOM.SOSStatusVariable.NO_VARIABLE,
-        false,  # uses_compact_power
-        Float64,
-        names,
-        time_steps,
-    )
+    param_key = IOM.ParameterKey(P, C)
+    attributes = IOM.CostFunctionAttributes{Float64}(
+        (), IOM.SOSStatusVariable.NO_VARIABLE, false)
+    param_container = IOM.add_param_container_shared_axes!(
+        container, param_key, attributes, Float64, names, time_steps)
     for (i, name) in enumerate(names)
         for t in time_steps
             IOM.set_parameter!(

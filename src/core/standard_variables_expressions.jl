@@ -1,120 +1,58 @@
 #################################################################################
 # Standard Variable Types
-# These are the base variable types that device formulations use
-# PowerSimulations.jl may extend with additional implementations
+# Only types that IOM's own infrastructure code references belong here.
+# Device-specific variable types are defined in PowerOperationsModels.jl.
 #################################################################################
 
-# Device Power Variables
+# Device Power Variables (used in objective_function/, rateofchange_constraints)
 struct ActivePowerVariable <: VariableType end
 struct ActivePowerInVariable <: VariableType end
 struct ActivePowerOutVariable <: VariableType end
-struct ReactivePowerVariable <: VariableType end
 struct PowerAboveMinimumVariable <: VariableType end
 
-# Device Status Variables
+# Device Status Variables (used in range_constraint, objective_function/)
 struct OnVariable <: VariableType end
 struct StartVariable <: VariableType end
 struct StopVariable <: VariableType end
-struct HotStartVariable <: VariableType end
-struct WarmStartVariable <: VariableType end
-struct ColdStartVariable <: VariableType end
 
-# Energy Variables
-struct EnergyVariable <: VariableType end
-
-# Reserve Variables
-struct ReservationVariable <: VariableType end
-struct ActivePowerReserveVariable <: VariableType end
+# Service Variables (used in market_bid)
 struct ServiceRequirementVariable <: VariableType end
 
-# Auxiliary Variables
-struct LiftVariable <: VariableType end
-
-# Note: TimeDurationOn and TimeDurationOff are device-specific auxiliary variable types
-# and should be defined in PowerOperationsModels, not here.
-
-# System Balance Variables
-struct SteadyStateFrequencyDeviation <: VariableType end
-struct AreaMismatchVariable <: VariableType end
-struct DeltaActivePowerUpVariable <: VariableType end
-struct DeltaActivePowerDownVariable <: VariableType end
-struct AdditionalDeltaActivePowerUpVariable <: VariableType end
-struct AdditionalDeltaActivePowerDownVariable <: VariableType end
-struct SmoothACE <: VariableType end
-struct SystemBalanceSlackUp <: VariableType end
-struct SystemBalanceSlackDown <: VariableType end
-struct ReserveRequirementSlack <: VariableType end
-
-# Network Variables
-struct VoltageMagnitude <: VariableType end
-struct VoltageAngle <: VariableType end
-struct FlowActivePowerVariable <: VariableType end
-struct FlowActivePowerSlackUpperBound <: VariableType end
-struct FlowActivePowerSlackLowerBound <: VariableType end
-struct FlowActivePowerFromToVariable <: VariableType end
-struct FlowActivePowerToFromVariable <: VariableType end
-struct FlowReactivePowerFromToVariable <: VariableType end
-struct FlowReactivePowerToFromVariable <: VariableType end
-struct PhaseShifterAngle <: VariableType end
-
-# Feedforward Slack Variables
-struct UpperBoundFeedForwardSlack <: VariableType end
-struct LowerBoundFeedForwardSlack <: VariableType end
-struct InterfaceFlowSlackUp <: VariableType end
-struct InterfaceFlowSlackDown <: VariableType end
-
-# Cost Variables
+# Cost Variables (used in piecewise_linear)
 struct PiecewiseLinearCostVariable <: SparseVariableType end
 
-# Rate Constraint Slack Variables
+# Rate Constraint Slack Variables (used in rateofchange_constraints)
 struct RateofChangeConstraintSlackUp <: VariableType end
 struct RateofChangeConstraintSlackDown <: VariableType end
 
-# Contingency Variables
-struct PostContingencyActivePowerChangeVariable <: VariableType end
-struct PostContingencyActivePowerReserveDeploymentVariable <: VariableType end
-
-# HVDC Variables
+# HVDC Variables (used in add_pwl_methods)
 struct DCVoltage <: VariableType end
-struct DCLineCurrent <: VariableType end
-struct ConverterPowerDirection <: VariableType end
-struct ConverterCurrent <: VariableType end
-struct SquaredConverterCurrent <: VariableType end
-struct InterpolationSquaredCurrentVariable <: VariableType end
-struct InterpolationBinarySquaredCurrentVariable <: VariableType end
-struct ConverterPositiveCurrent <: VariableType end
-struct ConverterNegativeCurrent <: VariableType end
-struct SquaredDCVoltage <: VariableType end
-struct InterpolationSquaredVoltageVariable <: VariableType end
-struct InterpolationBinarySquaredVoltageVariable <: VariableType end
-struct AuxBilinearConverterVariable <: VariableType end
-struct AuxBilinearSquaredConverterVariable <: VariableType end
-struct InterpolationSquaredBilinearVariable <: VariableType end
-struct InterpolationBinarySquaredBilinearVariable <: VariableType end
-struct HVDCFlowDirectionVariable <: VariableType end
 
 #################################################################################
 # Standard Expression Types
 # These are the base expression types for aggregating terms
 #################################################################################
 
-# Abstract types for expression hierarchies
+# Abstract types for expression hierarchies (used in IOM infrastructure code)
 abstract type SystemBalanceExpressions <: ExpressionType end
 abstract type RangeConstraintLBExpressions <: ExpressionType end
 abstract type RangeConstraintUBExpressions <: ExpressionType end
 abstract type CostExpressions <: ExpressionType end
 abstract type PostContingencyExpressions <: ExpressionType end
 
-# Concrete expression types
+# Concrete expression types used in IOM code
+struct ProductionCostExpression <: CostExpressions end
+struct FuelConsumptionExpression <: ExpressionType end
+struct ActivePowerRangeExpressionLB <: RangeConstraintLBExpressions end
+struct ActivePowerRangeExpressionUB <: RangeConstraintUBExpressions end
+
+# Concrete expression types defined here for POM (not used in IOM code directly,
+# but IOM exports them and POM relies on getting them from IOM)
 struct ActivePowerBalance <: SystemBalanceExpressions end
 struct ReactivePowerBalance <: SystemBalanceExpressions end
 struct EmergencyUp <: ExpressionType end
 struct EmergencyDown <: ExpressionType end
 struct RawACE <: ExpressionType end
-struct ProductionCostExpression <: CostExpressions end
-struct FuelConsumptionExpression <: ExpressionType end
-struct ActivePowerRangeExpressionLB <: RangeConstraintLBExpressions end
-struct ActivePowerRangeExpressionUB <: RangeConstraintUBExpressions end
 struct PostContingencyBranchFlow <: PostContingencyExpressions end
 struct PostContingencyActivePowerGeneration <: PostContingencyExpressions end
 struct NetActivePower <: ExpressionType end

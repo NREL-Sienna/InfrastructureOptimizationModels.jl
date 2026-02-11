@@ -35,6 +35,13 @@ struct SimulationModels
     emulation_model::Union{Nothing, OperationModel}
 end
 
+function SimulationModels(;
+    decision_models,
+    emulation_model::Union{Nothing, OperationModel} = nothing,
+)
+    return SimulationModels(decision_models, emulation_model)
+end
+
 #################################################################################
 # Simulation Sequence
 # Holds the execution sequence information for a simulation

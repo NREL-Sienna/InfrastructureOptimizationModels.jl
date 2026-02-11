@@ -1,17 +1,7 @@
 ######## CONSTRAINTS ############
 
-_bound_direction(::RangeConstraintLBExpressions) = LowerBound()
-_bound_direction(::RangeConstraintUBExpressions) = UpperBound()
-_bound_direction(::ExpressionType) = LowerBound()
-
-# Generic fallback functions
-function get_startup_shutdown(
-    device,
-    ::Type{<:VariableType},
-    ::Type{<:AbstractDeviceFormulation},
-) #  -> Union{Nothing, NamedTuple{(:startup, :shutdown), Tuple{Float64, Float64}}}
-    nothing
-end
+get_bound_direction(::RangeConstraintLBExpressions) = LowerBound()
+get_bound_direction(::RangeConstraintUBExpressions) = UpperBound()
 
 @doc raw"""
 Constructs min/max range constraint from device variable.
@@ -256,150 +246,9 @@ function _add_semicontinuous_bound_range_constraints_impl!(
     return
 end
 
-@doc raw"""
-Constructs min/max range constraint from device variable and reservation decision variable.
-
-
-
-``` varcts[name, t] <= limits.max * (1 - varbin[name, t]) ```
-
-``` varcts[name, t] >= limits.min * (1 - varbin[name, t]) ```
-
-where limits in constraint_infos.
-
-# LaTeX
-
-`` 0 \leq x^{cts} \leq limits^{max} (1 - x^{bin}), \text{ for } limits^{min} = 0 ``
-
-`` limits^{min} (1 - x^{bin}) \leq x^{cts} \leq limits^{max} (1 - x^{bin}), \text{ otherwise } ``
-"""
-function add_reserve_range_constraints!(
-    container::OptimizationContainer,
-    ::Type{T},
-    ::Type{U},
-    devices::IS.FlattenIteratorWrapper{V},
-    model::DeviceModel{V, W},
-    ::Type{X},
-) where {
-    T <: InputActivePowerVariableLimitsConstraint,
-    U <: VariableType,
-    V <: PSY.Component,
-    W <: AbstractDeviceFormulation,
-    X <: AbstractPowerModel,
-}
-    array = get_variable(container, U(), V)
-    _add_reserve_bound_range_constraints_impl!(
-        container, T, LowerBound(), array, devices, model, true)
-    _add_reserve_bound_range_constraints_impl!(
-        container, T, UpperBound(), array, devices, model, true)
-    return
-end
-
-function add_reserve_range_constraints!(
-    container::OptimizationContainer,
-    ::Type{T},
-    ::Type{U},
-    devices::IS.FlattenIteratorWrapper{V},
-    model::DeviceModel{V, W},
-    ::Type{X},
-) where {
-    T <: InputActivePowerVariableLimitsConstraint,
-    U <: ExpressionType,
-    V <: PSY.Component,
-    W <: AbstractDeviceFormulation,
-    X <: AbstractPowerModel,
-}
-    array = get_expression(container, U(), W)
-    _add_reserve_bound_range_constraints_impl!(
-        container, T, _bound_direction(U()), array, devices, model, true)
-    return
-end
-
-@doc raw"""
-Constructs min/max range constraint from device variable and reservation decision variable.
-
-
-
-``` varcts[name, t] <= limits.max * varbin[name, t] ```
-
-``` varcts[name, t] >= limits.min * varbin[name, t] ```
-
-where limits in constraint_infos.
-
-# LaTeX
-
-`` limits^{min} x^{bin} \leq x^{cts} \leq limits^{max} x^{bin},``
-"""
-function add_reserve_range_constraints!(
-    container::OptimizationContainer,
-    ::Type{T},
-    ::Type{U},
-    devices::IS.FlattenIteratorWrapper{W},
-    model::DeviceModel{W, X},
-    ::Type{Y},
-) where {
-    T <:
-    Union{
-        ReactivePowerVariableLimitsConstraint,
-        ActivePowerVariableLimitsConstraint,
-        OutputActivePowerVariableLimitsConstraint,
-    },
-    U <: VariableType,
-    W <: PSY.Component,
-    X <: AbstractDeviceFormulation,
-    Y <: AbstractPowerModel,
-}
-    array = get_variable(container, U(), W)
-    _add_reserve_bound_range_constraints_impl!(
-        container, T, LowerBound(), array, devices, model, false)
-    _add_reserve_bound_range_constraints_impl!(
-        container, T, UpperBound(), array, devices, model, false)
-    return
-end
-
-@doc raw"""
-Constructs min/max range constraint from device variable and reservation decision variable.
-
-
-
-``` varcts[name, t] <= limits.max * varbin[name, t] ```
-
-``` varcts[name, t] >= limits.min * varbin[name, t] ```
-
-where limits in constraint_infos.
-
-# LaTeX
-
-`` limits^{min} x^{bin} \leq x^{cts} \leq limits^{max} x^{bin},``
-"""
-function add_reserve_range_constraints!(
-    container::OptimizationContainer,
-    ::Type{T},
-    ::Type{U},
-    devices::IS.FlattenIteratorWrapper{W},
-    model::DeviceModel{W, X},
-    ::Type{Y},
-) where {
-    T <:
-    Union{
-        ReactivePowerVariableLimitsConstraint,
-        ActivePowerVariableLimitsConstraint,
-        OutputActivePowerVariableLimitsConstraint,
-    },
-    U <: ExpressionType,
-    W <: PSY.Component,
-    X <: AbstractDeviceFormulation,
-    Y <: AbstractPowerModel,
-}
-    array = get_expression(container, U(), W)
-    _add_reserve_bound_range_constraints_impl!(
-        container, T, _bound_direction(U()), array, devices, model, false)
-    return
-end
-
 # Unified reserve range constraints impl
 # invert_binary: true for InputActivePower (uses 1-varbin), false for others (uses varbin)
-function _add_reserve_bound_range_constraints_impl!(
+function add_reserve_bound_range_constraints!(
     container::OptimizationContainer,
     ::Type{T},
     dir::BoundDirection,
@@ -616,7 +465,11 @@ function _bound_range_with_parameter!(
     return
 end
 
-# AvailableStatusParameter variant - uses device max_active_power as multiplier
+# FIXME better spot for this?
+abstract type EventParameter <: ParameterType end
+
+# originally was AvailableStatusParameter, but broadened to EventParameter to keep 
+# concrete types out of IOM.
 function _bound_range_with_parameter!(
     container::OptimizationContainer,
     dir::BoundDirection,
@@ -625,7 +478,7 @@ function _bound_range_with_parameter!(
     param::P,
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     ::DeviceModel{V, W},
-) where {P <: AvailableStatusParameter, V <: PSY.Component, W <: AbstractDeviceFormulation}
+) where {P <: EventParameter, V <: PSY.Component, W <: AbstractDeviceFormulation}
     param_array = get_parameter_array(container, param, V)
     jump_model = get_jump_model(container)
     time_steps = axes(constraint_container)[2]

@@ -424,191 +424,6 @@ function get_problem_size(container::OptimizationContainer)
     return "The current total number of variables is $(vars) and total number of constraints is $(cons)"
 end
 
-function _make_container_array(ax...)
-    return remove_undef!(DenseAxisArray{GAE}(undef, ax...))
-end
-
-function _make_system_expressions!(
-    container::OptimizationContainer,
-    subnetworks::Dict{Int, Set{Int}},
-    ::Vector{Int},
-    ::Type{<:AbstractPowerModel},
-    bus_reduction_map::Dict{Int64, Set{Int64}},
-)
-    time_steps = get_time_steps(container)
-    if isempty(bus_reduction_map)
-        ac_bus_numbers = collect(Iterators.flatten(values(subnetworks)))
-    else
-        ac_bus_numbers = collect(keys(bus_reduction_map))
-    end
-    container.expressions = Dict(
-        ExpressionKey(ActivePowerBalance, PSY.ACBus) =>
-            _make_container_array(ac_bus_numbers, time_steps),
-        ExpressionKey(ReactivePowerBalance, PSY.ACBus) =>
-            _make_container_array(ac_bus_numbers, time_steps),
-    )
-    return
-end
-
-function _make_system_expressions!(
-    container::OptimizationContainer,
-    subnetworks::Dict{Int, Set{Int}},
-    ::Vector{Int},
-    ::Type{<:AbstractActivePowerModel},
-    bus_reduction_map::Dict{Int64, Set{Int64}},
-)
-    time_steps = get_time_steps(container)
-    if isempty(bus_reduction_map)
-        ac_bus_numbers = collect(Iterators.flatten(values(subnetworks)))
-    else
-        ac_bus_numbers = collect(keys(bus_reduction_map))
-    end
-    container.expressions = Dict(
-        ExpressionKey(ActivePowerBalance, PSY.ACBus) =>
-            _make_container_array(ac_bus_numbers, time_steps),
-    )
-    return
-end
-
-# NOTE: Commented out because it references CopperPlatePowerModel concrete type
-# This should be defined in PowerSimulations if needed for specific network models
-# function _make_system_expressions!(
-#     container::OptimizationContainer,
-#     subnetworks::Dict{Int, Set{Int}},
-#     ::Vector{Int},
-#     ::Type{CopperPlatePowerModel},
-#     bus_reduction_map::Dict{Int64, Set{Int64}},
-# )
-#     time_steps = get_time_steps(container)
-#     subnetworks_ref_buses = collect(keys(subnetworks))
-#     container.expressions = Dict(
-#         ExpressionKey(ActivePowerBalance, PSY.System) =>
-#             _make_container_array(subnetworks_ref_buses, time_steps),
-#     )
-#     return
-# end
-
-# NOTE: Commented out because it references PTDFPowerModel and SecurityConstrainedPTDFPowerModel concrete types
-# This should be defined in PowerSimulations if needed for specific network models
-# function _make_system_expressions!(
-#     container::OptimizationContainer,
-#     subnetworks::Dict{Int, Set{Int}},
-#     ::Vector{Int},
-#     ::Type{T},
-#     bus_reduction_map::Dict{Int64, Set{Int64}},
-# ) where {(T <: Union{PTDFPowerModel, SecurityConstrainedPTDFPowerModel})}
-#     time_steps = get_time_steps(container)
-#     if isempty(bus_reduction_map)
-#         ac_bus_numbers = collect(Iterators.flatten(values(subnetworks)))
-#     else
-#         ac_bus_numbers = collect(keys(bus_reduction_map))
-#     end
-#     subnetworks = collect(keys(subnetworks))
-#     container.expressions = Dict(
-#         ExpressionKey(ActivePowerBalance, PSY.System) =>
-#             _make_container_array(subnetworks, time_steps),
-#         ExpressionKey(ActivePowerBalance, PSY.ACBus) =>
-#         # Bus numbers are sorted to guarantee consistency in the order between the
-#         # containers
-#             _make_container_array(sort!(ac_bus_numbers), time_steps),
-#     )
-#     return
-# end
-
-# NOTE: Commented out because it references AreaBalancePowerModel concrete type
-# This should be defined in PowerSimulations if needed for specific network models
-# function _make_system_expressions!(
-#     container::OptimizationContainer,
-#     subnetworks::Dict{Int, Set{Int}},
-#     ::Type{AreaBalancePowerModel},
-#     areas::IS.FlattenIteratorWrapper{PSY.Area},
-# )
-#     time_steps = get_time_steps(container)
-#     container.expressions = Dict(
-#         ExpressionKey(ActivePowerBalance, PSY.Area) =>
-#             _make_container_array(PSY.get_name.(areas), time_steps),
-#     )
-#     return
-# end
-
-# NOTE: Commented out because it references AreaPTDFPowerModel concrete type
-# This should be defined in PowerSimulations if needed for specific network models
-# function _make_system_expressions!(
-#     container::OptimizationContainer,
-#     subnetworks::Dict{Int, Set{Int}},
-#     ::Vector{Int},
-#     ::Type{AreaPTDFPowerModel},
-#     areas::IS.FlattenIteratorWrapper{PSY.Area},
-#     bus_reduction_map::Dict{Int64, Set{Int64}},
-# )
-#     time_steps = get_time_steps(container)
-#     if isempty(bus_reduction_map)
-#         ac_bus_numbers = collect(Iterators.flatten(values(subnetworks)))
-#     else
-#         ac_bus_numbers = collect(keys(bus_reduction_map))
-#     end
-#     container.expressions = Dict(
-#         # Enforces the balance by Area
-#         ExpressionKey(ActivePowerBalance, PSY.Area) =>
-#             _make_container_array(PSY.get_name.(areas), time_steps),
-#         # Keeps track of the Injections by bus.
-#         ExpressionKey(ActivePowerBalance, PSY.ACBus) =>
-#         # Bus numbers are sorted to guarantee consistency in the order between the
-#         # containers
-#             _make_container_array(sort!(ac_bus_numbers), time_steps),
-#     )
-#
-#     if length(subnetworks) > 1
-#         @warn "The system contains $(length(subnetworks)) synchronous regions. \
-#                When combined with AreaPTDFPowerModel, the model can be infeasible if the data doesn't \
-#                have a well defined topology"
-#         subnetworks_ref_buses = collect(keys(subnetworks))
-#         container.expressions[ExpressionKey(ActivePowerBalance, PSY.System)] =
-#             _make_container_array(subnetworks_ref_buses, time_steps)
-#     end
-#
-#     return
-# end
-
-# NOTE: Commented out because it references SecurityConstrainedAreaPTDFPowerModel concrete type
-# This should be defined in PowerSimulations if needed for specific network models
-#TODO Check if for SecurityConstrainedAreaPTDFPowerModel need something else
-# function _make_system_expressions!(
-#     container::OptimizationContainer,
-#     subnetworks::Dict{Int, Set{Int}},
-#     ::Vector{Int},
-#     ::Type{SecurityConstrainedAreaPTDFPowerModel},
-#     areas::IS.FlattenIteratorWrapper{PSY.Area},
-#     bus_reduction_map::Dict{Int64, Set{Int64}},
-# )
-#     time_steps = get_time_steps(container)
-#     if isempty(bus_reduction_map)
-#         ac_bus_numbers = collect(Iterators.flatten(values(subnetworks)))
-#     else
-#         ac_bus_numbers = collect(keys(bus_reduction_map))
-#     end
-#     container.expressions = Dict(
-#         # Enforces the balance by Area
-#         ExpressionKey(ActivePowerBalance, PSY.Area) =>
-#             _make_container_array(PSY.get_name.(areas), time_steps),
-#         # Keeps track of the Injections by bus.
-#         ExpressionKey(ActivePowerBalance, PSY.ACBus) =>
-#         # Bus numbers are sorted to guarantee consistency in the order between the
-#         # containers
-#             _make_container_array(sort!(ac_bus_numbers), time_steps),
-#     )
-#     if length(subnetworks) > 1
-#         @warn "The system contains $(length(subnetworks)) synchronous regions. \
-#                When combined with SecurityConstrainedAreaPTDFPowerModel, the model can be infeasible if the data doesn't \
-#                have a well defined topology"
-#         subnetworks_ref_buses = collect(keys(subnetworks))
-#         container.expressions[ExpressionKey(ActivePowerBalance, PSY.System)] =
-#             _make_container_array(subnetworks_ref_buses, time_steps)
-#     end
-#
-#     return
-# end
-
 function initialize_system_expressions!(
     container::OptimizationContainer,
     network_model::NetworkModel{T},
@@ -620,109 +435,15 @@ function initialize_system_expressions!(
         PSY.get_number(b) for
         b in get_available_components(network_model, PSY.DCBus, system)
     ]
-    _make_system_expressions!(container, subnetworks, dc_bus_numbers, T, bus_reduction_map)
+    make_system_expressions!(container, subnetworks, dc_bus_numbers, T, bus_reduction_map)
     return
 end
 
-function _verify_area_subnetwork_topology(sys::PSY.System, subnetworks::Dict{Int, Set{Int}})
-    if length(subnetworks) < 1
-        @debug "Only one subnetwork detected in the system. Area - Subnetwork topology check is valid."
-        return
-    end
-
-    @warn "More than one subnetwork detected in AreaBalancePowerModel. Topology consistency checks must be conducted."
-
-    area_map = PSY.get_aggregation_topology_mapping(PSY.Area, sys)
-    for (area, buses) in area_map
-        bus_numbers =
-            [
-                PSY.get_number(b) for
-                b in buses if PSY.get_bustype(b) != PSY.ACBusTypes.ISOLATED
-            ]
-        subnets = Int[]
-        for (subnet, subnet_bus_numbers) in subnetworks
-            if !isdisjoint(bus_numbers, subnet_bus_numbers)
-                push!(subnets, subnet)
-            end
-        end
-        if length(subnets) > 1
-            @error "Area $(PSY.get_name(area)) is connected to multiple subnetworks $(subnets)."
-            throw(
-                IS.ConflictingInputsError(
-                    "AreaBalancePowerModel doesn't support systems with Areas distributed across multiple asynchronous areas",
-                ))
-        end
-    end
-    return
-end
-
-# NOTE: Commented out because it references AreaBalancePowerModel concrete type
-# This should be defined in PowerSimulations if needed for specific network models
-# function initialize_system_expressions!(
-#     container::OptimizationContainer,
-#     network_model::NetworkModel{AreaBalancePowerModel},
-#     subnetworks::Dict{Int, Set{Int}},
-#     system::PSY.System,
-#     ::Dict{Int64, Set{Int64}},
-# )
-#     areas = get_available_components(network_model, PSY.Area, system)
-#     if isempty(areas)
-#         throw(
-#             IS.ConflictingInputsError(
-#                 "AreaBalancePowerModel doesn't support systems with no defined Areas",
-#             ),
-#         )
-#     end
-#     area_interchanges = PSY.get_available_components(PSY.AreaInterchange, system)
-#     if isempty(area_interchanges) ||
-#        PSY.AreaInterchange ∉ network_model.modeled_branch_types
-#         @warn "The system does not contain any AreaInterchanges. The model won't have any power flowing between the areas."
-#     end
-#     if !isempty(area_interchanges) &&
-#        PSY.AreaInterchange ∉ network_model.modeled_branch_types
-#         @warn "AreaInterchanges are not included in the model template. The model won't have any power flowing between the areas."
-#     end
-#     _verify_area_subnetwork_topology(system, subnetworks)
-#     _make_system_expressions!(container, subnetworks, AreaBalancePowerModel, areas)
-#     return
-# end
-
-# NOTE: Commented out because it references AreaPTDFPowerModel and SecurityConstrainedAreaPTDFPowerModel concrete types
-# This should be defined in PowerSimulations if needed for specific network models
-# function initialize_system_expressions!(
-#     container::OptimizationContainer,
-#     network_model::NetworkModel{T},
-#     subnetworks::Dict{Int, Set{Int}},
-#     system::PSY.System,
-#     bus_reduction_map::Dict{Int64, Set{Int64}},
-# ) where {T <: Union{AreaPTDFPowerModel, SecurityConstrainedAreaPTDFPowerModel}}
-#     areas = get_available_components(network_model, PSY.Area, system)
-#     if isempty(areas)
-#         throw(
-#             IS.ConflictingInputsError(
-#                 "AreaPTDFPowerModel/SecurityConstrainedAreaPTDFPowerModel doesn't support systems with no Areas",
-#             ),
-#         )
-#     end
-#     dc_bus_numbers = [
-#         PSY.get_number(b) for
-#         b in get_available_components(network_model, PSY.DCBus, system)
-#     ]
-#     _make_system_expressions!(
-#         container,
-#         subnetworks,
-#         dc_bus_numbers,
-#         AreaPTDFPowerModel,
-#         areas,
-#         bus_reduction_map,
-#     )
-#     return
-# end
-
+# there's 2 implementations that extend this one in POM
 function initialize_hvdc_system!(
-    container::OptimizationContainer,
+    ::OptimizationContainer,
     network_model::NetworkModel{T},
-    dc_model::Nothing,
+    ::Nothing,
     system::PSY.System,
 ) where {T <: AbstractPowerModel}
     dc_buses = get_available_components(network_model, PSY.DCBus, system)
@@ -732,39 +453,6 @@ function initialize_hvdc_system!(
     end
     return
 end
-
-# NOTE: Commented out because it references TransportHVDCNetworkModel concrete type
-# This should be defined in PowerSimulations if needed for specific network models
-# function initialize_hvdc_system!(
-#     container::OptimizationContainer,
-#     network_model::NetworkModel{T},
-#     dc_model::U,
-#     system::PSY.System,
-# ) where {T <: AbstractPowerModel, U <: TransportHVDCNetworkModel}
-#     dc_buses = get_available_components(network_model, PSY.DCBus, system)
-#     @assert !isempty(dc_buses) "No DC buses found in the system. Consider adding DC Buses or removing HVDC network model."
-#     dc_bus_numbers = sort(PSY.get_number.(dc_buses))
-#     container.expressions[ExpressionKey(ActivePowerBalance, PSY.DCBus)] =
-#         _make_container_array(dc_bus_numbers, get_time_steps(container))
-#     return
-# end
-
-# NOTE: Commented out because it references VoltageDispatchHVDCNetworkModel concrete type
-# This should be defined in PowerSimulations if needed for specific network models
-# function initialize_hvdc_system!(
-#     container::OptimizationContainer,
-#     network_model::NetworkModel{T},
-#     dc_model::U,
-#     system::PSY.System,
-# ) where {T <: AbstractPowerModel, U <: VoltageDispatchHVDCNetworkModel}
-#     dc_buses = get_available_components(network_model, PSY.DCBus, system)
-#     @assert !isempty(dc_buses) "No DC buses found in the system. Consider adding DC Buses or removing HVDC network model."
-#     dc_bus_numbers = sort(PSY.get_number.(dc_buses))
-#     container.expressions[ExpressionKey(DCCurrentBalance, PSY.DCBus)] =
-#         _make_container_array(dc_bus_numbers, get_time_steps(container))
-#     add_variable!(container, DCVoltage(), dc_buses, dc_model)
-#     return
-# end
 
 function build_impl!(
     container::OptimizationContainer,
@@ -1076,7 +764,7 @@ function _assign_container!(container::OrderedDict, key::OptimizationContainerKe
     end
     container[key] = value
     @debug "Added container entry $(typeof(key)) $(encode_key(key))" _group =
-        LOG_GROUP_OPTIMZATION_CONTAINER
+        LOG_GROUP_OPTIMIZATION_CONTAINER
     return
 end
 
@@ -1316,253 +1004,81 @@ function read_duals(container::OptimizationContainer)
 end
 
 ##################################### Parameter Container ##################################
-# NOTE: Commented out because it references VariableValueParameter concrete type
-# This should be defined in PowerSimulations if needed
-# function _add_param_container!(
-#     container::OptimizationContainer,
-#     key::ParameterKey{T, U},
-#     attribute::VariableValueAttributes{<:OptimizationContainerKey},
-#     param_type::DataType,
-#     axs...;
-#     sparse = false,
-# ) where {T <: VariableValueParameter, U <: PSY.Component}
-#     if sparse
-#         param_array = sparse_container_spec(param_type, axs...)
-#         multiplier_array = sparse_container_spec(Float64, axs...)
-#     else
-#         param_array = DenseAxisArray{param_type}(undef, axs...)
-#         multiplier_array = fill!(DenseAxisArray{Float64}(undef, axs...), NaN)
-#     end
-#     param_container = ParameterContainer(attribute, param_array, multiplier_array)
-#     _assign_container!(container.parameters, key, param_container)
-#     return param_container
-# end
 
-# NOTE: Commented out because it references VariableValueParameter concrete type
-# This should be defined in PowerSimulations if needed
-# function _add_param_container!(
-#     container::OptimizationContainer,
-#     key::ParameterKey{T, U},
-#     attribute::VariableValueAttributes{<:OptimizationContainerKey},
-#     axs...;
-#     sparse = false,
-# ) where {T <: VariableValueParameter, U <: PSY.Component}
-#     if built_for_recurrent_solves(container) && !get_rebuild_model(get_settings(container))
-#         param_type = JuMP.VariableRef
-#     else
-#         param_type = Float64
-#     end
-#     return _add_param_container!(
-#         container,
-#         key,
-#         attribute,
-#         param_type,
-#         axs...;
-#         sparse = sparse,
-#     )
-# end
+"""
+Determine the element type for parameter arrays: JuMP.VariableRef for recurrent solves,
+Float64 otherwise.
+"""
+function get_param_eltype(container::OptimizationContainer)
+    if built_for_recurrent_solves(container) && !get_rebuild_model(get_settings(container))
+        return JuMP.VariableRef
+    else
+        return Float64
+    end
+end
 
-# NOTE: Commented out because it references TimeSeriesAttributes concrete type
-# This should be defined in PowerSimulations if needed
-# function _add_param_container!(
-#     container::OptimizationContainer,
-#     key::ParameterKey{T, U},
-#     attribute::TimeSeriesAttributes{V},
-#     param_axs,
-#     multiplier_axs,
-#     additional_axs,
-#     time_steps::UnitRange{Int};
-#     sparse = false,
-# ) where {T <: TimeSeriesParameter, U <: PSY.Component, V <: IS.TimeSeriesData}
-#     if built_for_recurrent_solves(container) && !get_rebuild_model(get_settings(container))
-#         param_type = JuMP.VariableRef
-#     else
-#         param_type = Float64
-#     end
-#     if sparse
-#         param_array =
-#             sparse_container_spec(param_type, param_axs, additional_axs..., time_steps)
-#         multiplier_array =
-#             sparse_container_spec(Float64, multiplier_axs, additional_axs..., time_steps)
-#     else
-#         param_array =
-#             DenseAxisArray{param_type}(undef, param_axs, additional_axs..., time_steps)
-#         multiplier_array =
-#             fill!(
-#                 DenseAxisArray{Float64}(
-#                     undef,
-#                     multiplier_axs,
-#                     additional_axs...,
-#                     time_steps,
-#                 ),
-#                 NaN,
-#             )
-#     end
-#     param_container = ParameterContainer(attribute, param_array, multiplier_array)
-#     _assign_container!(container.parameters, key, param_container)
-#     return param_container
-# end
+"""
+Allocate a parameter container where param and multiplier arrays share the same axes.
+Covers VariableValue, Event, CostFunction parameter types.
+"""
+function add_param_container_shared_axes!(
+    container::OptimizationContainer,
+    key::ParameterKey,
+    attribute::ParameterAttributes,
+    param_type::DataType,
+    axs...;
+    sparse = false,
+)
+    if sparse
+        param_array = sparse_container_spec(param_type, axs...)
+        multiplier_array = sparse_container_spec(Float64, axs...)
+    else
+        param_array = DenseAxisArray{param_type}(undef, axs...)
+        multiplier_array = fill!(DenseAxisArray{Float64}(undef, axs...), NaN)
+    end
+    param_container = ParameterContainer(attribute, param_array, multiplier_array)
+    _assign_container!(container.parameters, key, param_container)
+    return param_container
+end
 
-# NOTE: Commented out because it references EventParametersAttributes concrete type
-# This should be defined in PowerSimulations if needed
-# function _add_param_container!(
-#     container::OptimizationContainer,
-#     key::ParameterKey{T, U},
-#     attribute::EventParametersAttributes{V, T},
-#     param_axs,
-#     time_steps;
-#     sparse = false,
-# ) where {T <: EventParameter, U <: PSY.Component, V <: PSY.Contingency}
-#     if built_for_recurrent_solves(container) && !get_rebuild_model(get_settings(container))
-#         param_type = JuMP.VariableRef
-#     else
-#         param_type = Float64
-#     end
-#
-#     if sparse
-#         error("Sparse parameter container is not supported for $V")
-#     else
-#         param_array = DenseAxisArray{param_type}(undef, param_axs, time_steps)
-#         multiplier_array =
-#             fill!(DenseAxisArray{Float64}(undef, param_axs, time_steps), NaN)
-#     end
-#     param_container = ParameterContainer(attribute, param_array, multiplier_array)
-#     _assign_container!(container.parameters, key, param_container)
-#     return param_container
-# end
-
-# NOTE: Commented out because it references CostFunctionAttributes concrete type
-# This should be defined in PowerSimulations if needed
-# function _add_param_container!(
-#     container::OptimizationContainer,
-#     key::ParameterKey{T, U},
-#     attributes::CostFunctionAttributes{R},
-#     axs...;
-#     sparse = false,
-# ) where {R, T <: ObjectiveFunctionParameter, U <: PSY.Component}
-#     if sparse
-#         param_array = sparse_container_spec(R, axs...)
-#         multiplier_array = sparse_container_spec(Float64, axs...)
-#     else
-#         param_array = DenseAxisArray{R}(undef, axs...)
-#         multiplier_array = fill!(DenseAxisArray{Float64}(undef, axs...), NaN)
-#     end
-#     param_container = ParameterContainer(attributes, param_array, multiplier_array)
-#     _assign_container!(container.parameters, key, param_container)
-#     return param_container
-# end
-
-# NOTE: Commented out because it references TimeSeriesAttributes concrete type
-# This should be defined in PowerSimulations if needed
-# function add_param_container!(
-#     container::OptimizationContainer,
-#     ::T,
-#     ::Type{U},
-#     ::Type{V},
-#     name::String,
-#     param_axs,
-#     multiplier_axs,
-#     additional_axs,
-#     time_steps::UnitRange{Int};
-#     sparse = false,
-#     meta = CONTAINER_KEY_EMPTY_META,
-# ) where {T <: TimeSeriesParameter, U <: PSY.Component, V <: IS.TimeSeriesData}
-#     param_key = ParameterKey(T, U, meta)
-#     if isabstracttype(V)
-#         error("$V can't be abstract: $param_key")
-#     end
-#     attributes = TimeSeriesAttributes(V, name)
-#     return _add_param_container!(
-#         container,
-#         param_key,
-#         attributes,
-#         param_axs,
-#         multiplier_axs,
-#         additional_axs,
-#         time_steps;
-#         sparse = sparse,
-#     )
-# end
-
-# NOTE: Commented out because it references CostFunctionAttributes concrete type
-# This should be defined in PowerSimulations if needed
-# function add_param_container!(
-#     container::OptimizationContainer,
-#     ::T,
-#     ::Type{U},
-#     variable_types::Tuple{Vararg{Type}},
-#     sos_variable::SOSStatusVariable = NO_VARIABLE,
-#     uses_compact_power::Bool = false,
-#     data_type::DataType = Float64,
-#     axs...;
-#     sparse = false,
-#     meta = CONTAINER_KEY_EMPTY_META,
-# ) where {T <: ObjectiveFunctionParameter, U <: PSY.Component}
-#     param_key = ParameterKey(T, U, meta)
-#     attributes =
-#         CostFunctionAttributes{data_type}(variable_types, sos_variable, uses_compact_power)
-#     return _add_param_container!(container, param_key, attributes, axs...; sparse = sparse)
-# end
-
-# NOTE: Commented out because it references EventParameter and EventParametersAttributes concrete types
-# This should be defined in PowerSimulations if needed
-# function add_param_container!(
-#     container::OptimizationContainer,
-#     ::T,
-#     ::Type{U},
-#     ::Type{V},
-#     axs...;
-#     sparse = false,
-#     meta = CONTAINER_KEY_EMPTY_META,
-# ) where {T <: EventParameter, U <: PSY.Component, V <: PSY.Contingency}
-#     param_key = ParameterKey(T, U, meta)
-#     attributes = EventParametersAttributes{V, T}(U[])
-#     return _add_param_container!(container, param_key, attributes, axs...; sparse = sparse)
-# end
-
-# NOTE: Commented out because it references VariableValueParameter concrete type
-# This should be defined in PowerSimulations if needed
-# function add_param_container!(
-#     container::OptimizationContainer,
-#     ::T,
-#     ::Type{U},
-#     source_key::V,
-#     axs...;
-#     sparse = false,
-#     meta = CONTAINER_KEY_EMPTY_META,
-# ) where {T <: VariableValueParameter, U <: PSY.Component, V <: OptimizationContainerKey}
-#     param_key = ParameterKey(T, U, meta)
-#     attributes = VariableValueAttributes(source_key)
-#     return _add_param_container!(container, param_key, attributes, axs...; sparse = sparse)
-# end
-
-# NOTE: Commented out because it references FixValueParameter and VariableValueAttributes concrete types
-# This should be defined in PowerSimulations if needed
-# FixValue parameters are created using Float64 since we employ JuMP.fix to fix the downstream
-# variables.
-# function add_param_container!(
-#     container::OptimizationContainer,
-#     ::T,
-#     ::Type{U},
-#     source_key::V,
-#     axs...;
-#     sparse = false,
-#     meta = CONTAINER_KEY_EMPTY_META,
-# ) where {T <: FixValueParameter, U <: PSY.Component, V <: OptimizationContainerKey}
-#     if meta == CONTAINER_KEY_EMPTY_META
-#         error("$T parameters require passing the VariableType to the meta field")
-#     end
-#     param_key = ParameterKey(T, U, meta)
-#     attributes = VariableValueAttributes(source_key)
-#     return _add_param_container!(
-#         container,
-#         param_key,
-#         attributes,
-#         Float64,
-#         axs...;
-#         sparse = sparse,
-#     )
-# end
+"""
+Allocate a parameter container where param and multiplier arrays have different axes.
+Used for time series parameters where param_axs and multiplier_axs may differ.
+"""
+function add_param_container_split_axes!(
+    container::OptimizationContainer,
+    key::ParameterKey,
+    attribute::ParameterAttributes,
+    param_type::DataType,
+    param_axs,
+    multiplier_axs,
+    additional_axs,
+    time_steps::UnitRange{Int};
+    sparse = false,
+)
+    if sparse
+        param_array =
+            sparse_container_spec(param_type, param_axs, additional_axs..., time_steps)
+        multiplier_array =
+            sparse_container_spec(Float64, multiplier_axs, additional_axs..., time_steps)
+    else
+        param_array =
+            DenseAxisArray{param_type}(undef, param_axs, additional_axs..., time_steps)
+        multiplier_array =
+            fill!(
+                DenseAxisArray{Float64}(
+                    undef,
+                    multiplier_axs,
+                    additional_axs...,
+                    time_steps,
+                ),
+                NaN,
+            )
+    end
+    param_container = ParameterContainer(attribute, param_array, multiplier_array)
+    _assign_container!(container.parameters, key, param_container)
+    return param_container
+end
 
 function get_parameter_keys(container::OptimizationContainer)
     return collect(keys(container.parameters))

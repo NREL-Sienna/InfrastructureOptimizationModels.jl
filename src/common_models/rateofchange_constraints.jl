@@ -182,6 +182,9 @@ function add_linear_ramp_constraints!(
 end
 
 # TODO thermal-specific: move to POM?
+abstract type AbstractThermalDispatchFormulation <: AbstractThermalFormulation end
+abstract type AbstractThermalUnitCommitment <: AbstractThermalFormulation end
+
 function add_linear_ramp_constraints!(
     container::OptimizationContainer,
     T::Type{<:ConstraintType},
