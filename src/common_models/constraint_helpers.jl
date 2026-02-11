@@ -115,7 +115,15 @@ end
 Add a pair of ramp-up and ramp-down constraints for a single (name, t).
 
     Ramp up:   current.up - previous <= limits.up * dt + slack.up + relax.up
-    Ramp down: previous - current.down <= limits.down * dt + slack.down + relax.down
+    Ramp down (bound_decrease=false, default):
+               current.down - previous <= limits.down * dt + slack.down + relax.down
+    Ramp down (bound_decrease=true):
+               previous - current.down <= limits.down * dt + slack.down + relax.down
+
+When `bound_decrease = false` (default), the down constraint mirrors the up constraint
+direction, bounding how much power can increase from the previous value (using the down
+ramp rate). When `bound_decrease = true`, the down constraint flips current and previous,
+bounding how much power can decrease.
 
 # Arguments
 - `jump_model`: the JuMP model
@@ -128,6 +136,7 @@ Add a pair of ramp-up and ramp-down constraints for a single (name, t).
 - `dt`: minutes per period
 - `slack`: UpDownPair of slack variables (default: (up=0.0, down=0.0))
 - `relax`: UpDownPair of relaxation terms (default: (up=0.0, down=0.0))
+- `bound_decrease`: if true, flip current/previous in down constraint (default: false)
 """
 @inline function add_ramp_constraint_pair!(
     jump_model::JuMP.Model,
@@ -140,14 +149,22 @@ Add a pair of ramp-up and ramp-down constraints for a single (name, t).
     dt::Number,
     slack::UpDownPair{S} = (up = 0.0, down = 0.0),
     relax::UpDownPair{R} = (up = 0.0, down = 0.0),
+    bound_decrease::Bool = false,
 ) where {C, V <: JuMPOrFloat, S <: JuMPOrFloat, R <: JuMPOrFloat}
     cons.up[name, t] = JuMP.@constraint(
         jump_model,
         current.up - previous <= limits.up * dt + slack.up + relax.up
     )
-    cons.down[name, t] = JuMP.@constraint(
-        jump_model,
-        previous - current.down <= limits.down * dt + slack.down + relax.down
-    )
+    if bound_decrease
+        cons.down[name, t] = JuMP.@constraint(
+            jump_model,
+            previous - current.down <= limits.down * dt + slack.down + relax.down
+        )
+    else
+        cons.down[name, t] = JuMP.@constraint(
+            jump_model,
+            current.down - previous <= limits.down * dt + slack.down + relax.down
+        )
+    end
     return
 end

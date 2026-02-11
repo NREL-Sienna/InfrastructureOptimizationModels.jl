@@ -117,7 +117,11 @@ function get_variable_multiplier(
     ::V,
     ::Type{D},
     ::F,
-) where {V <: VariableType, D <: COMP_TYPE, F <: AbstractDeviceFormulation}
+) where {
+    V <: VariableType,
+    D <: IS.InfrastructureSystemsComponent,
+    F <: AbstractDeviceFormulation,
+}
     return 1.0
 end
 
