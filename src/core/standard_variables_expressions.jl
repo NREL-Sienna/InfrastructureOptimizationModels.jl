@@ -15,6 +15,9 @@ struct OnVariable <: VariableType end
 struct StartVariable <: VariableType end
 struct StopVariable <: VariableType end
 
+# Reservation Variable (used in range_constraint for reserve bounds)
+struct ReservationVariable <: VariableType end
+
 # Service Variables (used in market_bid)
 struct ServiceRequirementVariable <: VariableType end
 

@@ -405,6 +405,19 @@ export EmulationModelStore, DeviceModelForBranches
 export DeviceAboveMinPower, StartUpStages, SOSStatusVariable
 # Parameter types
 export FuelCostParameter, VariableValueParameter, FixValueParameter
+# Offer curve types (parameter, variable, constraint)
+export AbstractCostAtMinParameter,
+    IncrementalCostAtMinParameter, DecrementalCostAtMinParameter
+export AbstractPiecewiseLinearSlopeParameter,
+    IncrementalPiecewiseLinearSlopeParameter, DecrementalPiecewiseLinearSlopeParameter
+export AbstractPiecewiseLinearBreakpointParameter,
+    IncrementalPiecewiseLinearBreakpointParameter,
+    DecrementalPiecewiseLinearBreakpointParameter
+export AbstractPiecewiseLinearBlockOffer,
+    PiecewiseLinearBlockIncrementalOffer, PiecewiseLinearBlockDecrementalOffer
+export AbstractPiecewiseLinearBlockOfferConstraint,
+    PiecewiseLinearBlockIncrementalOfferConstraint,
+    PiecewiseLinearBlockDecrementalOfferConstraint
 # Logging
 export LOG_GROUP_BUILD_INITIAL_CONDITIONS,
     LOG_GROUP_COST_FUNCTIONS,
@@ -462,6 +475,7 @@ export HVDCPowerBalance
 export ActivePowerVariable, ActivePowerInVariable, ActivePowerOutVariable
 export PowerAboveMinimumVariable
 export OnVariable, StartVariable, StopVariable
+export ReservationVariable
 export ServiceRequirementVariable
 export PiecewiseLinearCostVariable
 export RateofChangeConstraintSlackUp, RateofChangeConstraintSlackDown
@@ -572,7 +586,6 @@ include("common_models/constraint_helpers.jl")
 include("common_models/range_constraint.jl")
 include("common_models/duration_constraints.jl")
 include("common_models/rateofchange_constraints.jl")
-include("common_models/add_param_container.jl")
 
 # Objective function implementations
 include("objective_function/cost_term_helpers.jl") # generic helpers: add_cost_term_{invariant,variant}!, PWL helpers
@@ -587,8 +600,13 @@ include("objective_function/import_export.jl")
 
 # add_variable_cost! implementations, but "it's complicated." Other stuff exported too
 include("objective_function/piecewise_linear.jl")
-# this one is a mess.
-# include("objective_function/market_bid.jl")
+# Offer curve types must come before market_bid.jl
+include("objective_function/offer_curve_types.jl")
+include("objective_function/market_bid.jl")
+
+# add_param_container! wrappers — must come after piecewise_linear.jl
+# (which defines VariableValueParameter and FixValueParameter)
+include("common_models/add_param_container.jl")
 
 include("operation/operation_model_interface.jl")
 include("operation/decision_model_store.jl")

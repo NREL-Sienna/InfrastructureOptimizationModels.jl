@@ -1,4 +1,16 @@
-# helper functions
+#################################################################################
+# Market Bid Cost / Import-Export Cost: Generic Optimization Infrastructure
+#
+# This file provides the generic (device-agnostic) infrastructure for
+# MarketBidCost and ImportExportCost offer curves. Device-specific overloads
+# (e.g., for ThermalMultiStart, ControllableLoad formulations) are in POM's
+# market_bid_overrides.jl.
+#################################################################################
+
+#################################################################################
+# Section 1: Offer Curve Accessor Wrappers
+# Map MarketBidCost / ImportExportCost to a unified interface.
+#################################################################################
 
 get_output_offer_curves(cost::PSY.ImportExportCost, args...; kwargs...) =
     PSY.get_import_offer_curves(cost, args...; kwargs...)
@@ -9,7 +21,6 @@ get_input_offer_curves(cost::PSY.ImportExportCost, args...; kwargs...) =
 get_input_offer_curves(cost::PSY.MarketBidCost, args...; kwargs...) =
     PSY.get_decremental_offer_curves(cost, args...; kwargs...)
 
-# TODO deduplicate, these signatures are getting out of hand
 get_output_offer_curves(
     component::PSY.Component,
     cost::PSY.ImportExportCost,
@@ -39,11 +50,7 @@ get_input_offer_curves(
 ) =
     PSY.get_decremental_offer_curves(component, cost, args...; kwargs...)
 
-##################################################
-################ PWL Parameters  #################
-##################################################
-
-# Helper functions to manage incremental vs. decremental cases via OfferDirection dispatch
+# OfferDirection-based accessors
 get_initial_input(::DecrementalOffer, device::PSY.StaticInjection) =
     PSY.get_decremental_initial_input(PSY.get_operation_cost(device))
 get_initial_input(::IncrementalOffer, device::PSY.StaticInjection) =
@@ -60,7 +67,11 @@ get_offer_curves(::DecrementalOffer, op_cost::PSY.OfferCurveCost) =
 get_offer_curves(::IncrementalOffer, op_cost::PSY.OfferCurveCost) =
     get_output_offer_curves(op_cost)
 
-# Type dispatch to map OfferDirection to the appropriate parameter/variable/constraint types
+#################################################################################
+# Section 2: OfferDirection Type Dispatch Table
+# Maps OfferDirection to the appropriate parameter/variable/constraint types.
+#################################################################################
+
 _slope_param(::IncrementalOffer) = IncrementalPiecewiseLinearSlopeParameter
 _slope_param(::DecrementalOffer) = DecrementalPiecewiseLinearSlopeParameter
 
@@ -76,58 +87,48 @@ _block_offer_constraint(::DecrementalOffer) = PiecewiseLinearBlockDecrementalOff
 _objective_sign(::IncrementalOffer) = OBJECTIVE_FUNCTION_POSITIVE
 _objective_sign(::DecrementalOffer) = OBJECTIVE_FUNCTION_NEGATIVE
 
-# Determines whether we care about various types of costs, given the formulation
-# NOTE: currently works based on what has already been added to the container;
-# alternatively we could dispatch on the formulation directly
+#################################################################################
+# Section 3: _get_parameter_field Dispatch Table
+# Maps parameter types to PSY getter functions.
+#################################################################################
 
-# FIXME: requires moving Shutdown, startup, 
+_get_parameter_field(::StartupCostParameter, args...; kwargs...) =
+    PSY.get_start_up(args...; kwargs...)
+_get_parameter_field(::ShutdownCostParameter, args...; kwargs...) =
+    PSY.get_shut_down(args...; kwargs...)
+_get_parameter_field(::IncrementalCostAtMinParameter, args...; kwargs...) =
+    PSY.get_incremental_initial_input(args...; kwargs...)
+_get_parameter_field(::DecrementalCostAtMinParameter, args...; kwargs...) =
+    PSY.get_decremental_initial_input(args...; kwargs...)
+_get_parameter_field(
+    ::Union{
+        IncrementalPiecewiseLinearSlopeParameter,
+        IncrementalPiecewiseLinearBreakpointParameter,
+    },
+    args...;
+    kwargs...,
+) =
+    get_output_offer_curves(args...; kwargs...)
+_get_parameter_field(
+    ::Union{
+        DecrementalPiecewiseLinearSlopeParameter,
+        DecrementalPiecewiseLinearBreakpointParameter,
+    },
+    args...;
+    kwargs...,
+) =
+    get_input_offer_curves(args...; kwargs...)
 
-_consider_parameter(
-    ::StartupCostParameter,
-    container::OptimizationContainer,
-    ::DeviceModel{T, D},
-) where {T, D} =
-    any(has_container_key.([container], [StartVariable, MULTI_START_VARIABLES...], [T]))
-
-_consider_parameter(
-    ::ShutdownCostParameter,
-    container::OptimizationContainer,
-    ::DeviceModel{T, D},
-) where {T, D} = has_container_key(container, StopVariable, T)
-
-# FIXME storage doesn't currently have an OnVariable. should it have one?
-_consider_parameter(
-    ::AbstractCostAtMinParameter,
-    container::OptimizationContainer,
-    ::DeviceModel{T, D},
-) where {T, D} = has_container_key(container, OnVariable, T)
-
-# For slopes and breakpoints, the relevant variables won't have been created yet, so we'll
-# just check all components for the presence of the relevant time series
-_consider_parameter(
-    ::AbstractPiecewiseLinearSlopeParameter,
-    ::OptimizationContainer,
-    ::DeviceModel{T, D},
-) where {T, D} = true
-
-_consider_parameter(
-    ::AbstractPiecewiseLinearBreakpointParameter,
-    ::OptimizationContainer,
-    ::DeviceModel{T, D},
-) where {T, D} = true
+#################################################################################
+# Section 4: Device Cost Detection Predicates (generic)
+# Device-specific overrides (RenewableNonDispatch, PowerLoad, etc.) are in POM.
+#################################################################################
 
 _has_market_bid_cost(device::PSY.StaticInjection) =
     PSY.get_operation_cost(device) isa PSY.MarketBidCost
 
-_has_market_bid_cost(::PSY.RenewableNonDispatch) = false
-
-_has_market_bid_cost(::PSY.PowerLoad) = false # PowerLoads don't even have operation cost.
-_has_market_bid_cost(device::PSY.ControllableLoad) =
-    PSY.get_operation_cost(device) isa PSY.MarketBidCost
-
 _has_import_export_cost(device::PSY.Source) =
     PSY.get_operation_cost(device) isa PSY.ImportExportCost
-
 _has_import_export_cost(::PSY.StaticInjection) = false
 
 _has_offer_curve_cost(device::PSY.Component) =
@@ -159,6 +160,48 @@ _has_parameter_time_series(
 ) where {T <: AbstractPiecewiseLinearBreakpointParameter} =
     _has_offer_curve_cost(device) &&
     is_time_variant(_get_parameter_field(T(), PSY.get_operation_cost(device)))
+
+#################################################################################
+# Section 5: _consider_parameter (generic versions)
+# Whether a parameter should be added based on what's in the container.
+# POM overrides for ThermalMultiStart startup (MULTI_START_VARIABLES).
+#################################################################################
+
+_consider_parameter(
+    ::StartupCostParameter,
+    container::OptimizationContainer,
+    ::DeviceModel{T, D},
+) where {T, D} = has_container_key(container, StartVariable, T)
+
+_consider_parameter(
+    ::ShutdownCostParameter,
+    container::OptimizationContainer,
+    ::DeviceModel{T, D},
+) where {T, D} = has_container_key(container, StopVariable, T)
+
+_consider_parameter(
+    ::AbstractCostAtMinParameter,
+    container::OptimizationContainer,
+    ::DeviceModel{T, D},
+) where {T, D} = has_container_key(container, OnVariable, T)
+
+_consider_parameter(
+    ::AbstractPiecewiseLinearSlopeParameter,
+    ::OptimizationContainer,
+    ::DeviceModel{T, D},
+) where {T, D} = true
+
+_consider_parameter(
+    ::AbstractPiecewiseLinearBreakpointParameter,
+    ::OptimizationContainer,
+    ::DeviceModel{T, D},
+) where {T, D} = true
+
+#################################################################################
+# Section 6: Validation
+# Generic validation for offer curve costs. Device-specific overrides
+# (ThermalMultiStart, RenewableDispatch, Storage) are in POM.
+#################################################################################
 
 function validate_initial_input_time_series(
     device::PSY.StaticInjection,
@@ -218,7 +261,6 @@ function validate_occ_breakpoints_slopes(device::PSY.StaticInjection, dir::Offer
                 )
         end
 
-        # Different specific validations for MBC versus IEC
         p1 = _validate_occ_subtype(
             PSY.get_operation_cost(device),
             dir,
@@ -268,7 +310,6 @@ function _validate_occ_subtype(
     curve::PSY.CostCurve,
     args...,
 )
-    # In the non-time-variable case, a VOM cost and initial input are represented; these must be zero
     @assert !is_ts
     !iszero(PSY.get_vom_cost(curve)) && throw(
         ArgumentError(
@@ -281,7 +322,7 @@ function _validate_occ_subtype(
             "For ImportExportCost, initial input must be zero.",
         ),
     )
-    _validate_occ_subtype(cost, dir, true, PSY.get_function_data(vc))  # also do the FunctionData validations
+    _validate_occ_subtype(cost, dir, true, PSY.get_function_data(vc))
 end
 
 function _validate_occ_subtype(
@@ -291,7 +332,6 @@ function _validate_occ_subtype(
     curve::PSY.PiecewiseStepData,
     args...,
 )
-    # In the time-variable case, VOM cost and initial input cannot be represented, so they cannot be nonzero
     @assert is_ts
     if !iszero(first(PSY.get_x_coords(curve)))
         throw(
@@ -302,19 +342,8 @@ function _validate_occ_subtype(
     end
 end
 
-# Warn if hot/warm/cold startup costs are given for non-`ThermalMultiStart`
-function validate_occ_component(
-    ::StartupCostParameter,
-    device::PSY.ThermalMultiStart,
-)
-    startup = PSY.get_start_up(PSY.get_operation_cost(device))
-    _validate_eltype(
-        Union{Float64, NTuple{3, Float64}, StartUpStages},
-        device,
-        startup,
-        " startup cost",
-    )
-end
+# Generic validate_occ_component overloads for PSY.StaticInjection.
+# Device-specific overloads (ThermalMultiStart, RenewableDispatch, Storage) are in POM.
 
 function validate_occ_component(::StartupCostParameter, device::PSY.StaticInjection)
     startup = PSY.get_start_up(PSY.get_operation_cost(device))
@@ -341,75 +370,11 @@ function validate_occ_component(::StartupCostParameter, device::PSY.StaticInject
     return
 end
 
-# Validate eltype of shutdown costs
 function validate_occ_component(::ShutdownCostParameter, device::PSY.StaticInjection)
     shutdown = PSY.get_shut_down(PSY.get_operation_cost(device))
     _validate_eltype(Float64, device, shutdown, " for shutdown cost")
 end
 
-# Renewable-specific validations that warn when costs are nonzero.
-# There warnings are captured by the with_logger, though, so we don't actually see them.
-function validate_occ_component(
-    ::StartupCostParameter,
-    device::Union{PSY.RenewableDispatch, PSY.Storage},
-)
-    startup = PSY.get_start_up(PSY.get_operation_cost(device))
-    apply_maybe_across_time_series(device, startup) do x
-        if x != PSY.single_start_up_to_stages(0.0)
-            #println(
-            @warn "Nonzero startup cost detected for renewable generation or storage device $(get_name(device))."
-            # )
-        end
-    end
-end
-
-function validate_occ_component(
-    ::ShutdownCostParameter,
-    device::Union{PSY.RenewableDispatch, PSY.Storage},
-)
-    shutdown = PSY.get_shut_down(PSY.get_operation_cost(device))
-    apply_maybe_across_time_series(device, shutdown) do x
-        if x != 0.0
-            #println(
-            @warn "Nonzero shutdown cost detected for renewable generation or storage device $(get_name(device))."
-            #)
-        end
-    end
-end
-
-function validate_occ_component(
-    ::IncrementalCostAtMinParameter,
-    device::Union{PSY.RenewableDispatch, PSY.Storage},
-)
-    no_load_cost = PSY.get_no_load_cost(PSY.get_operation_cost(device))
-    if !isnothing(no_load_cost)
-        apply_maybe_across_time_series(device, no_load_cost) do x
-            if x != 0.0
-                #println(
-                @warn "Nonzero no-load cost detected for renewable generation or storage device $(get_name(device))."
-                #)
-            end
-        end
-    end
-end
-
-function validate_occ_component(
-    ::DecrementalCostAtMinParameter,
-    device::PSY.Storage,
-)
-    no_load_cost = PSY.get_no_load_cost(PSY.get_operation_cost(device))
-    if !isnothing(no_load_cost)
-        apply_maybe_across_time_series(device, no_load_cost) do x
-            if x != 0.0
-                #println(
-                @warn "Nonzero no-load cost detected for storage device $(get_name(device))."
-                #)
-            end
-        end
-    end
-end
-
-# Validate that initial input ts always appears if variable ts appears, warn if initial input ts appears without variable ts
 validate_occ_component(
     ::IncrementalCostAtMinParameter,
     device::PSY.StaticInjection,
@@ -420,7 +385,6 @@ validate_occ_component(
     device::PSY.StaticInjection,
 ) = validate_initial_input_time_series(device, DecrementalOffer())
 
-# Validate convexity/concavity of cost curves as appropriate, verify P1 = min gen power
 validate_occ_component(
     ::IncrementalPiecewiseLinearBreakpointParameter,
     device::PSY.StaticInjection,
@@ -437,8 +401,10 @@ validate_occ_component(
     device::PSY.StaticInjection,
 ) = nothing
 
-# Validates and adds parameters for a given OfferCurveCost-related ParameterType
-# PERF: could switch to a TSC here.
+#################################################################################
+# Section 7: Parameter Processing Orchestration
+#################################################################################
+
 function _process_occ_parameters_helper(
     ::P,
     container::OptimizationContainer,
@@ -470,7 +436,6 @@ function process_import_export_parameters!(
         DecrementalPiecewiseLinearSlopeParameter(),
         DecrementalPiecewiseLinearBreakpointParameter(),
     )
-        # Validate and add the parameters
         _process_occ_parameters_helper(param, container, model, devices)
     end
 end
@@ -483,10 +448,9 @@ function process_market_bid_parameters!(
     incremental::Bool = true,
     decremental::Bool = false,
 )
-    devices = filter(_has_market_bid_cost, collect(devices_in))  # https://github.com/NREL-Sienna/InfrastructureSystems.jl/issues/460
+    devices = filter(_has_market_bid_cost, collect(devices_in))
     isempty(devices) && return
 
-    # Validate and add the parameters:
     for param in (
         StartupCostParameter(),
         ShutdownCostParameter(),
@@ -513,72 +477,27 @@ function process_market_bid_parameters!(
     end
 end
 
-##################################################
-################# PWL Constraints ################
-##################################################
+#################################################################################
+# Section 8: Min-Gen-Power Dispatch Defaults
+# POM overrides these for specific device types and formulations.
+#################################################################################
 
-# without this, you get "variable OnVariable__RenewableDispatch is not stored"
-# TODO: really this falls along the divide of
-# commitment (OnVariable + ActivePower) vs dispatch (ActivePower only)
-_include_min_gen_power_in_constraint(
-    ::Type{<:PSY.Source},
-    ::ActivePowerOutVariable,
-    ::AbstractDeviceFormulation,
-) = false
-_include_min_gen_power_in_constraint(
-    ::Type{<:PSY.Source},
-    ::ActivePowerInVariable,
-    ::AbstractDeviceFormulation,
-) = false
-_include_min_gen_power_in_constraint(
-    ::Type{<:PSY.RenewableDispatch},
-    ::ActivePowerVariable,
-    ::AbstractDeviceFormulation,
-) = false
-_include_min_gen_power_in_constraint(
-    ::Type{<:PSY.Generator},
-    ::ActivePowerVariable,
-    ::AbstractDeviceFormulation,
-) = true
-_include_min_gen_power_in_constraint(
-    ::Type{<:PSY.ControllableLoad},
-    ::ActivePowerVariable,
-    ::PowerLoadInterruption,
-) = true
-_include_min_gen_power_in_constraint(
-    ::Type{<:PSY.ControllableLoad},
-    ::ActivePowerVariable,
-    ::PowerLoadDispatch,
-) = false
 _include_min_gen_power_in_constraint(
     ::Type,
-    ::PowerAboveMinimumVariable,
+    ::VariableType,
     ::AbstractDeviceFormulation,
 ) = false
 
-# add the minimum generation power to the PWL constraint, as a constant. Returns true for
-# formulations where there's nonzero minimum power (first breakpoint), but no OnVariable.
-# TODO: cleaner way? e.g. can we just do this whenever there's no OnVariable?
-_include_constant_min_gen_power_in_constraint(
-    ::Type{<:PSY.ControllableLoad},
-    ::ActivePowerVariable,
-    ::PowerLoadDispatch,
-) = true
-_include_constant_min_gen_power_in_constraint(
-    ::Type{<:PSY.ControllableLoad},
-    ::ActivePowerVariable,
-    ::PowerLoadInterruption,
-) = false
-_include_constant_min_gen_power_in_constraint(
-    ::Type{<:PSY.RenewableGen},
-    ::ActivePowerVariable,
-    ::AbstractRenewableDispatchFormulation,
-) = true
 _include_constant_min_gen_power_in_constraint(
     ::Type,
     ::VariableType,
     ::AbstractDeviceFormulation,
 ) = false
+
+#################################################################################
+# Section 9: PWL Block Offer Constraints (generic)
+# The ReserveDemandCurve-specific overload is in POM.
+#################################################################################
 
 """
 Implement the constraints for PWL Block Offer variables. That is:
@@ -609,11 +528,6 @@ function _add_pwl_constraint!(
     )
     name = PSY.get_name(component)
 
-    # Device-specific: compute min_power_offset
-    # As detailed in https://github.com/NREL-Sienna/InfrastructureOptimizationModels.jl/issues/1318,
-    # time-variable P1 is problematic, so for now we require P1 to be constant. Thus we can
-    # just look up what it is currently fixed to and use that here without worrying about
-    # updating.
     min_power_offset = if _include_constant_min_gen_power_in_constraint(T, U(), D())
         jump_fixed_value(first(break_points))::Float64
     elseif _include_min_gen_power_in_constraint(T, U(), D())
@@ -637,48 +551,10 @@ function _add_pwl_constraint!(
     return
 end
 
-"""
-Implement the constraints for PWL Block Offer variables for ORDC. That is:
+#################################################################################
+# Section 10: PWL Data Retrieval
+#################################################################################
 
-```math
-\\sum_{k\\in\\mathcal{K}} \\delta_{k,t} = p_t \\\\
-\\sum_{k\\in\\mathcal{K}} \\delta_{k,t} <= P_{k+1,t}^{max} - P_{k,t}^{max}
-```
-"""
-function _add_pwl_constraint!(
-    container::OptimizationContainer,
-    component::T,
-    ::U,
-    break_points::Vector{Float64},
-    pwl_vars::Vector{JuMP.VariableRef},
-    period::Int,
-) where {T <: PSY.ReserveDemandCurve, U <: ServiceRequirementVariable}
-    name = PSY.get_name(component)
-    variables = get_variable(container, U(), T, name)
-    const_container = lazy_container_addition!(
-        container,
-        PiecewiseLinearBlockIncrementalOfferConstraint(),
-        T,
-        axes(variables)...;
-        meta = name,
-    )
-    add_pwl_block_offer_constraints!(
-        get_jump_model(container),
-        const_container,
-        name,
-        period,
-        variables[name, period],
-        pwl_vars,
-        break_points,
-    )
-    return
-end
-
-###############################################
-######## MarketBidCost: Fixed Curves ##########
-###############################################
-
-# Serves a similar role as _lookup_maybe_time_variant_param, but needs extra logic
 function _get_pwl_data(
     dir::OfferDirection,
     container::OptimizationContainer,
@@ -693,14 +569,14 @@ function _get_pwl_data(
         SlopeParam = _slope_param(dir)
         slope_param_arr = get_parameter_array(container, SlopeParam(), T)
         slope_param_mult = get_parameter_multiplier_array(container, SlopeParam(), T)
-        @assert size(slope_param_arr) == size(slope_param_mult)  # multiplier arrays should be 3D too
+        @assert size(slope_param_arr) == size(slope_param_mult)
         slope_cost_component =
             slope_param_arr[name, :, time] .* slope_param_mult[name, :, time]
         slope_cost_component = slope_cost_component.data
 
         BreakpointParam = _breakpoint_param(dir)
         breakpoint_param_container = get_parameter(container, BreakpointParam(), T)
-        breakpoint_param_arr = get_parameter_column_refs(breakpoint_param_container, name)  # performs component -> time series many-to-one mapping
+        breakpoint_param_arr = get_parameter_column_refs(breakpoint_param_container, name)
         breakpoint_param_mult = get_multiplier_array(breakpoint_param_container)
         @assert size(breakpoint_param_arr) == size(breakpoint_param_mult[name, :, :])
         breakpoint_cost_component =
@@ -708,7 +584,6 @@ function _get_pwl_data(
         breakpoint_cost_component = breakpoint_cost_component.data
 
         @assert_op length(slope_cost_component) == length(breakpoint_cost_component) - 1
-        # PSY's cost_function_timeseries.jl says this will always be natural units
         unit_system = PSY.UnitSystem.NATURAL_UNITS
     else
         cost_component = PSY.get_function_data(PSY.get_value_curve(cost_data))
@@ -728,9 +603,14 @@ function _get_pwl_data(
     return breakpoints, slopes
 end
 
+#################################################################################
+# Section 11: PWL Cost Terms + Variable Cost Objective (generic)
+# Load formulation overloads (AbstractControllablePowerLoadFormulation) are in POM.
+#################################################################################
+
 """
-Add PWL cost terms for data coming from the MarketBidCost
-with a fixed incremental offer curve
+Add PWL cost terms for data coming from a MarketBidCost / ImportExportCost
+with offer curves, dispatched on OfferDirection.
 """
 function add_pwl_term!(
     dir::OfferDirection,
@@ -780,68 +660,9 @@ function add_pwl_term!(
     end
 end
 
-##################################################
-########## PWL for StepwiseCostReserve  ##########
-##################################################
-
-# Not touching this in PR #1303, TODO figure it out later -GKS
-function _add_pwl_term!(
-    container::OptimizationContainer,
-    component::T,
-    cost_data::PSY.CostCurve{PSY.PiecewiseIncrementalCurve},
-    ::U,
-    ::V,
-) where {T <: PSY.Component, U <: VariableType, V <: AbstractServiceFormulation}
-    multiplier = objective_function_multiplier(U(), V())
-    resolution = get_resolution(container)
-    dt = Dates.value(Dates.Second(resolution)) / SECONDS_IN_HOUR
-    base_power = get_model_base_power(container)
-    value_curve = PSY.get_value_curve(cost_data)
-    power_units = PSY.get_power_units(cost_data)
-    cost_component = PSY.get_function_data(value_curve)
-    device_base_power = PSY.get_base_power(component)
-    data = get_piecewise_curve_per_system_unit(
-        cost_component,
-        power_units,
-        base_power,
-        device_base_power,
-    )
-    name = PSY.get_name(component)
-    time_steps = get_time_steps(container)
-    pwl_cost_expressions = Vector{JuMP.AffExpr}(undef, time_steps[end])
-    slopes = IS.get_y_coords(data)
-    break_points = PSY.get_x_coords(data)
-    for t in time_steps
-        pwl_vars = add_pwl_variables!(
-            container,
-            PiecewiseLinearBlockIncrementalOffer,
-            T,
-            name,
-            t,
-            length(slopes);
-            upper_bound = Inf,
-        )
-        _add_pwl_constraint!(container, component, U(), break_points, pwl_vars, t)
-        pwl_cost_expressions[t] = get_pwl_cost_expression(pwl_vars, slopes, multiplier * dt)
-    end
-    return pwl_cost_expressions
-end
-
-############################################################
-######## MarketBidCost: PiecewiseIncrementalCurve ##########
-############################################################
-
-# see also the 2 commented-out definitions in import_export.jl
 """
-Creates piecewise linear market bid function using a sum of variables and expression for market participants.
-Decremental offers are not accepted for most components, except Storage systems and loads.
-
-# Arguments
-
-  - container::OptimizationContainer : the optimization_container model built in InfrastructureOptimizationModels
-  - var_key::VariableKey: The variable name
-  - component_name::String: The component_name of the variable container
-  - cost_function::MarketBidCost : container for market bid cost
+Generic: incremental offers only (most device formulations).
+Decremental-only overload for load formulations is in POM.
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
@@ -866,34 +687,8 @@ function add_variable_cost_to_objective!(
     return
 end
 
-# load formulation: decremental offers only
-function add_variable_cost_to_objective!(
-    container::OptimizationContainer,
-    ::T,
-    component::PSY.Component,
-    cost_function::PSY.OfferCurveCost,
-    ::U,
-) where {T <: VariableType,
-    U <: AbstractControllablePowerLoadFormulation}
-    component_name = PSY.get_name(component)
-    @debug "Market Bid" _group = LOG_GROUP_COST_FUNCTIONS component_name
-    if !(isnothing(get_output_offer_curves(cost_function)))
-        error("Component $(component_name) is not allowed to participate as a supply.")
-    end
-    add_pwl_term!(
-        DecrementalOffer(),
-        container,
-        component,
-        cost_function,
-        T(),
-        U(),
-    )
-    return
-end
-
-# Map formulation type to offer direction for VOM cost dispatch
+# Default: most formulations use incremental offers
 _vom_offer_direction(::AbstractDeviceFormulation) = IncrementalOffer()
-_vom_offer_direction(::AbstractControllablePowerLoadFormulation) = DecrementalOffer()
 
 function _add_vom_cost_to_objective!(
     container::OptimizationContainer,
@@ -905,7 +700,6 @@ function _add_vom_cost_to_objective!(
     dir = _vom_offer_direction(U())
     cost_curves = get_offer_curves(dir, op_cost)
     if is_time_variant(cost_curves)
-        # TODO this might imply a change to the MBC struct?
         @warn "$(typeof(dir)) curves are time variant, there is no VOM cost source. Skipping VOM cost."
         return
     end

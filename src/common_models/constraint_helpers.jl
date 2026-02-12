@@ -115,10 +115,13 @@ end
 Add a pair of ramp-up and ramp-down constraints for a single (name, t).
 
     Ramp up:   current.up - previous <= limits.up * dt + slack.up + relax.up
-    Ramp down (bound_decrease=false, default):
-               current.down - previous <= limits.down * dt + slack.down + relax.down
-    Ramp down (bound_decrease=true):
+    Ramp down (bound_decrease=true, default):
                previous - current.down <= limits.down * dt + slack.down + relax.down
+    Ramp down (bound_decrease=false):
+                previous - current.down + slack.down >= - limits.down * dt - relax.down
+        equivalent to: current.down - previous <= limits.down * dt + slack.down + relax.down
+            i.e. we're actually bounding the increase not the decrease.
+            (the lower bound represents something different in the Expression case)
 
 When `bound_decrease = false` (default), the down constraint mirrors the up constraint
 direction, bounding how much power can increase from the previous value (using the down
@@ -136,7 +139,7 @@ bounding how much power can decrease.
 - `dt`: minutes per period
 - `slack`: UpDownPair of slack variables (default: (up=0.0, down=0.0))
 - `relax`: UpDownPair of relaxation terms (default: (up=0.0, down=0.0))
-- `bound_decrease`: if true, flip current/previous in down constraint (default: false)
+- `bound_decrease`: if false, flip current/previous in down constraint (default: true)
 """
 @inline function add_ramp_constraint_pair!(
     jump_model::JuMP.Model,
@@ -149,21 +152,24 @@ bounding how much power can decrease.
     dt::Number,
     slack::UpDownPair{S} = (up = 0.0, down = 0.0),
     relax::UpDownPair{R} = (up = 0.0, down = 0.0),
-    bound_decrease::Bool = false,
+    bound_decrease::Bool = true,
 ) where {C, V <: JuMPOrFloat, S <: JuMPOrFloat, R <: JuMPOrFloat}
     cons.up[name, t] = JuMP.@constraint(
         jump_model,
         current.up - previous <= limits.up * dt + slack.up + relax.up
     )
     if bound_decrease
+        # must decrease by AT MOST ramp limit
         cons.down[name, t] = JuMP.@constraint(
             jump_model,
-            previous - current.down <= limits.down * dt + slack.down + relax.down
+            previous - current.down <= limits.down * dt + relax.down + slack.down
         )
     else
+        # This reads as "must decrease by AT LEAST ramp limit," but it's correct.
+        # The lower bound represents something different in the Expression case.
         cons.down[name, t] = JuMP.@constraint(
             jump_model,
-            current.down - previous <= limits.down * dt + slack.down + relax.down
+            previous - current.down + slack.down >= -limits.down * dt - relax.down
         )
     end
     return

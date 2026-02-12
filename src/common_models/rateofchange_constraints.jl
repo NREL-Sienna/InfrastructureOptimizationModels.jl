@@ -110,14 +110,16 @@ function add_linear_ramp_constraints!(
         add_ramp_constraint_pair!(
             jump_model, cons, name, 1,
             (up = expr_up[name, 1], down = expr_dn[name, 1]),
-            ic_power, ramp_limits, minutes_per_period, slack)
+            ic_power, ramp_limits, minutes_per_period, slack, (up = 0.0, down = 0.0), false,
+        )
 
         for t in time_steps[2:end]
             slack = _get_ramp_slack_vars(container, model, name, t)
             add_ramp_constraint_pair!(
                 jump_model, cons, name, t,
                 (up = expr_up[name, t], down = expr_dn[name, t]),
-                variable[name, t - 1], ramp_limits, minutes_per_period, slack)
+                variable[name, t - 1], ramp_limits, minutes_per_period, slack,
+                (up = 0.0, down = 0.0), false)
         end
     end
     return
