@@ -5,23 +5,28 @@ Test types defined in test_utils/test_types.jl.
 """
 
 # Define sos_status for mock components - return NO_VARIABLE (no commitment tracking)
-IOM.sos_status(::Type{MockThermalGen}, ::TestPWLFormulation) =
+IOM._sos_status(::Type{MockThermalGen}, ::TestPWLFormulation) =
     IOM.SOSStatusVariable.NO_VARIABLE
 
 # Define required methods for test types (only non-default values)
 IOM.get_variable_binary(
     ::TestBinaryInterpolationVariable,
-    ::Type{<:IS.InfrastructureSystemsComponent},
+    ::Type{MockThermalGen},
     ::IOM.AbstractDeviceFormulation,
 ) = true
+IOM.get_variable_binary(
+    ::IOM.VariableType,
+    ::Type{MockThermalGen},
+    ::IOM.AbstractDeviceFormulation,
+) = false
 IOM.get_variable_upper_bound(
     ::TestInterpolationVariable,
-    ::IS.InfrastructureSystemsComponent,
+    ::MockThermalGen,
     ::IOM.AbstractDeviceFormulation,
 ) = 1.0
 IOM.get_variable_lower_bound(
     ::TestInterpolationVariable,
-    ::IS.InfrastructureSystemsComponent,
+    ::MockThermalGen,
     ::IOM.AbstractDeviceFormulation,
 ) = 0.0
 

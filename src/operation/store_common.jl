@@ -3,7 +3,7 @@
 # Note: DecisionModelIndexType and EmulationModelIndexType are defined in core/definitions.jl
 
 function write_results!(
-    store,
+    store::DecisionModelStore,
     model::OperationModel,
     index::Union{DecisionModelIndexType, EmulationModelIndexType},
     update_timestamp::Dates.DateTime;

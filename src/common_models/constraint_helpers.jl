@@ -59,13 +59,33 @@ function add_range_bound_constraint!(
     name::String,
     t::Int,
     variable::JuMPOrFloat,
-    bound::Real,
+    bound::Float64,
     binary_var::JuMPOrFloat = 1.0,
 )
     con_container[name, t] =
         _make_bound_constraint(dir, jump_model, variable, bound * binary_var)
     return
 end
+
+add_range_bound_constraint!(
+    dir::BoundDirection,
+    jump_model::JuMP.Model,
+    con_container,
+    name::String,
+    t::Int,
+    variable::JuMPOrFloat,
+    bound::Int,
+    binary_var::JuMPOrFloat = 1.0,
+) = add_range_bound_constraint!(
+    dir,
+    jump_model,
+    con_container,
+    name,
+    t,
+    variable,
+    Float64(bound),
+    binary_var,
+)
 
 """
 Add an equality constraint.

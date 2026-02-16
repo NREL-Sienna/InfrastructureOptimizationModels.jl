@@ -21,11 +21,16 @@ Stub implementation: downstream modules should implement `construct_device!` for
 """
 function construct_device!(
     ::OptimizationContainer,
-    ::SYSTEM_TYPE,
+    ::IS.ComponentContainer,
     ::M,
     model::DeviceModel{D, F},
     network_model::NetworkModel{S},
-) where {M <: ConstructStage, D <: COMP_TYPE, F <: AbstractDeviceFormulation, S}
+) where {
+    M <: ConstructStage,
+    D <: IS.InfrastructureSystemsComponent,
+    F <: AbstractDeviceFormulation,
+    S,
+}
     error(
         "construct_device! not implemented for device type $D with formulation $F " *
         "at $(_to_string(M)). Implement this method to add variables and expressions.",
@@ -35,7 +40,7 @@ end
 # for some reason this one doesn't print the stage name.
 function construct_service!(
     ::OptimizationContainer,
-    ::SYSTEM_TYPE,
+    ::IS.ComponentContainer,
     ::ConstructStage,
     model::ServiceModel{S, F},
     devices_template::Dict{Symbol, DeviceModel},
@@ -61,9 +66,14 @@ function add_to_objective_function!(
     ::Union{Vector{U}, IS.FlattenIteratorWrapper{U}},
     ::DeviceModel{U, F},
     ::Type{S},
-) where {U <: COMP_TYPE, F <: AbstractDeviceFormulation, S}
-    # Default: no objective contribution
-    # Override this method to add device-specific objective terms
+) where {
+    U <: IS.InfrastructureSystemsComponent,
+    F <: AbstractDeviceFormulation,
+    S <: AbstractPowerModel,
+}
+    error(
+        "add_to_objective_function! not implemented for device type $U with formulation $F and power model $S.",
+    )
     return
 end
 
@@ -76,7 +86,12 @@ function add_constraints!(
     devices::Union{Vector{U}, IS.FlattenIteratorWrapper{U}},
     model::DeviceModel{U, F},
     network_model::NetworkModel{S},
-) where {T <: ConstraintType, U <: COMP_TYPE, F <: AbstractDeviceFormulation, S}
+) where {
+    T <: ConstraintType,
+    U <: IS.InfrastructureSystemsComponent,
+    F <: AbstractDeviceFormulation,
+    S,
+}
     error(
         "add_constraints! not implemented for constraint type $T, " *
         "device type $U with formulation $F. Implement this method to add constraints.",
@@ -87,20 +102,19 @@ end
 Extension point: Add parameters to the optimization container.
 Concrete implementations are in PowerOperationsModels.
 """
-function add_parameters! end
-
-"""
-Add variable cost to the objective function. Stub implementation.
-"""
-function add_variable_cost!(
+function add_parameters!(
     ::OptimizationContainer,
-    ::T,
-    devices::Union{Vector{U}, IS.FlattenIteratorWrapper{U}},
-    ::F,
-) where {T <: VariableType, U <: COMP_TYPE, F <: AbstractDeviceFormulation}
-    # Default: no cost
-    # Override this method to add device-specific variable costs
-    return
+    ::Type{T},
+    devices::U,
+    model::DeviceModel{D, W},
+) where {
+    T <: ParameterType,
+    U <: Union{Vector{D}, IS.FlattenIteratorWrapper{D}},
+    W <: AbstractDeviceFormulation,
+} where {D <: IS.InfrastructureSystemsComponent}
+    error(
+        "add_parameters! not implemented for parameter type $T, device type $D with formulation $W. Implement this method in PowerOperationsModels.",
+    )
 end
 
 ###############################
@@ -113,17 +127,11 @@ end
 Get the multiplier for a variable type when adding to an expression.
 Default implementation returns 1.0. Override for specific variable/device/formulation combinations.
 """
-function get_variable_multiplier(
-    ::V,
-    ::Type{D},
-    ::F,
-) where {
-    V <: VariableType,
-    D <: IS.InfrastructureSystemsComponent,
-    F <: AbstractDeviceFormulation,
-}
-    return 1.0
-end
+get_variable_multiplier(
+    ::VariableType,
+    ::Type{<:IS.InfrastructureSystemsComponent},
+    ::AbstractDeviceFormulation,
+) = 1.0
 
 # Expression multipliers: error by default.
 """
@@ -137,7 +145,7 @@ function get_expression_multiplier(
 ) where {
     P <: ParameterType,
     T <: ExpressionType,
-    D <: COMP_TYPE,
+    D <: IS.InfrastructureSystemsComponent,
     F <: AbstractDeviceFormulation,
 }
     error(
@@ -154,9 +162,13 @@ This scales the time series values for each device.
 """
 function get_multiplier_value(
     ::T,
-    d::U,
+    ::U,
     ::F,
-) where {T <: TimeSeriesParameter, U <: COMP_TYPE, F <: AbstractDeviceFormulation}
+) where {
+    T <: TimeSeriesParameter,
+    U <: IS.InfrastructureSystemsComponent,
+    F <: AbstractDeviceFormulation,
+}
     return 1.0  # Default: no scaling
 end
 
@@ -167,7 +179,11 @@ function get_multiplier_value(
     ::P,
     ::D,
     ::F,
-) where {P <: ParameterType, D <: COMP_TYPE, F <: AbstractDeviceFormulation}
+) where {
+    P <: ParameterType,
+    D <: IS.InfrastructureSystemsComponent,
+    F <: AbstractDeviceFormulation,
+}
     error(
         "get_multiplier_value not implemented for parameter $P, device $D, formulation $F. " *
         "Implement this method in PowerOperationsModels.",
@@ -181,7 +197,7 @@ Extension point: Get default attributes for a device formulation.
 function get_default_attributes(
     ::Type{U},
     ::Type{F},
-) where {U <: COMP_TYPE, F <: AbstractDeviceFormulation}
+) where {U <: IS.InfrastructureSystemsComponent, F <: AbstractDeviceFormulation}
     return Dict{String, Any}()
 end
 
@@ -191,7 +207,7 @@ Extension point: Get default time series names for a device formulation.
 function get_default_time_series_names(
     ::Type{U},
     ::Type{F},
-) where {U <: COMP_TYPE, F <: AbstractDeviceFormulation}
+) where {U <: IS.InfrastructureSystemsComponent, F <: AbstractDeviceFormulation}
     return Dict{Type{<:ParameterType}, String}()
 end
 
@@ -205,56 +221,38 @@ function get_variable_binary(
     ::F,
 ) where {
     T <: VariableType,
-    U <: COMP_TYPE,
+    U <: IS.InfrastructureSystemsComponent,
     F <: Union{AbstractDeviceFormulation, AbstractServiceFormulation},
 }
-    return false
+    error("`get_variable_binary` not implemented for $T and $U (with formulation $F).")
 end
 
 """
 Extension point: Get variable lower bound.
 """
-function get_variable_lower_bound(
-    ::T,
-    d::U,
-    ::F,
-) where {
-    T <: VariableType,
-    U <: COMP_TYPE,
-    F <: Union{AbstractDeviceFormulation, AbstractServiceFormulation},
-}
-    return nothing
-end
+get_variable_lower_bound(
+    ::VariableType,
+    ::IS.InfrastructureSystemsComponent,
+    ::Union{AbstractDeviceFormulation, AbstractServiceFormulation},
+) = nothing
 
 """
 Extension point: Get variable upper bound.
 """
-function get_variable_upper_bound(
-    ::T,
-    d::U,
-    ::F,
-) where {
-    T <: VariableType,
-    U <: COMP_TYPE,
-    F <: Union{AbstractDeviceFormulation, AbstractServiceFormulation},
-}
-    return nothing
-end
+get_variable_upper_bound(
+    ::VariableType,
+    ::IS.InfrastructureSystemsComponent,
+    ::Union{AbstractDeviceFormulation, AbstractServiceFormulation},
+) = nothing
 
 """
 Extension point: Get variable warm start value.
 """
-function get_variable_warm_start_value(
-    ::T,
-    d::U,
-    ::F,
-) where {
-    T <: VariableType,
-    U <: COMP_TYPE,
-    F <: Union{AbstractDeviceFormulation, AbstractServiceFormulation},
-}
-    return nothing
-end
+get_variable_warm_start_value(
+    ::VariableType,
+    ::IS.InfrastructureSystemsComponent,
+    ::Union{AbstractDeviceFormulation, AbstractServiceFormulation},
+) = nothing
 
 ###############################
 ###### Proportional Cost ######
@@ -265,12 +263,19 @@ Extension point: Get proportional cost term from operation cost data.
 Non-time-varying signature - returns a single cost value for all time steps.
 """
 function proportional_cost(
-    op_cost,
-    ::VariableType,
-    d::COMP_TYPE,
-    ::AbstractDeviceFormulation,
-)
-    return 0.0
+    ::O,
+    ::V,
+    ::C,
+    ::F,
+) where {
+    O <: PSY.OperationalCost,
+    V <: VariableType,
+    C <: IS.InfrastructureSystemsComponent,
+    F <: AbstractDeviceFormulation,
+}
+    error(
+        "proportional cost not implemented for non-time-varying case for cost type $O, variable type $V, component type $C, formulation $F.",
+    )
 end
 
 """
@@ -279,37 +284,42 @@ Time-varying signature - may return different values per time step.
 """
 function proportional_cost(
     ::OptimizationContainer,
-    op_cost,
-    ::VariableType,
-    d::IS.InfrastructureSystemsComponent,
-    ::AbstractDeviceFormulation,
+    ::O,
+    ::V,
+    ::C,
+    ::F,
     ::Int,
-)
-    return 0.0
+) where {
+    O <: PSY.OperationalCost,
+    V <: VariableType,
+    C <: IS.InfrastructureSystemsComponent,
+    F <: AbstractDeviceFormulation,
+}
+    error(
+        "proportional cost not implemented for time-varying case for cost type $O, variable type $V, component type $C, formulation $F.",
+    )
 end
 
 """
 Extension point: Check if proportional cost term is time-variant.
 Returns true if the cost should be added to the variant objective expression.
 """
-function is_time_variant_term(
+is_time_variant_term(
     ::OptimizationContainer,
-    op_cost,
+    ::PSY.OperationalCost,
     ::VariableType,
     ::Type{<:IS.InfrastructureSystemsComponent},
     ::AbstractDeviceFormulation,
     ::Int,
-)
-    return false
-end
+) = false
 
-# stub so we can have operation cost in mock components
-get_operation_cost(::IS.InfrastructureSystemsComponent) = nothing
+# corresponds to get_must_run for thermals, but avoiding device specific code here.
+"""
+Extension point: whether to skip adding proportional cost for a given device.
 
-# stub for must_run check - device-specific implementations in POM
-get_must_run(::IS.InfrastructureSystemsComponent) = false
-
-sos_status(::Any, ::AbstractServiceFormulation) = SOSStatusVariable.NO_VARIABLE
+For thermals, equivalent to `get_must_run`, but that implementation belongs in POM.
+"""
+skip_proportional_cost(d::IS.InfrastructureSystemsComponent) = false
 
 ###############################
 ###### Start-up Cost ##########
@@ -319,12 +329,21 @@ sos_status(::Any, ::AbstractServiceFormulation) = SOSStatusVariable.NO_VARIABLE
 Extension point: Convert raw startup cost to a scalar value.
 Device-specific implementations (e.g., for StartUpStages, MultiStartVariable) are in POM.
 """
-start_up_cost(
-    cost,
-    ::Type{<:IS.InfrastructureSystemsComponent},
-    ::VariableType,
-    ::AbstractDeviceFormulation,
-) = cost
+function start_up_cost(
+    cost::Any, # could be NamedTuple, StartUpStages, AffExpr, or Float. 
+    ::Type{T},
+    ::V,
+    ::F,
+) where {
+    T <: IS.InfrastructureSystemsComponent,
+    V <: VariableType,
+    F <: AbstractDeviceFormulation,
+}
+    error(
+        "start_up_cost not implemented for cost type $(typeof(cost)), device type $T, " *
+        "variable type $V, formulation $F.",
+    )
+end
 
 ###############################
 ###### Build-pipeline ext #####
@@ -334,19 +353,44 @@ start_up_cost(
 Extension point: Construct all services for a given build stage.
 Called from `build_impl!`. Concrete implementations in PowerOperationsModels.
 """
-function construct_services! end
+function construct_services!(
+    ::OptimizationContainer,
+    ::IS.ComponentContainer,
+    ::ConstructStage,
+    ::ServicesModelContainer,
+    ::DevicesModelContainer,
+    ::NetworkModel{T},
+) where {T <: AbstractPowerModel}
+    error("construct_services! not implemented for network model with power model $T.")
+end
 
 """
 Extension point: Construct the network model for a given build stage.
 Called from `build_impl!`. Concrete implementations in PowerOperationsModels.
 """
-function construct_network! end
+function construct_network!(
+    ::OptimizationContainer,
+    ::NetworkModel{T},
+    ::ProblemTemplate,
+) where {T <: AbstractPowerModel}
+    error("construct_network! not implemented for network model with power model $T.")
+end
 
 """
 Extension point: Construct the HVDC network model.
 Called from `build_impl!`. Concrete implementations in PowerOperationsModels.
 """
-function construct_hvdc_network! end
+function construct_hvdc_network!(
+    ::OptimizationContainer,
+    ::IS.ComponentContainer,
+    ::NetworkModel{T},
+    ::H,
+    ::ProblemTemplate,
+) where {T <: AbstractPowerModel, H <: AbstractHVDCNetworkModel}
+    error(
+        "construct_hvdc_network! not implemented for network model with power model $T and HVDC model $H.",
+    )
+end
 
 """
 Extension point: Add power flow evaluation data to the container.
@@ -354,10 +398,14 @@ Default: no-op (handles the common case of no power flow evaluators).
 """
 function add_power_flow_data!(
     ::OptimizationContainer,
-    ::Vector{<:AbstractPowerFlowEvaluationModel},
-    ::PSY.System,
+    evaluators::Vector{<:AbstractPowerFlowEvaluationModel},
+    ::IS.ComponentContainer,
 )
-    return
+    if !isempty(evaluators)
+        error(
+            "Power flow in-the-loop with the new IOM-POM-PSI split isn't working yet.",
+        )
+    end
 end
 
 """
@@ -388,28 +436,18 @@ get_min_max_limits(
 ) = nothing
 
 """
-Extension point: Write optimization results to the store.
-Concrete implementations in PSI (simulation layer).
-"""
-function write_results! end
-
-"""
 Extension point: variable cost.
+
+The one exception where it isn't just `get_variable(cost)`: storage devices, where we 
+need to map `ActivePower{In/Out}` to {charge/discharge} variable cost.
 """
 function variable_cost(
     cost::PSY.OperationalCost,
-    ::V,
-    ::Type{C},
-    ::F,
-) where {
-    V <: VariableType,
-    C <: IS.InfrastructureSystemsComponent,
-    F <: AbstractDeviceFormulation,
-}
-    error(
-        "Unimplemented function: couldn't handle operation cost of type $(typeof(cost)) " *
-        " on $C component with variable $V and formulation $F.",
-    )
+    ::VariableType,
+    ::Type{<:IS.InfrastructureSystemsComponent},
+    ::AbstractDeviceFormulation,
+)
+    return PSY.get_variable(cost)
 end
 
 variable_cost(
@@ -419,19 +457,17 @@ variable_cost(
     ::AbstractDeviceFormulation,
 ) = 0.0
 
-function get_initial_conditions_device_model(
-    model::OperationModel,
-    device_model::DeviceModel,
-)
-    error(
-        "get_initial_conditions_device_model not implemented for model type $(typeof(model)) and device model type $(typeof(device_model)). Implement this method in PowerOperationsModels.",
-    )
-end
+get_initial_conditions_device_model(
+    ::OperationModel,
+    model::DeviceModel{T, FixedOutput},
+) where {T <: PSY.Device} = model
 
 """
 Extension point: get the initial condition type for a given constraint, device, and formulation.
-Concrete implementations in POM.
+Concrete implementations in POM. Used for ramp constraints.
 """
-function _get_initial_condition_type(X, Y, Z)
-    error("`_get_initial_condition_type` must be implemented for $X, $Y and $Z")
-end
+_get_initial_condition_type(
+    X::Type{<:ConstraintType},
+    Y::Type{<:PSY.Component},
+    Z::Type{<:AbstractDeviceFormulation},
+) = error("`_get_initial_condition_type` not implemented for $X , $Y and $Z")

@@ -19,7 +19,7 @@ InfrastructureOptimizationModels.objective_function_multiplier(
     ::TestPWLFormulation,
 ) = 1.0
 
-InfrastructureOptimizationModels.sos_status(
+InfrastructureOptimizationModels._sos_status(
     ::Type{MockThermalGen},
     ::TestPWLFormulation,
 ) = IOM.SOSStatusVariable.NO_VARIABLE

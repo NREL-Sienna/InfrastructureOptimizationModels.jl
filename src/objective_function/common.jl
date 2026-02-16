@@ -36,7 +36,11 @@ function add_variable_cost!(
     ::U,
     devices::IS.FlattenIteratorWrapper{T},
     ::V,
-) where {T <: PSY.Component, U <: VariableType, V <: AbstractDeviceFormulation}
+) where {
+    T <: IS.InfrastructureSystemsComponent,
+    U <: VariableType,
+    V <: AbstractDeviceFormulation,
+}
     for d in devices
         op_cost_data = PSY.get_operation_cost(d)
         add_variable_cost_to_objective!(container, U(), d, op_cost_data, V())
@@ -69,8 +73,7 @@ function _add_vom_cost_to_objective!(
 end
 
 # FIXME move, thin wrapper around add_variable_cost_to_objective!.
-# variable_cost here is most complex for storage, where we need to map
-# ActivePower{In/Out} to {charge/discharge} variable cost
+
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,

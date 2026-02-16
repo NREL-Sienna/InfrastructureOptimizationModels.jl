@@ -5,7 +5,7 @@ Requires PowerSystems types (PSY.ThermalStandard, PSY.ThermalGenerationCost).
 Test types defined in test_utils/test_types.jl.
 """
 
-IOM.sos_status(::Any, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
+IOM._sos_status(::Type, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
 
 # Formulation already defined in mock_components.jl: TestDeviceFormulation
 

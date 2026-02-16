@@ -11,10 +11,7 @@ abstract type InterpolationVariableType <: SparseVariableType end
 abstract type BinaryInterpolationVariableType <: SparseVariableType end
 
 #################################################################################
-# Simulation Information Type
-# Stores metadata about the simulation context for operation models
-# Can be extended in PowerSimulations with additional fields as needed
-# SimulationInfo is defined in core/simulation_info.jl
+# SimulationInfo is defined in IS.Simulation and imported in the main module
 
 #################################################################################
 # Type Alias for long type signatures
@@ -28,6 +25,8 @@ const InOut = NamedTuple{(:in, :out), NTuple{2, Float64}}
 abstract type OfferDirection end
 struct IncrementalOffer <: OfferDirection end
 struct DecrementalOffer <: OfferDirection end
+Base.string(::IncrementalOffer) = "incremental"
+Base.string(::DecrementalOffer) = "decremental"
 
 # Type alias for decision model indices - used for indexing into result stores
 const DecisionModelIndexType = Dates.DateTime
@@ -186,4 +185,3 @@ Base.convert(::Type{RunStatus}, val::String) = get_enum_value(RunStatus, val)
 Base.convert(::Type{SOSStatusVariable}, x::String) = get_enum_value(SOSStatusVariable, x)
 
 const SYSTEM_TYPE = IS.ComponentContainer
-const COMP_TYPE = IS.InfrastructureSystemsComponent

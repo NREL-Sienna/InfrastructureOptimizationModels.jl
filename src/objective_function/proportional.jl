@@ -42,13 +42,6 @@ function add_proportional_cost!(
     return
 end
 
-# corresponds to get_must_run for thermals, but avoiding device specific code here.
-"""
-Extension point: whether to skip adding proportional cost for a given device.
-For thermals, equivalent to `get_must_run`, but that implementation belongs in POM.
-"""
-skip_proportional_cost(d::IS.InfrastructureSystemsComponent) = false
-
 """
 Common basis for maybe time variant proportional costs for devices that might have must-run behavior.
 Currently used for `(ThermalGen, AbstractThermal)` and `(ControllableLoad, PowerLoadInterruption)`

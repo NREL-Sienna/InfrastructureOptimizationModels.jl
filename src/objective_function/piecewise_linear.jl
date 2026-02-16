@@ -26,6 +26,13 @@ Normalization constraint for PWL cost: sum of delta variables equals on-status.
 """
 struct PiecewiseLinearCostNormalizationConstraint <: ConstraintType end
 
+# mildly device-specific, but a single line of code. (Really dispatching on formulation here:
+# device is just for safety. Shouldn't have non-thermal with thermal formulation.)
+_sos_status(::Type{<:IS.InfrastructureSystemsComponent}, ::AbstractDeviceFormulation) =
+    SOSStatusVariable.NO_VARIABLE
+_sos_status(::Type{<:PSY.ThermalGen}, ::AbstractThermalUnitCommitment) =
+    SOSStatusVariable.VARIABLE
+
 function _get_sos_value(
     container::OptimizationContainer,
     ::Type{V},
@@ -34,18 +41,16 @@ function _get_sos_value(
     if has_container_key(container, OnStatusParameter, T)
         sos_val = SOSStatusVariable.PARAMETER
     else
-        sos_val = sos_status(T, V())
+        sos_val = _sos_status(T, V())
     end
     return sos_val
 end
 
-function _get_sos_value(
-    container::OptimizationContainer,
-    ::Type{V},
-    component::T,
-) where {T <: IS.InfrastructureSystemsComponent, V <: AbstractServiceFormulation}
-    return SOSStatusVariable.NO_VARIABLE
-end
+_get_sos_value(
+    ::OptimizationContainer,
+    ::Type{<:IS.InfrastructureSystemsComponent},
+    ::AbstractServiceFormulation,
+) = SOSStatusVariable.NO_VARIABLE
 
 ##################################################
 ################# PWL Variables ##################
@@ -410,10 +415,14 @@ Creates piecewise linear cost function using a sum of variables and expression w
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
-    component::IS.InfrastructureSystemsComponent,
+    component::C,
     cost_function::IS.CostCurve{IS.PiecewisePointCurve},
     ::U,
-) where {T <: VariableType, U <: AbstractDeviceFormulation}
+) where {
+    T <: VariableType,
+    C <: IS.InfrastructureSystemsComponent,
+    U <: AbstractDeviceFormulation,
+}
     component_name = get_name(component)
     @debug "PWL Variable Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     # If array is full of tuples with zeros return 0.0
@@ -431,7 +440,7 @@ function add_variable_cost_to_objective!(
             container,
             ProductionCostExpression,
             pwl_cost_expressions[t],
-            typeof(component),
+            C,
             component_name,
             t,
         )

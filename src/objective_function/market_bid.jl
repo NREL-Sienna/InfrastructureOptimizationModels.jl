@@ -12,56 +12,49 @@
 # Map MarketBidCost / ImportExportCost to a unified interface.
 #################################################################################
 
-get_output_offer_curves(cost::PSY.ImportExportCost, args...; kwargs...) =
-    PSY.get_import_offer_curves(cost, args...; kwargs...)
-get_output_offer_curves(cost::PSY.MarketBidCost, args...; kwargs...) =
-    PSY.get_incremental_offer_curves(cost, args...; kwargs...)
-get_input_offer_curves(cost::PSY.ImportExportCost, args...; kwargs...) =
-    PSY.get_export_offer_curves(cost, args...; kwargs...)
-get_input_offer_curves(cost::PSY.MarketBidCost, args...; kwargs...) =
-    PSY.get_decremental_offer_curves(cost, args...; kwargs...)
+####################### get_{output/input}_offer_curves #########################
+# these 1-argument getters turn into straight getfield calls
+get_output_offer_curves(cost::PSY.ImportExportCost) = PSY.get_import_offer_curves(cost)
+get_output_offer_curves(cost::PSY.MarketBidCost) = PSY.get_incremental_offer_curves(cost)
+get_input_offer_curves(cost::PSY.ImportExportCost) = PSY.get_export_offer_curves(cost)
+get_input_offer_curves(cost::PSY.MarketBidCost) = PSY.get_decremental_offer_curves(cost)
 
+# these 2-argument getters return either a TimeArray of curves or a single curve, 
+# depending on whether the cost is time varying or not.
 get_output_offer_curves(
     component::PSY.Component,
-    cost::PSY.ImportExportCost,
-    args...;
+    cost::PSY.ImportExportCost;
     kwargs...,
-) =
-    PSY.get_import_offer_curves(component, cost, args...; kwargs...)
+) = PSY.get_import_offer_curves(component, cost; kwargs...)
 get_output_offer_curves(
     component::PSY.Component,
-    cost::PSY.MarketBidCost,
-    args...;
+    cost::PSY.MarketBidCost;
     kwargs...,
-) =
-    PSY.get_incremental_offer_curves(component, cost, args...; kwargs...)
+) = PSY.get_incremental_offer_curves(component, cost; kwargs...)
 get_input_offer_curves(
     component::PSY.Component,
-    cost::PSY.ImportExportCost,
-    args...;
+    cost::PSY.ImportExportCost;
     kwargs...,
-) =
-    PSY.get_export_offer_curves(component, cost, args...; kwargs...)
+) = PSY.get_export_offer_curves(component, cost; kwargs...)
 get_input_offer_curves(
     component::PSY.Component,
-    cost::PSY.MarketBidCost,
-    args...;
+    cost::PSY.MarketBidCost;
     kwargs...,
-) =
-    PSY.get_decremental_offer_curves(component, cost, args...; kwargs...)
+) = PSY.get_decremental_offer_curves(component, cost; kwargs...)
 
-# OfferDirection-based accessors
+######################### get_offer_curves(direction, ...) ##############################
+
+# direction and device:
+get_offer_curves(::DecrementalOffer, device::PSY.StaticInjection) =
+    get_input_offer_curves(PSY.get_operation_cost(device))
+get_offer_curves(::IncrementalOffer, device::PSY.StaticInjection) =
+    get_output_offer_curves(PSY.get_operation_cost(device))
 get_initial_input(::DecrementalOffer, device::PSY.StaticInjection) =
     PSY.get_decremental_initial_input(PSY.get_operation_cost(device))
 get_initial_input(::IncrementalOffer, device::PSY.StaticInjection) =
     PSY.get_incremental_initial_input(PSY.get_operation_cost(device))
 
-get_offer_curves(::DecrementalOffer, device::PSY.StaticInjection) =
-    get_input_offer_curves(PSY.get_operation_cost(device))
-get_offer_curves(::IncrementalOffer, device::PSY.StaticInjection) =
-    get_output_offer_curves(PSY.get_operation_cost(device))
-
-# Overloads that accept cost object directly (used by VOM cost path)
+# direction and cost curve (needed for VOM code path):
 get_offer_curves(::DecrementalOffer, op_cost::PSY.OfferCurveCost) =
     get_input_offer_curves(op_cost)
 get_offer_curves(::IncrementalOffer, op_cost::PSY.OfferCurveCost) =
@@ -210,10 +203,10 @@ function validate_initial_input_time_series(
     initial_input = get_initial_input(dir, device)
     initial_is_ts = is_time_variant(initial_input)
     variable_is_ts = is_time_variant(get_offer_curves(dir, device))
-    label = dir isa DecrementalOffer ? "decremental" : "incremental"
+    label = string(dir)
 
     (initial_is_ts && !variable_is_ts) &&
-        @warn "In `MarketBidCost` for $(get_name(device)), found time series for `$(label)_initial_input` but non-time-series `$(label)_offer_curves`; will ignore `initial_input` of `$(label)_offer_curves"
+        @warn "In `MarketBidCost` for $(get_name(device)), found time series for `$(label)_initial_input` but non-time-series `$(label)_offer_curves`; will ignore `initial_input` of `$(label)_offer_curves`"
     (variable_is_ts && !initial_is_ts) &&
         throw(
             ArgumentError(
@@ -223,14 +216,19 @@ function validate_initial_input_time_series(
 
     if !variable_is_ts && !initial_is_ts
         _validate_eltype(
-            Union{Float64, Nothing}, device, initial_input, " initial_input",
+            Union{Float64, Nothing}, device, initial_input, " $(label)_initial_input",
         )
     else
         _validate_eltype(
-            Float64, device, initial_input, " initial_input",
+            Float64, device, initial_input, " $(label)_initial_input",
         )
     end
 end
+
+curvity_check(::IncrementalOffer, x) = PSY.is_convex(x)
+curvity_check(::DecrementalOffer, x) = PSY.is_concave(x)
+expected_curvity(::IncrementalOffer) = "convex"
+expected_curvity(::DecrementalOffer) = "concave"
 
 function validate_occ_breakpoints_slopes(device::PSY.StaticInjection, dir::OfferDirection)
     offer_curves = get_offer_curves(dir, device)
@@ -243,23 +241,14 @@ function validate_occ_breakpoints_slopes(device::PSY.StaticInjection, dir::Offer
     end
     p1 = nothing
     apply_maybe_across_time_series(device, offer_curves) do x
-        curve_type = dir isa DecrementalOffer ? "decremental" : "incremental"
-        _validate_eltype(expected_type, device, x, " $curve_type offer curves")
-        if dir isa DecrementalOffer
-            PSY.is_concave(x) ||
-                throw(
-                    ArgumentError(
-                        "Decremental $(nameof(typeof(PSY.get_operation_cost(device)))) for component $(device_name) is non-concave",
-                    ),
-                )
-        else
-            PSY.is_convex(x) ||
-                throw(
-                    ArgumentError(
-                        "Incremental $(nameof(typeof(PSY.get_operation_cost(device)))) for component $(device_name) is non-convex",
-                    ),
-                )
-        end
+        _validate_eltype(expected_type, device, x, " $(string(dir)) offer curves")
+        cost_curve_name = nameof(typeof(PSY.get_operation_cost(device)))
+        curvity_check(dir, x) ||
+            throw(
+                ArgumentError(
+                    "$(uppercasefirst(string(dir))) $cost_curve_name for component $(device_name) is non-$(expected_curvity(dir))",
+                ),
+            )
 
         p1 = _validate_occ_subtype(
             PSY.get_operation_cost(device),

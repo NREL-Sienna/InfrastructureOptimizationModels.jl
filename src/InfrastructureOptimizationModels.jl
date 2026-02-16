@@ -23,8 +23,16 @@ import InfrastructureSystems:
     get_value_curve, get_power_units, get_function_data, get_proportional_term,
     get_quadratic_term, get_fuel_cost
 
+import InfrastructureSystems.Simulation:
+    SimulationInfo,
+    get_number,
+    set_number!,
+    get_sequence_uuid,
+    set_sequence_uuid!,
+    get_run_status,
+    set_run_status!
+
 # IS.Optimization imports: base types that remain in InfrastructureSystems
-# Note: ModelBuildStatus is aliased in definitions.jl, so don't import it directly
 # TODO: some of these are device specific enough to belong in POM.
 import InfrastructureSystems.Optimization:
     AbstractOptimizationContainer,
@@ -541,7 +549,7 @@ export get_resolution
 # Core optimization types must come first
 include("core/optimization_container_types.jl")       # Abstract types (VariableType, etc.)
 include("core/definitions.jl")                        # Aliases and enums (needs VariableType)
-include("core/simulation_info.jl")                    # SimulationInfo (needs RunStatus from definitions)
+# SimulationInfo is defined in IS.Simulation
 include("core/optimization_container_keys.jl")        # Keys depend on types
 include("core/parameter_container.jl")                # Parameter container infrastructure
 include("core/abstract_model_store.jl")               # Store depends on keys
