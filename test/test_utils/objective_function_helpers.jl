@@ -100,26 +100,6 @@ function add_test_parameter!(
 end
 
 """
-Create an OptimizationContainer configured for testing.
-Returns container with time_steps already set.
-"""
-function setup_test_container(
-    time_steps::UnitRange{Int};
-    base_power = 100.0,
-    resolution = Dates.Hour(1),
-)
-    sys = MockSystem(base_power)
-    settings = PSI.Settings(
-        sys;
-        horizon = Dates.Hour(length(time_steps)),
-        resolution = resolution,
-    )
-    container = PSI.OptimizationContainer(sys, settings, JuMP.Model(), IS.Deterministic)
-    PSI.set_time_steps!(container, time_steps)
-    return container
-end
-
-"""
 Get the coefficient of a variable in the objective function's invariant terms.
 Returns 0.0 if the variable is not present.
 """

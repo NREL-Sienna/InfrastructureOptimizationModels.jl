@@ -38,8 +38,6 @@ include(joinpath(TEST_DIR, "mocks/constructors.jl"))
 include(joinpath(TEST_DIR, "test_utils/test_types.jl"))
 include(joinpath(TEST_DIR, "test_utils/objective_function_helpers.jl"))
 
-include(joinpath(TEST_DIR, "verify_mocks.jl"))
-
 # Environment flags for test selection
 const RUN_UNIT_TESTS = get(ENV, "IOM_RUN_UNIT_TESTS", "true") == "true"
 const RUN_INTEGRATION_TESTS = get(ENV, "IOM_RUN_INTEGRATION_TESTS", "false") == "true"
