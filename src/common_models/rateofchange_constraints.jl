@@ -110,7 +110,7 @@ function add_linear_ramp_constraints!(
         add_ramp_constraint_pair!(
             jump_model, cons, name, 1,
             (up = expr_up[name, 1], down = expr_dn[name, 1]),
-            ic_power, ramp_limits, minutes_per_period, slack, (up = 0.0, down = 0.0), false,
+            ic_power, ramp_limits, minutes_per_period, slack, false,
         )
 
         for t in time_steps[2:end]
@@ -119,7 +119,7 @@ function add_linear_ramp_constraints!(
                 jump_model, cons, name, t,
                 (up = expr_up[name, t], down = expr_dn[name, t]),
                 variable[name, t - 1], ramp_limits, minutes_per_period, slack,
-                (up = 0.0, down = 0.0), false)
+                false)
         end
     end
     return
@@ -227,11 +227,11 @@ function add_linear_ramp_constraints!(
         ycur = on_status[name, 1]
         slack = _get_ramp_slack_vars(container, model, name, 1)
         big_m = power_limits.max * (1 - ycur)
-        relax = (up = big_m, down = big_m)
+        startstop = (up = big_m, down = big_m)
         cur = (up = variable[name, 1], down = variable[name, 1])
-        add_ramp_constraint_pair!(
+        add_ramp_constraint_startstop_pair!(
             jump_model, cons, name, 1,
-            cur, ic_power, ramp_limits, minutes_per_period, slack, relax)
+            cur, ic_power, ramp_limits, minutes_per_period, startstop, slack)
 
         # --- t ≥ 2: gate by previous status y_{t-1}
         for t in time_steps[2:end]
@@ -239,11 +239,12 @@ function add_linear_ramp_constraints!(
             ycur = on_status[name, t]       # 0/1 fixed from UC
             slack = _get_ramp_slack_vars(container, model, name, t)
             big_m = power_limits.max * (2 - yprev - ycur)
-            relax = (up = big_m, down = big_m)
+            startstop = (up = big_m, down = big_m)
             cur = (up = variable[name, t], down = variable[name, t])
-            add_ramp_constraint_pair!(
+            add_ramp_constraint_startstop_pair!(
                 jump_model, cons, name, t,
-                cur, variable[name, t - 1], ramp_limits, minutes_per_period, slack, relax)
+                cur, variable[name, t - 1], ramp_limits, minutes_per_period, startstop,
+                slack)
         end
     end
 
@@ -317,16 +318,18 @@ function add_semicontinuous_ramp_constraints!(
             prev = t == 1 ? ic_power : variable[name, t - 1]
             cur = (up = expr_up[name, t], down = expr_dn[name, t])
             if must_run
-                relax = (up = 0.0, down = 0.0)
+                add_ramp_constraint_pair!(
+                    jump_model, cons, name, t,
+                    cur, prev, ramp_limits, minutes_per_period, slack)
             else
-                relax = (
+                startstop = (
                     up = power_limits.min * varstart[name, t],
                     down = power_limits.min * varstop[name, t],
                 )
+                add_ramp_constraint_startstop_pair!(
+                    jump_model, cons, name, t,
+                    cur, prev, ramp_limits, minutes_per_period, startstop, slack)
             end
-            add_ramp_constraint_pair!(
-                jump_model, cons, name, t,
-                cur, prev, ramp_limits, minutes_per_period, slack, relax)
         end
     end
     return
