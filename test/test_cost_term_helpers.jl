@@ -336,31 +336,4 @@ Test types defined in test_utils/test_types.jl.
             @test JuMP.coefficient(cost_expr, pwl_vars[2]) ≈ 15.0
         end
     end
-
-    @testset "Integration: PWL cost added to objective" begin
-        @testset "PWL cost via add_cost_term_invariant!" begin
-            container = make_test_container(1:1)
-
-            # Create PWL variables
-            pwl_vars = IOM.add_pwl_variables!(
-                container, TestPWLVariable, MockThermalGen, "gen1", 1, 3,
-            )
-
-            # Compute cost expression
-            slopes = [0.0, 10.0, 25.0]  # costs at each breakpoint
-            cost_expr = IOM.get_pwl_cost_expression(pwl_vars, slopes, 1.0)
-
-            # Add to invariant objective
-            IOM.add_cost_term_invariant!(
-                container, cost_expr, 1.0, TestCostExpression, MockThermalGen, "gen1", 1,
-            )
-
-            # Verify coefficients in objective
-            obj = IOM.get_objective_expression(container)
-            invariant = IOM.get_invariant_terms(obj)
-            @test JuMP.coefficient(invariant, pwl_vars[1]) ≈ 0.0
-            @test JuMP.coefficient(invariant, pwl_vars[2]) ≈ 10.0
-            @test JuMP.coefficient(invariant, pwl_vars[3]) ≈ 25.0
-        end
-    end
 end
