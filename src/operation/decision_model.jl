@@ -86,7 +86,7 @@ function DecisionModel{M}(
         template_,
         sys,
         internal,
-        nothing,  # No simulation context for standalone DecisionModel
+        SimulationInfo(),
         DecisionModelStore(),
         Dict{String, Any}(),
     )

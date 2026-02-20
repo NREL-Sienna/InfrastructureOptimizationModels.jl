@@ -58,66 +58,24 @@ function setup_container_with_variables(
 end
 
 @testset "Linear Curve Objective Functions" begin
-    @testset "add_cost_term_invariant! adds to invariant objective" begin
-        time_steps = 1:3
-        device = make_mock_thermal("gen1"; base_power = 100.0)
-        container = setup_container_with_variables(time_steps, device)
-
-        # Add proportional term for time period 1
-        rate = 10.0
-        name = IOM.get_name(device)
-        variable =
-            IOM.get_variable(container, TestActivePowerVariable(), MockThermalGen)[name, 1]
-        IOM.add_cost_term_invariant!(
-            container,
-            variable,
-            rate,
-            TestCostExpression,
-            MockThermalGen,
-            name,
-            1,
-        )
-
-        # Verify the coefficient was added to invariant terms
-        coef = get_objective_coefficient(
-            container,
-            TestActivePowerVariable(),
-            MockThermalGen,
-            "gen1",
-            1,
-        )
-        @test coef ≈ rate
-
-        # Other time periods should have zero coefficient
-        for t in 2:3
-            coef_t = get_objective_coefficient(
-                container,
-                TestActivePowerVariable(),
-                MockThermalGen,
-                "gen1",
-                t,
-            )
-            @test coef_t ≈ 0.0
-        end
-    end
-
-    @testset "_add_linearcurve_variable_cost! scalar - same cost all time steps" begin
+    @testset "add_proportional_cost_invariant! with NATURAL_UNITS" begin
         time_steps = 1:4
-        device = make_mock_thermal("gen1"; base_power = 100.0)
+        device = make_mock_thermal("gen1"; base_power = 50.0)
         container =
             setup_container_with_variables(time_steps, device; resolution = Dates.Hour(1))
 
-        # Scalar cost: 25.0 $/MWh
-        proportional_term = 25.0
-        InfrastructureOptimizationModels._add_linearcurve_variable_cost!(
+        # Cost: 25.0 $/MWh in natural units, system base = 100 MW
+        # Normalized: 25.0 * 100.0 = 2500.0 $/p.u.h
+        # With dt = 1.0 and multiplier = 1.0: coefficient = 2500.0
+        InfrastructureOptimizationModels.add_proportional_cost_invariant!(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             device,
-            proportional_term,
+            25.0,
+            IS.UnitSystem.NATURAL_UNITS,
         )
 
-        # With 1-hour resolution, dt = 1.0, so coefficient = proportional_term * dt = 25.0
-        expected_coef = proportional_term * 1.0
+        expected_coef = 25.0 * 100.0 * 1.0
         @test verify_objective_coefficients(
             container,
             TestActivePowerVariable(),
@@ -127,29 +85,58 @@ end
         )
     end
 
-    @testset "_add_linearcurve_variable_cost! vector - different costs per time step" begin
+    @testset "add_proportional_cost_invariant! with multiplier and sub-hourly resolution" begin
         time_steps = 1:4
         device = make_mock_thermal("gen1"; base_power = 100.0)
         container =
-            setup_container_with_variables(time_steps, device; resolution = Dates.Hour(1))
+            setup_container_with_variables(
+                time_steps,
+                device;
+                resolution = Dates.Minute(15),
+            )
 
-        # Time-varying costs
-        proportional_terms = [10.0, 20.0, 30.0, 40.0]
-        InfrastructureOptimizationModels._add_linearcurve_variable_cost!(
+        # Cost: 20.0 $/MWh in system base, multiplier = 2.0
+        # dt = 0.25, so coefficient = 20.0 * 2.0 * 0.25 = 10.0
+        InfrastructureOptimizationModels.add_proportional_cost_invariant!(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             device,
-            proportional_terms,
+            20.0,
+            IS.UnitSystem.SYSTEM_BASE,
+            2.0,
         )
 
-        # With 1-hour resolution, dt = 1.0
-        expected_coefs = proportional_terms .* 1.0
+        expected_coef = 20.0 * 2.0 * 0.25
         @test verify_objective_coefficients(
             container,
             TestActivePowerVariable(),
             MockThermalGen,
             "gen1",
-            expected_coefs,
+            expected_coef,
+        )
+    end
+
+    @testset "add_proportional_cost_invariant! skips zero cost" begin
+        time_steps = 1:3
+        device = make_mock_thermal("gen1"; base_power = 100.0)
+        container =
+            setup_container_with_variables(time_steps, device; resolution = Dates.Hour(1))
+
+        InfrastructureOptimizationModels.add_proportional_cost_invariant!(
+            container,
+            TestActivePowerVariable,
+            device,
+            0.0,
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+
+        # Should have zero coefficients since cost_term is zero
+        @test verify_objective_coefficients(
+            container,
+            TestActivePowerVariable(),
+            MockThermalGen,
+            "gen1",
+            0.0,
         )
     end
 

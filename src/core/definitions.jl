@@ -11,32 +11,22 @@ abstract type InterpolationVariableType <: SparseVariableType end
 abstract type BinaryInterpolationVariableType <: SparseVariableType end
 
 #################################################################################
-# Simulation Information Type
-# Stores metadata about the simulation context for operation models
-# Can be extended in PowerSimulations with additional fields as needed
-struct SimulationInfo
-    # Placeholder for simulation metadata
-    # Can be extended with fields like:
-    # - simulation_uuid::Union{Nothing, Base.UUID}
-    # - run_count::Int
-    # - etc.
-    SimulationInfo() = new()
-end
-
-# Stub methods for SimulationInfo (to be extended by PowerSimulations.jl)
-get_number(::SimulationInfo) = 0
-set_number!(::SimulationInfo, val) = nothing
-get_sequence_uuid(::SimulationInfo) = nothing
-set_sequence_uuid!(::SimulationInfo, val) = nothing
-get_run_status(::SimulationInfo) = RunStatus.NOT_READY
-set_run_status!(::SimulationInfo, status) = nothing
+# SimulationInfo is defined in IS.Simulation and imported in the main module
 
 #################################################################################
 # Type Alias for long type signatures
 const MinMax = NamedTuple{(:min, :max), NTuple{2, Float64}}
 const NamedMinMax = Tuple{String, MinMax}
-const UpDown = NamedTuple{(:up, :down), NTuple{2, Float64}}
+const UpDownPair{T} = NamedTuple{(:up, :down), NTuple{2, T}}
+const UpDown = UpDownPair{Float64}  # backwards compatible alias
 const InOut = NamedTuple{(:in, :out), NTuple{2, Float64}}
+
+# Direction types for incremental vs decremental offer curves (market bid cost)
+abstract type OfferDirection end
+struct IncrementalOffer <: OfferDirection end
+struct DecrementalOffer <: OfferDirection end
+Base.string(::IncrementalOffer) = "incremental"
+Base.string(::DecrementalOffer) = "decremental"
 
 # Type alias for decision model indices - used for indexing into result stores
 const DecisionModelIndexType = Dates.DateTime
@@ -195,4 +185,3 @@ Base.convert(::Type{RunStatus}, val::String) = get_enum_value(RunStatus, val)
 Base.convert(::Type{SOSStatusVariable}, x::String) = get_enum_value(SOSStatusVariable, x)
 
 const SYSTEM_TYPE = IS.ComponentContainer
-const COMP_TYPE = IS.InfrastructureSystemsComponent

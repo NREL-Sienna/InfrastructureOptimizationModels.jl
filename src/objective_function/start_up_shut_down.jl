@@ -111,6 +111,6 @@ function get_startup_cost_value(
     else
         get_start_up(get_operation_cost(component))
     end
-    # TODO add stub for start_up_cost.
-    return start_up_cost(raw_startup_cost, component, T(), U())
+    # possible types for raw_startup_cost: Float, AffExpr, NamedTuple, or StartUpStages. 
+    return start_up_cost(raw_startup_cost, V, T(), U())
 end

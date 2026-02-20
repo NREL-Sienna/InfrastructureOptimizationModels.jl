@@ -5,7 +5,7 @@ Requires PowerSystems types (PSY.ThermalStandard, PSY.ThermalGenerationCost).
 Test types defined in test_utils/test_types.jl.
 """
 
-IOM.sos_status(::Any, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
+IOM._sos_status(::Type, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
 
 # Formulation already defined in mock_components.jl: TestDeviceFormulation
 
@@ -13,6 +13,15 @@ IOM.sos_status(::Any, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIAB
 
 IOM.objective_function_multiplier(::TestShutDownVariable, ::TestDeviceFormulation) = 1.0
 IOM.objective_function_multiplier(::TestStartVariable, ::TestDeviceFormulation) = 1.0
+
+# With the new interface, start_up_cost must be implemented for each cost type.
+# Float64 startup costs just pass through.
+IOM.start_up_cost(
+    cost::Float64,
+    ::Type{<:IS.InfrastructureSystemsComponent},
+    ::TestStartVariable,
+    ::TestDeviceFormulation,
+) = cost
 
 # Helper to create a PSY ThermalStandard with specified startup/shutdown costs
 function make_psy_thermal_with_costs(

@@ -23,8 +23,16 @@ import InfrastructureSystems:
     get_value_curve, get_power_units, get_function_data, get_proportional_term,
     get_quadratic_term, get_fuel_cost
 
+import InfrastructureSystems.Simulation:
+    SimulationInfo,
+    get_number,
+    set_number!,
+    get_sequence_uuid,
+    set_sequence_uuid!,
+    get_run_status,
+    set_run_status!
+
 # IS.Optimization imports: base types that remain in InfrastructureSystems
-# Note: ModelBuildStatus is aliased in definitions.jl, so don't import it directly
 # TODO: some of these are device specific enough to belong in POM.
 import InfrastructureSystems.Optimization:
     AbstractOptimizationContainer,
@@ -53,12 +61,6 @@ import InfrastructureSystems.Optimization:
     AbstractLoadFormulation,
     AbstractHVDCNetworkModel,
     AbstractPowerModel,
-    AbstractPTDFModel,
-    AbstractSecurityConstrainedPTDFModel,
-    AbstractActivePowerModel,
-    AbstractACPowerModel,
-    AbstractACPModel,
-    ACPPowerModel,
     AbstractPowerFlowEvaluationModel,
     AbstractPowerFlowEvaluationData
 
@@ -155,10 +157,19 @@ using DocStringExtensions
 export DecisionModel
 export EmulationModel
 export ProblemTemplate
+export ServicesModelContainer, DevicesModelContainer, BranchModelContainer
 export InitialCondition
 
 # Network Relevant Exports
 export NetworkModel
+export get_PTDF_matrix, get_LODF_matrix, get_reduce_radial_branches
+export get_duals, get_reference_buses, get_subnetworks, get_bus_area_map
+export get_power_flow_evaluation, has_subnetworks, get_subsystem
+export set_subsystem!, add_dual!
+export requires_all_branch_models, supports_branch_filtering, ignores_branch_filtering
+export BranchReductionOptimizationTracker
+export get_variable_dict, get_constraint_dict, get_constraint_map_by_type
+export get_number_of_steps, set_number_of_steps!
 # Note: Concrete network model types (PTDFPowerModel, CopperPlatePowerModel, etc.)
 # are defined in PowerSimulations, not here
 
@@ -224,7 +235,7 @@ export add_pwl_linking_constraint!
 export add_pwl_normalization_constraint!
 export add_pwl_sos2_constraint!
 export get_pwl_cost_expression
-export objective_function!
+export add_to_objective_function!
 export initial_condition_variable
 export initial_condition_default
 export process_market_bid_parameters!
@@ -339,6 +350,114 @@ export ParameterType
 export InitialConditionType
 export ExpressionType
 
+# objective_function folder exports
+export StartupCostParameter
+export ShutdownCostParameter
+export OnStatusParameter
+export _get_ramp_constraint_devices
+
+# core folder exports
+# optimization_container.jl refactor
+# add_param_container!
+export add_param_container!,
+    add_param_container_split_axes!,
+    add_param_container_shared_axes!, get_parameter_eltype
+export make_system_expressions!, remove_undef!
+export get_branch_argument_variable_axis
+
+# Bulk-added: symbols used by POM but previously not exported
+# Network reduction helpers
+export get_branch_argument_constraint_axis, get_reduced_branch_tracker
+export search_for_reduced_branch_variable!
+# Container/variable helpers
+export add_variable_container!, add_constraint_dual!
+export add_to_objective_invariant_expression!, lazy_container_addition!
+export get_parameter_multiplier_array, get_aux_variable, get_condition
+export supports_milp, get_quadratic_cost_per_system_unit
+export check_hvdc_line_limits_unidirectional, check_hvdc_line_limits_consistency
+export add_sparse_pwl_interpolation_variables!
+export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
+# Constraint helpers
+export add_range_constraints!, add_parameterized_upper_bound_range_constraints
+export add_reserve_bound_range_constraints!
+export add_semicontinuous_range_constraints!, add_semicontinuous_ramp_constraints!
+# Cost helpers
+export add_shut_down_cost!, add_start_up_cost!
+export _add_pwl_term!, _get_sos_value, _onvar_cost, add_cost_to_expression!
+# Duration constraint helpers
+export device_duration_compact_retrospective!
+export device_duration_parameters!, device_duration_retrospective!
+# Ramp helpers
+export add_linear_ramp_constraints!
+export get_min_max_limits
+export AbstractThermalDispatchFormulation, AbstractThermalUnitCommitment
+# Service/misc helpers
+# NOTE: get_time_series NOT exported — conflicts with IS.get_time_series. Use IOM.get_time_series.
+export process_import_export_parameters!, process_market_bid_parameters!
+# Types
+export AreaControlError
+# Extension point functions
+export add_variable!, requires_initialization
+# End bulk-added
+
+# more extension points
+export write_results!
+export built_for_recurrent_solves
+export initialize_hvdc_system!
+
+# Bulk export: symbols POM needs that weren't previously exported
+# Core types
+export OptimizationContainer, OperationModel
+export ArgumentConstructStage, ModelConstructStage
+export EmulationModelStore, DeviceModelForBranches
+export DeviceAboveMinPower, StartUpStages, SOSStatusVariable
+# Parameter types
+export FuelCostParameter, VariableValueParameter, FixValueParameter
+# Offer curve types (parameter, variable, constraint)
+export AbstractCostAtMinParameter,
+    IncrementalCostAtMinParameter, DecrementalCostAtMinParameter
+export AbstractPiecewiseLinearSlopeParameter,
+    IncrementalPiecewiseLinearSlopeParameter, DecrementalPiecewiseLinearSlopeParameter
+export AbstractPiecewiseLinearBreakpointParameter,
+    IncrementalPiecewiseLinearBreakpointParameter,
+    DecrementalPiecewiseLinearBreakpointParameter
+export AbstractPiecewiseLinearBlockOffer,
+    PiecewiseLinearBlockIncrementalOffer, PiecewiseLinearBlockDecrementalOffer
+export AbstractPiecewiseLinearBlockOfferConstraint,
+    PiecewiseLinearBlockIncrementalOfferConstraint,
+    PiecewiseLinearBlockDecrementalOfferConstraint
+# Logging
+export LOG_GROUP_BUILD_INITIAL_CONDITIONS,
+    LOG_GROUP_COST_FUNCTIONS,
+    LOG_GROUP_BRANCH_CONSTRUCTIONS,
+    LOG_GROUP_NETWORK_CONSTRUCTION,
+    LOG_GROUP_FEEDFORWARDS_CONSTRUCTION,
+    LOG_GROUP_SERVICE_CONSTUCTORS,
+    LOG_GROUP_OPTIMIZATION_CONTAINER
+# Container access
+export get_available_components, get_attribute, get_time_steps, get_time_series_names
+export get_initial_condition, get_expression, get_variable
+export has_container_key, get_constraints, get_constraint, get_aux_variables
+export get_optimization_container, get_internal
+# Container creation
+export add_constraints_container!, add_variable_cost!
+# Initial conditions
+export add_initial_condition!, add_initial_condition_container!
+export has_initial_condition_value, set_ic_quantity!, get_last_recorded_value
+export get_component_type, get_component_name, add_jump_parameter
+# Template/model access
+export get_use_slacks, get_template, get_model
+export set_resolution!, finalize_template!
+# JuMP access
+export get_jump_model
+# Cost utilities
+export get_proportional_cost_per_system_unit
+# Result writing/conversion
+export should_write_resulting_value, convert_result_to_natural_units
+# End bulk export
+
+export variable_cost
+
 # Standard Expression Types (abstract and concrete)
 export SystemBalanceExpressions
 export RangeConstraintLBExpressions
@@ -360,6 +479,23 @@ export NetActivePower
 export DCCurrentBalance
 export HVDCPowerBalance
 
+# Standard Variable Types (used in IOM infrastructure code, consumed by POM)
+export ActivePowerVariable, ActivePowerInVariable, ActivePowerOutVariable
+export PowerAboveMinimumVariable
+export OnVariable, StartVariable, StopVariable
+export ReservationVariable
+export ServiceRequirementVariable
+export PiecewiseLinearCostVariable
+export RateofChangeConstraintSlackUp, RateofChangeConstraintSlackDown
+export DCVoltage
+# Abstract types needed by POM for type hierarchy
+export SparseVariableType, InterpolationVariableType, BinaryInterpolationVariableType
+
+# intended for these to stay internal, but needed for POM due to moving
+# add_reserve_range_constraints! into POM (because it needs FooPowerVariableLimitsConstraint)
+export UpperBound, LowerBound, BoundDirection, get_bound_direction
+export EventParameter
+
 # Abstract types for extensions (from InfrastructureSystems.Optimization)
 export AbstractPowerFlowEvaluationData
 
@@ -374,6 +510,17 @@ export DefaultEmulationProblem
 
 # Settings and Data Types
 export Settings
+export get_warm_start
+export get_horizon, get_initial_time, get_optimizer, get_ext
+export get_system_to_file, get_initialize_model, get_initialization_file
+export get_deserialize_initial_conditions, get_export_pwl_vars
+export get_check_numerical_bounds, get_allow_fails
+export get_optimizer_solve_log_print, get_calculate_conflict
+export get_detailed_optimizer_stats, get_direct_mode_optimizer
+export get_store_variable_names, get_export_optimization_model
+export use_time_series_cache
+export set_horizon!, set_initial_time!, set_warm_start!
+export copy_for_serialization, restore_from_copy, log_values
 export InitialConditionsData
 
 # Constants
@@ -392,18 +539,8 @@ export get_optimizer_stats
 export get_timestamps
 export get_resolution
 
-# PowerModels exports
-export ACPPowerModel
-export ACRPowerModel
-export ACTPowerModel
-export DCPPowerModel
-export NFAPowerModel
-export DCPLLPowerModel
-export LPACCPowerModel
-export SOCWRPowerModel
-export SOCWRConicPowerModel
-export QCRMPowerModel
-export QCLSPowerModel
+## Note: Concrete PowerModels types (ACPPowerModel, DCPPowerModel, etc.) are now
+## defined and exported by PowerOperationsModels, not IOM.
 
 #################################################################################
 # Includes
@@ -412,6 +549,7 @@ export QCLSPowerModel
 # Core optimization types must come first
 include("core/optimization_container_types.jl")       # Abstract types (VariableType, etc.)
 include("core/definitions.jl")                        # Aliases and enums (needs VariableType)
+# SimulationInfo is defined in IS.Simulation
 include("core/optimization_container_keys.jl")        # Keys depend on types
 include("core/parameter_container.jl")                # Parameter container infrastructure
 include("core/abstract_model_store.jl")               # Store depends on keys
@@ -453,9 +591,9 @@ include("common_models/set_expression.jl") # helpers only used in POM.
 include("common_models/get_time_series.jl")
 include("common_models/add_pwl_methods.jl")
 include("common_models/constraint_helpers.jl")
-# include("common_models/range_constraint.jl")
-# include("common_models/duration_constraints.jl")
-# include("common_models/rateofchange_constraints.jl")
+include("common_models/range_constraint.jl")
+include("common_models/duration_constraints.jl")
+include("common_models/rateofchange_constraints.jl")
 
 # Objective function implementations
 include("objective_function/cost_term_helpers.jl") # generic helpers: add_cost_term_{invariant,variant}!, PWL helpers
@@ -470,12 +608,18 @@ include("objective_function/import_export.jl")
 
 # add_variable_cost! implementations, but "it's complicated." Other stuff exported too
 include("objective_function/piecewise_linear.jl")
-# this one is a mess.
-# include("objective_function/market_bid.jl")
+# Offer curve types must come before market_bid.jl
+include("objective_function/offer_curve_types.jl")
+include("objective_function/market_bid.jl")
+
+# add_param_container! wrappers — must come after piecewise_linear.jl
+# (which defines VariableValueParameter and FixValueParameter)
+include("common_models/add_param_container.jl")
 
 include("operation/operation_model_interface.jl")
 include("operation/decision_model_store.jl")
 include("operation/emulation_model_store.jl")
+include("operation/store_common.jl")
 include("operation/initial_conditions_update_in_memory_store.jl")
 include("operation/decision_model.jl")
 include("operation/emulation_model.jl")

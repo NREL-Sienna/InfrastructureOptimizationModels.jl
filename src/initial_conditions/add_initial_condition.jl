@@ -30,14 +30,18 @@ end
 Extension point for downstream packages to define default values for initial conditions.
 """
 function initial_condition_default(
-    ic_type::InitialConditionType,
-    component::PSY.Component,
-    formulation::Union{AbstractDeviceFormulation, AbstractServiceFormulation},
-)
+    ::I,
+    ::C,
+    ::F,
+) where {
+    I <: InitialConditionType,
+    C <: IS.InfrastructureSystemsComponent,
+    F <: Union{AbstractDeviceFormulation, AbstractServiceFormulation},
+}
     error(
         "initial_condition_default not implemented for initial condition type " *
-        "$(typeof(ic_type)) with device $(typeof(component)) and formulation " *
-        "$(typeof(formulation)). Implement this method in PowerOperationsModels.",
+        "$I with device $C and formulation " *
+        "$F. Implement this method in PowerOperationsModels.",
     )
 end
 

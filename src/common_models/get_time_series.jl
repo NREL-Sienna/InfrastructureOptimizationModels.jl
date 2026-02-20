@@ -47,7 +47,11 @@ function get_time_series_name(
     ::T,
     d::U,
     model::DeviceModel{U, F},
-) where {T <: TimeSeriesParameter, U <: COMP_TYPE, F <: AbstractDeviceFormulation}
+) where {
+    T <: TimeSeriesParameter,
+    U <: IS.InfrastructureSystemsComponent,
+    F <: AbstractDeviceFormulation,
+}
     # Check if model has time series names configured
     ts_names = get_time_series_names(model)
     if haskey(ts_names, T)

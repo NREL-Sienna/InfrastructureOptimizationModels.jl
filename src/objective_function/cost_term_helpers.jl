@@ -117,6 +117,46 @@ function add_cost_term_variant!(
     return cost
 end
 
+# TODO could pass base_power, name, and type instead, to keep things device-agnostic.
+"""
+Add a proportional (linear) cost to the invariant objective across all time steps.
+
+Normalizes `cost_term` from `power_units` to system per-unit, multiplies by `dt` and
+`multiplier`, then adds `variable * rate` to `ProductionCostExpression` and the invariant
+objective for each time step.
+
+# Arguments
+- `container`: the optimization container
+- `T`: variable type (caller provides)
+- `component`: the component (used for name, base power, and variable lookup)
+- `cost_term`: raw proportional cost (e.g., \$/MWh before normalization)
+- `power_units`: unit system of `cost_term`
+- `multiplier`: additional scalar (e.g., `objective_function_multiplier`, fuel cost)
+"""
+function add_proportional_cost_invariant!(
+    container::OptimizationContainer,
+    ::Type{T},
+    component::C,
+    cost_term::Float64,
+    power_units::IS.UnitSystem,
+    multiplier::Float64 = 1.0,
+) where {T <: VariableType, C <: IS.InfrastructureSystemsComponent}
+    iszero(cost_term) && return
+    base_power = get_model_base_power(container)
+    device_base_power = get_base_power(component)
+    cost_per_unit = get_proportional_cost_per_system_unit(
+        cost_term, power_units, base_power, device_base_power)
+    dt = Dates.value(get_resolution(container)) / MILLISECONDS_IN_HOUR
+    name = get_name(component)
+    rate = cost_per_unit * multiplier * dt
+    for t in get_time_steps(container)
+        variable = get_variable(container, T(), C)[name, t]
+        add_cost_term_invariant!(
+            container, variable, rate, ProductionCostExpression, C, name, t)
+    end
+    return
+end
+
 #######################################
 ######## PWL Helper Functions #########
 #######################################
@@ -301,7 +341,7 @@ whether to use invariant or variant).
 JuMP affine expression representing the cost.
 """
 function get_pwl_cost_expression(
-    pwl_vars::Vector{JuMP.VariableRef},
+    pwl_vars::Vector{JuMP.VariableRef}, # PERF allow views?
     slopes::Vector{Float64},
     multiplier::Float64,
 )
@@ -311,4 +351,39 @@ function get_pwl_cost_expression(
         JuMP.add_to_expression!(cost, slope * multiplier, pwl_vars[i])
     end
     return cost
+end
+
+"""
+Add block-offer PWL constraints: linking constraint and per-block upper bounds.
+
+    power_var == Σ δ[k] + min_power_offset
+    δ[k] <= breakpoints[k+1] - breakpoints[k]   for each k
+
+# Arguments
+- `jump_model`: the JuMP model
+- `con_container`: constraint container to store the linking constraint (indexed [name, t])
+- `name`: component name
+- `t`: time period
+- `power_var`: the power variable being linked
+- `pwl_vars`: vector of block-offer delta variables (length = n_blocks)
+- `breakpoints`: vector of breakpoint values (length = n_blocks + 1)
+- `min_power_offset`: offset for minimum generation power (default 0.0)
+"""
+function add_pwl_block_offer_constraints!(
+    jump_model::JuMP.Model,
+    con_container,
+    name::String,
+    t::Int,
+    power_var::JuMPOrFloat,
+    pwl_vars::Vector{JuMP.VariableRef},
+    breakpoints::Vector{<:JuMPOrFloat},
+    min_power_offset::JuMPOrFloat = 0.0,
+)
+    @assert length(pwl_vars) == length(breakpoints) - 1
+    sum_pwl = sum(pwl_vars) + min_power_offset
+    con_container[name, t] = JuMP.@constraint(jump_model, power_var == sum_pwl)
+    for (ix, var) in enumerate(pwl_vars)
+        JuMP.@constraint(jump_model, var <= breakpoints[ix + 1] - breakpoints[ix])
+    end
+    return
 end

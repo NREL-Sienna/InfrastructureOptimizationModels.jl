@@ -79,16 +79,11 @@ function add_test_parameter!(
     time_steps,
     values::Matrix{Float64},
 ) where {P <: IOM.ParameterType, C}
-    param_container = IOM.add_param_container!(
-        container,
-        P(),
-        C,
-        IOM.SOSStatusVariable.NO_VARIABLE,
-        false,  # uses_compact_power
-        Float64,
-        names,
-        time_steps,
-    )
+    param_key = IOM.ParameterKey(P, C)
+    attributes = IOM.CostFunctionAttributes{Float64}(
+        (), IOM.SOSStatusVariable.NO_VARIABLE, false)
+    param_container = IOM.add_param_container_shared_axes!(
+        container, param_key, attributes, Float64, names, time_steps)
     for (i, name) in enumerate(names)
         for t in time_steps
             IOM.set_parameter!(
@@ -102,26 +97,6 @@ function add_test_parameter!(
         end
     end
     return param_container
-end
-
-"""
-Create an OptimizationContainer configured for testing.
-Returns container with time_steps already set.
-"""
-function setup_test_container(
-    time_steps::UnitRange{Int};
-    base_power = 100.0,
-    resolution = Dates.Hour(1),
-)
-    sys = MockSystem(base_power)
-    settings = PSI.Settings(
-        sys;
-        horizon = Dates.Hour(length(time_steps)),
-        resolution = resolution,
-    )
-    container = PSI.OptimizationContainer(sys, settings, JuMP.Model(), IS.Deterministic)
-    PSI.set_time_steps!(container, time_steps)
-    return container
 end
 
 """

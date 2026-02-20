@@ -96,19 +96,10 @@ get_initial_conditions(model::OperationModel) =
 
 get_interval(model::OperationModel) = get_store_params(model).interval
 
-function get_run_status(model::OperationModel)
-    sim_info = get_simulation_info(model)
-    # For standalone models, return NOT_READY
-    isnothing(sim_info) && return RunStatus.NOT_READY
-    return get_run_status(sim_info)
-end
+get_run_status(model::OperationModel) = get_run_status(get_simulation_info(model))
 
-function set_run_status!(model::OperationModel, status)
-    sim_info = get_simulation_info(model)
-    # Silently ignore for standalone models
-    isnothing(sim_info) && return nothing
-    return set_run_status!(sim_info, status)
-end
+set_run_status!(model::OperationModel, status) =
+    set_run_status!(get_simulation_info(model), status)
 get_time_series_cache(model::OperationModel) =
     get_time_series_cache(get_internal(model))
 empty_time_series_cache!(x::OperationModel) = empty!(get_time_series_cache(x))

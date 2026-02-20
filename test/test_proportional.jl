@@ -41,7 +41,7 @@ InfrastructureOptimizationModels.is_time_variant_term(
     ::InfrastructureOptimizationModels.OptimizationContainer,
     op_cost::MockOperationCost,
     ::TestProportionalVariable,
-    d::MockThermalGen,
+    ::Type{MockThermalGen},
     ::TestProportionalFormulation,
     ::Int,
 ) = op_cost.is_time_variant

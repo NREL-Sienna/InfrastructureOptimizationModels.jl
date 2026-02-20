@@ -1,65 +1,3 @@
-# Add proportional terms to objective function and expression
-function _add_linearcurve_variable_term_to_model!(
-    container::OptimizationContainer,
-    ::T,
-    component::V,
-    proportional_term_per_unit::Float64,
-    time_period::Int,
-) where {T <: VariableType, V <: IS.InfrastructureSystemsComponent}
-    resolution = get_resolution(container)
-    dt = Dates.value(resolution) / MILLISECONDS_IN_HOUR
-    name = get_name(component)
-    variable = get_variable(container, T(), V)[name, time_period]
-    add_cost_term_invariant!(
-        container,
-        variable,
-        proportional_term_per_unit * dt,
-        ProductionCostExpression,
-        V,
-        name,
-        time_period,
-    )
-    return
-end
-
-# Dispatch for vector of proportional terms
-function _add_linearcurve_variable_cost!(
-    container::OptimizationContainer,
-    ::T,
-    component::IS.InfrastructureSystemsComponent,
-    proportional_terms_per_unit::Vector{Float64},
-) where {T <: VariableType}
-    for t in get_time_steps(container)
-        _add_linearcurve_variable_term_to_model!(
-            container,
-            T(),
-            component,
-            proportional_terms_per_unit[t],
-            t,
-        )
-    end
-    return
-end
-
-# Dispatch for scalar proportional terms
-function _add_linearcurve_variable_cost!(
-    container::OptimizationContainer,
-    ::T,
-    component::IS.InfrastructureSystemsComponent,
-    proportional_term_per_unit::Float64,
-) where {T <: VariableType}
-    for t in get_time_steps(container)
-        _add_linearcurve_variable_term_to_model!(
-            container,
-            T(),
-            component,
-            proportional_term_per_unit,
-            t,
-        )
-    end
-    return
-end
-
 """
 Adds to the cost function cost terms for sum of variables with common factor to be used for cost expression for optimization_container model.
 
@@ -77,36 +15,13 @@ function add_variable_cost_to_objective!(
     cost_function::IS.CostCurve{IS.LinearCurve},
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
-    base_power = get_model_base_power(container)
-    device_base_power = get_base_power(component)
     value_curve = get_value_curve(cost_function)
     power_units = get_power_units(cost_function)
-    cost_component = get_function_data(value_curve)
-    proportional_term = get_proportional_term(cost_component)
-    proportional_term_per_unit = get_proportional_cost_per_system_unit(
-        proportional_term,
-        power_units,
-        base_power,
-        device_base_power,
-    )
+    proportional_term = get_proportional_term(get_function_data(value_curve))
     multiplier = objective_function_multiplier(T(), U())
-    _add_linearcurve_variable_cost!(
-        container,
-        T(),
-        component,
-        multiplier * proportional_term_per_unit,
-    )
+    add_proportional_cost_invariant!(
+        container, T, component, proportional_term, power_units, multiplier)
     return
-end
-
-function _add_fuel_linear_variable_cost!(
-    container::OptimizationContainer,
-    ::T,
-    component::IS.InfrastructureSystemsComponent,
-    fuel_curve::Float64,
-    fuel_cost::Float64,
-) where {T <: VariableType}
-    _add_linearcurve_variable_cost!(container, T(), component, fuel_curve * fuel_cost)
 end
 
 function _add_fuel_linear_variable_cost!(
@@ -137,26 +52,22 @@ function add_variable_cost_to_objective!(
     cost_function::IS.FuelCurve{IS.LinearCurve},
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
-    base_power = get_model_base_power(container)
-    device_base_power = get_base_power(component)
     value_curve = IS.get_value_curve(cost_function)
     power_units = IS.get_power_units(cost_function)
-    cost_component = IS.get_function_data(value_curve)
-    proportional_term = IS.get_proportional_term(cost_component)
-    fuel_curve_per_unit = get_proportional_cost_per_system_unit(
-        proportional_term,
-        power_units,
-        base_power,
-        device_base_power,
-    )
+    proportional_term = IS.get_proportional_term(IS.get_function_data(value_curve))
     fuel_cost = IS.get_fuel_cost(cost_function)
     # Multiplier is not necessary here. There is no negative cost for fuel curves.
-    _add_fuel_linear_variable_cost!(
-        container,
-        T(),
-        component,
-        fuel_curve_per_unit,
-        fuel_cost,
-    )
+    if fuel_cost isa Float64
+        add_proportional_cost_invariant!(
+            container, T, component, proportional_term, power_units, fuel_cost)
+    else
+        # Time-varying fuel cost: normalize, then delegate to variant path
+        base_power = get_model_base_power(container)
+        device_base_power = get_base_power(component)
+        fuel_curve_per_unit = get_proportional_cost_per_system_unit(
+            proportional_term, power_units, base_power, device_base_power)
+        _add_fuel_linear_variable_cost!(
+            container, T(), component, fuel_curve_per_unit, fuel_cost)
+    end
     return
 end

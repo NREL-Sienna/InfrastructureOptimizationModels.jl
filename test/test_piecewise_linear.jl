@@ -19,8 +19,8 @@ InfrastructureOptimizationModels.objective_function_multiplier(
     ::TestPWLFormulation,
 ) = 1.0
 
-InfrastructureOptimizationModels.sos_status(
-    ::MockThermalGen,
+InfrastructureOptimizationModels._sos_status(
+    ::Type{MockThermalGen},
     ::TestPWLFormulation,
 ) = IOM.SOSStatusVariable.NO_VARIABLE
 
@@ -213,7 +213,8 @@ end
 
         cost_expr = InfrastructureOptimizationModels._get_pwl_cost_expression(
             container,
-            device,
+            MockThermalGen,
+            "gen1",
             1,
             pwl_data,
             1.0,
@@ -248,7 +249,8 @@ end
         multiplier = 2.5
         cost_expr = InfrastructureOptimizationModels._get_pwl_cost_expression(
             container,
-            device,
+            MockThermalGen,
+            "gen1",
             1,
             pwl_data,
             multiplier,

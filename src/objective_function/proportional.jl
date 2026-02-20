@@ -42,13 +42,6 @@ function add_proportional_cost!(
     return
 end
 
-# corresponds to get_must_run for thermals, but avoiding device specific code here.
-"""
-Extension point: whether to skip adding proportional cost for a given device.
-For thermals, equivalent to `get_must_run`, but that implementation belongs in POM.
-"""
-skip_proportional_cost(d::IS.InfrastructureSystemsComponent) = false
-
 """
 Common basis for maybe time variant proportional costs for devices that might have must-run behavior.
 Currently used for `(ThermalGen, AbstractThermal)` and `(ControllableLoad, PowerLoadInterruption)`
@@ -75,11 +68,18 @@ function add_proportional_cost_maybe_time_variant!(
 
             if skip_proportional_cost(d)
                 # Only add to expression, not objective
-                add_cost_to_expression!(container, ProductionCostExpression, rate, d, t)
+                add_cost_to_expression!(
+                    container,
+                    ProductionCostExpression,
+                    rate,
+                    T,
+                    name,
+                    t,
+                )
             else
                 variable = get_variable(container, U(), T)[name, t]
                 add_as_time_variant =
-                    is_time_variant_term(container, op_cost_data, U(), d, V(), t)
+                    is_time_variant_term(container, op_cost_data, U(), T, V(), t)
                 if add_as_time_variant
                     add_cost_term_variant!(
                         container, variable, rate, ProductionCostExpression, T, name, t)

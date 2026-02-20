@@ -67,6 +67,26 @@ function add_range_bound_constraint!(
     return
 end
 
+add_range_bound_constraint!(
+    dir::BoundDirection,
+    jump_model::JuMP.Model,
+    con_container,
+    name::String,
+    t::Int,
+    variable::JuMPOrFloat,
+    bound::Int,
+    binary_var::JuMPOrFloat = 1.0,
+) = add_range_bound_constraint!(
+    dir,
+    jump_model,
+    con_container,
+    name,
+    t,
+    variable,
+    Float64(bound),
+    binary_var,
+)
+
 """
 Add an equality constraint.
 
@@ -83,5 +103,137 @@ function add_range_equality_constraint!(
     value::Float64,
 )
     con_container[name, t] = JuMP.@constraint(jump_model, variable == value)
+    return
+end
+
+#######################################
+######## Ramp Constraint Helpers ######
+#######################################
+
+"""Create paired up/down constraint containers."""
+function add_updown_constraints_containers!(
+    container::OptimizationContainer,
+    ::Type{T},
+    ::Type{V},
+    names,
+    time_steps,
+) where {T <: ConstraintType, V <: PSY.Component}
+    return (
+        up = add_constraints_container!(container, T(), V, names, time_steps; meta = "up"),
+        down = add_constraints_container!(
+            container,
+            T(),
+            V,
+            names,
+            time_steps;
+            meta = "dn",
+        ),
+    )
+end
+
+"""
+Add a pair of ramp-up and ramp-down constraints for a single (name, t).
+
+    Ramp up:   current.up - previous <= limits.up * dt + slack.up
+    Ramp down (bound_decrease=true, default):
+               previous - current.down <= limits.down * dt + slack.down
+    Ramp down (bound_decrease=false):
+                previous - current.down + slack.down >= - limits.down * dt
+        equivalent to: current.down - previous <= limits.down * dt + slack.down
+            i.e. we're actually bounding the increase not the decrease.
+            (the lower bound represents something different in the Expression case)
+
+When `bound_decrease = false` (default), the down constraint mirrors the up constraint
+direction, bounding how much power can increase from the previous value (using the down
+ramp rate). When `bound_decrease = true`, the down constraint flips current and previous,
+bounding how much power can decrease.
+
+# Arguments
+- `jump_model`: the JuMP model
+- `cons`: UpDownPair of constraint containers (up=, down=)
+- `name`: component name
+- `t`: time period
+- `current`: UpDownPair of current values (up=, down=); use same value for both if not using expressions
+- `previous`: previous timestep value (ic_power for t=1, variable[t-1] for t>1)
+- `limits`: UpDown (Float64) ramp limits
+- `dt`: minutes per period
+- `slack`: UpDownPair of slack variables
+- `bound_decrease`: if false, flip current/previous in down constraint (default: true)
+"""
+@inline function add_ramp_constraint_pair!(
+    jump_model::JuMP.Model,
+    cons::UpDownPair{C}, # constraint containers
+    name::String,
+    t::Int,
+    current::UpDownPair{V},
+    previous::JuMPOrFloat,
+    limits::UpDown,
+    dt::Number,
+    slack::UpDownPair{S},
+    bound_decrease::Bool = true,
+) where {C, V <: JuMPOrFloat, S <: JuMPOrFloat}
+    cons.up[name, t] = JuMP.@constraint(
+        jump_model,
+        current.up - previous <= limits.up * dt + slack.up
+    )
+    if bound_decrease
+        # must decrease by AT MOST ramp limit
+        cons.down[name, t] = JuMP.@constraint(
+            jump_model,
+            previous - current.down <= limits.down * dt + slack.down
+        )
+    else
+        # This reads as "must decrease by AT LEAST ramp limit," but it's correct.
+        # The lower bound represents something different in the Expression case.
+        cons.down[name, t] = JuMP.@constraint(
+            jump_model,
+            previous - current.down + slack.down >= -limits.down * dt
+        )
+    end
+    return
+end
+
+"""
+Add a pair of ramp-up and ramp-down constraints with start/stop condition terms.
+
+Like [`add_ramp_constraint_pair!`](@ref), but includes start/stop condition terms that
+relax the ramp limits when a unit is starting up or shutting down.
+
+    Ramp up:   current.up - previous <= limits.up * dt + slack.up + startstop.up
+    Ramp down: previous - current.down <= limits.down * dt + slack.down + startstop.down
+
+# Arguments
+- `jump_model`: the JuMP model
+- `cons`: UpDownPair of constraint containers (up=, down=)
+- `name`: component name
+- `t`: time period
+- `current`: UpDownPair of current values (up=, down=); use same value for both if not using expressions
+- `previous`: previous timestep value (ic_power for t=1, variable[t-1] for t>1)
+- `limits`: UpDown (Float64) ramp limits
+- `dt`: minutes per period
+- `startstop`: UpDownPair of start/stop condition terms
+- `slack`: UpDownPair of slack variables
+"""
+@inline function add_ramp_constraint_startstop_pair!(
+    jump_model::JuMP.Model,
+    cons::UpDownPair{C}, # constraint containers
+    name::String,
+    t::Int,
+    current::UpDownPair{V},
+    previous::JuMPOrFloat,
+    limits::UpDown,
+    dt::Number,
+    startstop::UpDownPair{R},
+    slack::UpDownPair{S},
+) where {C, V <: JuMPOrFloat, S <: JuMPOrFloat, R <: JuMPOrFloat}
+    cons.up[name, t] = JuMP.@constraint(
+        jump_model,
+        current.up - previous <= limits.up * dt + slack.up + startstop.up
+    )
+    # must decrease by AT MOST ramp limit
+    cons.down[name, t] = JuMP.@constraint(
+        jump_model,
+        previous - current.down <= limits.down * dt + startstop.down + slack.down
+    )
     return
 end
