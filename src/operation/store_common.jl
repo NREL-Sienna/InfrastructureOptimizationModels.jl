@@ -1,3 +1,17 @@
+"""Sanitize a model name for use as a filesystem path component.
+Replaces path separators, null bytes, and control characters with underscores."""
+function _sanitize_model_name(name::AbstractString)
+    _is_path_safe(c::AbstractChar) =
+        isprint(c) && c ∉ ('/', '\\', ':', '*', '?', '"', '<', '>', '|')
+    sanitized = map(c -> _is_path_safe(c) ? c : '_', name)
+    if isempty(sanitized) || sanitized == "." || sanitized == ".."
+        throw(
+            IS.InvalidValue("Model name '$name' is not valid for use as a path component"),
+        )
+    end
+    return sanitized
+end
+
 # Aliases used for clarity in the method dispatches so it is possible to know if writing to
 # DecisionModel data or EmulationModel data
 # Note: DecisionModelIndexType and EmulationModelIndexType are defined in core/definitions.jl
@@ -12,7 +26,8 @@ function write_results!(
     if exports !== nothing
         export_params = Dict{Symbol, Any}(
             :exports => exports,
-            :exports_path => joinpath(exports.path, string(get_name(model))),
+            :exports_path =>
+                joinpath(exports.path, _sanitize_model_name(string(get_name(model)))),
             :file_type => get_export_file_type(exports),
             :resolution => get_resolution(model),
             :horizon_count => get_horizon(get_settings(model)) ÷ get_resolution(model),
