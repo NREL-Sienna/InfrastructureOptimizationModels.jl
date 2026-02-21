@@ -35,14 +35,15 @@ end
     @testset "Solver SOS2" begin
         @testset "Constraint structure" begin
             setup = _setup_qa_test(["dev1"], 1:1)
-            x_var = setup.var_container["dev1", 1]
             num_segments = 4
             n_points = num_segments + 1
 
-            x_sq = IOM._add_sos2_quadratic_approx!(
-                setup.container, MockThermalGen, "dev1", 1,
-                x_var, 0.0, 4.0, num_segments,
+            result = IOM._add_sos2_quadratic_approx!(
+                setup.container, MockThermalGen,
+                ["dev1"], 1:1, setup.var_container,
+                0.0, 4.0, num_segments,
             )
+            x_sq = result[("dev1", 1)]
 
             # Returned expression should be AffExpr
             @test x_sq isa JuMP.AffExpr
@@ -89,10 +90,12 @@ end
             JuMP.set_lower_bound(x_var, 0.0)
             JuMP.set_upper_bound(x_var, 4.0)
 
-            x_sq = IOM._add_sos2_quadratic_approx!(
-                setup.container, MockThermalGen, "dev1", 1,
-                x_var, 0.0, 4.0, 4,
+            result = IOM._add_sos2_quadratic_approx!(
+                setup.container, MockThermalGen,
+                ["dev1"], 1:1, setup.var_container,
+                0.0, 4.0, 4,
             )
+            x_sq = result[("dev1", 1)]
 
             # Objective: x^2 - 4x
             JuMP.@objective(setup.jump_model, Min, x_sq - 4.0 * x_var)
@@ -112,10 +115,12 @@ end
 
             y = JuMP.@variable(setup.jump_model, base_name = "y")
 
-            x_sq = IOM._add_sos2_quadratic_approx!(
-                setup.container, MockThermalGen, "dev1", 1,
-                x_var, 0.0, 4.0, 4,
+            result = IOM._add_sos2_quadratic_approx!(
+                setup.container, MockThermalGen,
+                ["dev1"], 1:1, setup.var_container,
+                0.0, 4.0, 4,
             )
+            x_sq = result[("dev1", 1)]
 
             # x^2 + y = 10 → with x=3, x^2=9, y=1
             JuMP.@constraint(setup.jump_model, x_sq + y == 10.0)
@@ -130,13 +135,12 @@ end
 
         @testset "Multiple time steps" begin
             setup = _setup_qa_test(["dev1"], 1:3)
-            for t in 1:3
-                x_var = setup.var_container["dev1", t]
-                IOM._add_sos2_quadratic_approx!(
-                    setup.container, MockThermalGen, "dev1", t,
-                    x_var, 0.0, 4.0, 4,
-                )
-            end
+            result = IOM._add_sos2_quadratic_approx!(
+                setup.container, MockThermalGen,
+                ["dev1"], 1:3, setup.var_container,
+                0.0, 4.0, 4,
+            )
+
             # Verify lambda variables exist for each time step
             lambda_container = IOM.get_variable(
                 setup.container, IOM.QuadraticApproxVariable(), MockThermalGen,
@@ -144,20 +148,26 @@ end
             for t in 1:3, i in 1:5
                 @test haskey(lambda_container, ("dev1", i, t))
             end
+
+            # Result dict should have entries for all (name, t) pairs
+            for t in 1:3
+                @test haskey(result, ("dev1", t))
+            end
         end
     end
 
     @testset "Manual SOS2" begin
         @testset "Constraint structure" begin
             setup = _setup_qa_test(["dev1"], 1:1)
-            x_var = setup.var_container["dev1", 1]
             num_segments = 4
             n_points = num_segments + 1
 
-            x_sq = IOM._add_manual_sos2_quadratic_approx!(
-                setup.container, MockThermalGen, "dev1", 1,
-                x_var, 0.0, 4.0, num_segments,
+            result = IOM._add_manual_sos2_quadratic_approx!(
+                setup.container, MockThermalGen,
+                ["dev1"], 1:1, setup.var_container,
+                0.0, 4.0, num_segments,
             )
+            x_sq = result[("dev1", 1)]
 
             # Returned expression should be AffExpr
             @test x_sq isa JuMP.AffExpr
@@ -201,10 +211,12 @@ end
             JuMP.set_lower_bound(x_var, 0.0)
             JuMP.set_upper_bound(x_var, 4.0)
 
-            x_sq = IOM._add_manual_sos2_quadratic_approx!(
-                setup.container, MockThermalGen, "dev1", 1,
-                x_var, 0.0, 4.0, 4,
+            result = IOM._add_manual_sos2_quadratic_approx!(
+                setup.container, MockThermalGen,
+                ["dev1"], 1:1, setup.var_container,
+                0.0, 4.0, 4,
             )
+            x_sq = result[("dev1", 1)]
 
             JuMP.@objective(setup.jump_model, Min, x_sq - 4.0 * x_var)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
@@ -223,10 +235,12 @@ end
 
             y = JuMP.@variable(setup.jump_model, base_name = "y")
 
-            x_sq = IOM._add_manual_sos2_quadratic_approx!(
-                setup.container, MockThermalGen, "dev1", 1,
-                x_var, 0.0, 4.0, 4,
+            result = IOM._add_manual_sos2_quadratic_approx!(
+                setup.container, MockThermalGen,
+                ["dev1"], 1:1, setup.var_container,
+                0.0, 4.0, 4,
             )
+            x_sq = result[("dev1", 1)]
 
             JuMP.@constraint(setup.jump_model, x_sq + y == 10.0)
             JuMP.@objective(setup.jump_model, Min, y)
@@ -404,10 +418,12 @@ end
                 JuMP.set_upper_bound(x_var, 4.0)
 
                 if method == :sos2
-                    x_sq = IOM._add_sos2_quadratic_approx!(
-                        setup.container, MockThermalGen, "dev1", 1,
-                        x_var, 0.0, 4.0, 4,
+                    result = IOM._add_sos2_quadratic_approx!(
+                        setup.container, MockThermalGen,
+                        ["dev1"], 1:1, setup.var_container,
+                        0.0, 4.0, 4,
                     )
+                    x_sq = result[("dev1", 1)]
                 else
                     result = IOM._add_sawtooth_quadratic_approx!(
                         setup.container, MockThermalGen,
@@ -437,10 +453,12 @@ end
             JuMP.set_lower_bound(x_var, 0.0)
             JuMP.set_upper_bound(x_var, 6.0)
 
-            x_sq = IOM._add_sos2_quadratic_approx!(
-                setup.container, MockThermalGen, "dev1", 1,
-                x_var, 0.0, 6.0, num_segments,
+            result = IOM._add_sos2_quadratic_approx!(
+                setup.container, MockThermalGen,
+                ["dev1"], 1:1, setup.var_container,
+                0.0, 6.0, num_segments,
             )
+            x_sq = result[("dev1", 1)]
 
             JuMP.@objective(setup.jump_model, Min, x_sq - 6.0 * x_var)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
