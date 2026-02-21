@@ -1,4 +1,5 @@
 const MOI = JuMP.MOI
+const TEST_META = "TestVar"
 
 function _setup_qa_container(time_steps::UnitRange{Int})
     sys = MockSystem(100.0)
@@ -41,7 +42,7 @@ end
             result = IOM._add_sos2_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 4.0, num_segments,
+                0.0, 4.0, num_segments, TEST_META,
             )
             x_sq = result[("dev1", 1)]
 
@@ -51,6 +52,7 @@ end
             # Lambda variables should exist
             lambda_container = IOM.get_variable(
                 setup.container, IOM.QuadraticApproxVariable(), MockThermalGen,
+                TEST_META,
             )
             for i in 1:n_points
                 @test haskey(lambda_container, ("dev1", i, 1))
@@ -64,6 +66,7 @@ end
                 setup.container,
                 IOM.QuadraticApproxLinkingConstraint,
                 MockThermalGen,
+                TEST_META,
             )
 
             # Normalization constraint should exist
@@ -71,6 +74,7 @@ end
                 setup.container,
                 IOM.QuadraticApproxNormalizationConstraint,
                 MockThermalGen,
+                TEST_META,
             )
 
             # SOS2 constraint should exist (solver-native)
@@ -93,7 +97,7 @@ end
             result = IOM._add_sos2_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 4.0, 4,
+                0.0, 4.0, 4, TEST_META,
             )
             x_sq = result[("dev1", 1)]
 
@@ -118,7 +122,7 @@ end
             result = IOM._add_sos2_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 4.0, 4,
+                0.0, 4.0, 4, TEST_META,
             )
             x_sq = result[("dev1", 1)]
 
@@ -138,12 +142,13 @@ end
             result = IOM._add_sos2_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:3, setup.var_container,
-                0.0, 4.0, 4,
+                0.0, 4.0, 4, TEST_META,
             )
 
             # Verify lambda variables exist for each time step
             lambda_container = IOM.get_variable(
                 setup.container, IOM.QuadraticApproxVariable(), MockThermalGen,
+                TEST_META,
             )
             for t in 1:3, i in 1:5
                 @test haskey(lambda_container, ("dev1", i, t))
@@ -165,7 +170,7 @@ end
             result = IOM._add_manual_sos2_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 4.0, num_segments,
+                0.0, 4.0, num_segments, TEST_META,
             )
             x_sq = result[("dev1", 1)]
 
@@ -175,6 +180,7 @@ end
             # Lambda variables should exist
             lambda_container = IOM.get_variable(
                 setup.container, IOM.QuadraticApproxVariable(), MockThermalGen,
+                TEST_META,
             )
             for i in 1:n_points
                 @test haskey(lambda_container, ("dev1", i, 1))
@@ -183,6 +189,7 @@ end
             # Binary z variables should exist (n_points - 1)
             z_container = IOM.get_variable(
                 setup.container, IOM.ManualSOS2BinaryVariable(), MockThermalGen,
+                TEST_META,
             )
             for j in 1:(n_points - 1)
                 @test haskey(z_container, ("dev1", j, 1))
@@ -194,6 +201,7 @@ end
                 setup.container,
                 IOM.ManualSOS2SegmentSelectionConstraint,
                 MockThermalGen,
+                TEST_META,
             )
 
             # NO solver SOS2 constraints
@@ -214,7 +222,7 @@ end
             result = IOM._add_manual_sos2_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 4.0, 4,
+                0.0, 4.0, 4, TEST_META,
             )
             x_sq = result[("dev1", 1)]
 
@@ -238,7 +246,7 @@ end
             result = IOM._add_manual_sos2_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 4.0, 4,
+                0.0, 4.0, 4, TEST_META,
             )
             x_sq = result[("dev1", 1)]
 
@@ -261,7 +269,7 @@ end
             result = IOM._add_sawtooth_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 4.0, depth,
+                0.0, 4.0, depth, TEST_META,
             )
 
             # Returned dict should contain AffExpr for each (name, t)
@@ -271,6 +279,7 @@ end
             # Auxiliary variables g_0, g_1, g_2 should exist
             g_container = IOM.get_variable(
                 setup.container, IOM.SawtoothAuxVariable(), MockThermalGen,
+                TEST_META,
             )
             for j in 0:depth
                 var = g_container["dev1", j, 1]
@@ -281,6 +290,7 @@ end
             # Binary variables α_1, α_2 should exist
             alpha_container = IOM.get_variable(
                 setup.container, IOM.SawtoothBinaryVariable(), MockThermalGen,
+                TEST_META,
             )
             for j in 1:depth
                 @test JuMP.is_binary(alpha_container["dev1", j, 1])
@@ -291,6 +301,7 @@ end
                 setup.container,
                 IOM.SawtoothLinkingConstraint,
                 MockThermalGen,
+                TEST_META,
             )
 
             # NO solver SOS2 constraints
@@ -312,7 +323,7 @@ end
             result = IOM._add_sawtooth_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 4.0, 2,
+                0.0, 4.0, 2, TEST_META,
             )
             x_sq = result[("dev1", 1)]
 
@@ -336,7 +347,7 @@ end
             result = IOM._add_sawtooth_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 4.0, 2,
+                0.0, 4.0, 2, TEST_META,
             )
             x_sq = result[("dev1", 1)]
 
@@ -355,15 +366,17 @@ end
             result = IOM._add_sawtooth_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:3, setup.var_container,
-                0.0, 4.0, 2,
+                0.0, 4.0, 2, TEST_META,
             )
 
             # Verify variables exist for each time step
             g_container = IOM.get_variable(
                 setup.container, IOM.SawtoothAuxVariable(), MockThermalGen,
+                TEST_META,
             )
             alpha_container = IOM.get_variable(
                 setup.container, IOM.SawtoothBinaryVariable(), MockThermalGen,
+                TEST_META,
             )
             for t in 1:3, j in 0:2
                 @test JuMP.lower_bound(g_container["dev1", j, t]) == 0.0
@@ -391,7 +404,7 @@ end
                 result = IOM._add_sawtooth_quadratic_approx!(
                     setup.container, MockThermalGen,
                     ["dev1"], 1:1, setup.var_container,
-                    0.0, 6.0, depth,
+                    0.0, 6.0, depth, TEST_META,
                 )
                 x_sq = result[("dev1", 1)]
 
@@ -421,14 +434,14 @@ end
                     result = IOM._add_sos2_quadratic_approx!(
                         setup.container, MockThermalGen,
                         ["dev1"], 1:1, setup.var_container,
-                        0.0, 4.0, 4,
+                        0.0, 4.0, 4, TEST_META,
                     )
                     x_sq = result[("dev1", 1)]
                 else
                     result = IOM._add_sawtooth_quadratic_approx!(
                         setup.container, MockThermalGen,
                         ["dev1"], 1:1, setup.var_container,
-                        0.0, 4.0, 2,
+                        0.0, 4.0, 2, TEST_META,
                     )
                     x_sq = result[("dev1", 1)]
                 end
@@ -456,7 +469,7 @@ end
             result = IOM._add_sos2_quadratic_approx!(
                 setup.container, MockThermalGen,
                 ["dev1"], 1:1, setup.var_container,
-                0.0, 6.0, num_segments,
+                0.0, 6.0, num_segments, TEST_META,
             )
             x_sq = result[("dev1", 1)]
 

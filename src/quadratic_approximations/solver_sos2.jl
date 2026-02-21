@@ -6,7 +6,7 @@ struct QuadraticApproxLinkingConstraint <: ConstraintType end
 struct QuadraticApproxNormalizationConstraint <: ConstraintType end
 
 """
-    _add_sos2_quadratic_approx!(container, C, names, time_steps, x_var_container, x_min, x_max, num_segments)
+    _add_sos2_quadratic_approx!(container, C, names, time_steps, x_var_container, x_min, x_max, num_segments, meta)
 
 Approximate x² using a piecewise linear function with solver-native SOS2 constraints.
 
@@ -23,6 +23,7 @@ affine expressions approximating x².
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
 - `num_segments::Int`: number of PWL segments
+- `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
 
 # Returns
 - `Dict{Tuple{String, Int}, JuMP.AffExpr}`: maps (name, t) to affine expression approximating x²
@@ -36,6 +37,7 @@ function _add_sos2_quadratic_approx!(
     x_min::Float64,
     x_max::Float64,
     num_segments::Int,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
         _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments)
@@ -44,27 +46,23 @@ function _add_sos2_quadratic_approx!(
 
     # Create all containers upfront
     lambda_container =
-        add_variable_container!(container, QuadraticApproxVariable(), C)
-    link_key = ConstraintKey(QuadraticApproxLinkingConstraint, C)
-    _assign_container!(
-        container.constraints,
-        link_key,
-        JuMP.Containers.SparseAxisArray(
-            Dict{Tuple{String, Int}, Union{Nothing, JuMP.ConstraintRef}}(),
-        ),
+        add_variable_container!(container, QuadraticApproxVariable(), C; meta)
+    link_container = add_constraints_container!(
+        container,
+        QuadraticApproxLinkingConstraint(),
+        C,
+        names,
+        time_steps;
+        meta,
     )
-    link_container =
-        get_constraint(container, QuadraticApproxLinkingConstraint(), C)
-    norm_key = ConstraintKey(QuadraticApproxNormalizationConstraint, C)
-    _assign_container!(
-        container.constraints,
-        norm_key,
-        JuMP.Containers.SparseAxisArray(
-            Dict{Tuple{String, Int}, Union{Nothing, JuMP.ConstraintRef}}(),
-        ),
+    norm_container = add_constraints_container!(
+        container,
+        QuadraticApproxNormalizationConstraint(),
+        C,
+        names,
+        time_steps;
+        meta,
     )
-    norm_container =
-        get_constraint(container, QuadraticApproxNormalizationConstraint(), C)
 
     result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
 

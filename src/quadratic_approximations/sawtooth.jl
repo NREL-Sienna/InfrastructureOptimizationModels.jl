@@ -7,7 +7,7 @@ struct SawtoothBinaryVariable <: VariableType end
 struct SawtoothLinkingConstraint <: ConstraintType end
 
 """
-    _add_sawtooth_quadratic_approx!(container, C, names, time_steps, x_var_container, x_min, x_max, depth)
+    _add_sawtooth_quadratic_approx!(container, C, names, time_steps, x_var_container, x_min, x_max, depth, meta)
 
 Approximate x² using the sawtooth MIP formulation.
 
@@ -27,6 +27,7 @@ with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
 - `depth::Int`: sawtooth depth L (number of binary variables per component per time step)
+- `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
 
 # Returns
 - `Dict{Tuple{String, Int}, JuMP.AffExpr}`: maps (name, t) to affine expression approximating x²
@@ -40,6 +41,7 @@ function _add_sawtooth_quadratic_approx!(
     x_min::Float64,
     x_max::Float64,
     depth::Int,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op depth >= 1
@@ -55,7 +57,8 @@ function _add_sawtooth_quadratic_approx!(
         C,
         names,
         g_levels,
-        time_steps,
+        time_steps;
+        meta,
     )
     alpha_container = add_variable_container!(
         container,
@@ -63,14 +66,16 @@ function _add_sawtooth_quadratic_approx!(
         C,
         names,
         alpha_levels,
-        time_steps,
+        time_steps;
+        meta,
     )
     link_container = add_constraints_container!(
         container,
         SawtoothLinkingConstraint(),
         C,
         names,
-        time_steps,
+        time_steps;
+        meta,
     )
 
     result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
