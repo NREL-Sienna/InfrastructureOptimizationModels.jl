@@ -12,6 +12,14 @@ routines for managing power optimization models. Julia compat: `^1.10`.
 - `PSY.System` → `IS.InfrastructureSystemsContainer`
 - Cost curves: `IS.CostCurve`, `IS.LinearCurve`, `IS.UnitSystem`, etc.
 
+## Optimization Container Keys
+
+**Never create container keys directly.** Constraint keys, variable keys, aux_variable keys, parameter
+keys, and any other optimization container keys must only be created through the corresponding
+`add_constraints_container!`, `add_variables_container!`, `add_aux_variables_container!`, or
+`add_parameters_container!` functions. Do not instantiate keys outside of these `add_foo_container`
+functions.
+
 ## Testing
 
 **Test file structure:** Test files are included by `InfrastructureOptimizationModelsTests.jl`, which
