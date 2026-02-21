@@ -612,6 +612,11 @@ include("objective_function/piecewise_linear.jl")
 include("objective_function/offer_curve_types.jl")
 include("objective_function/market_bid.jl")
 
+# Quadratic approximations (PWL via SOS2)
+include("quadratic_approximations/solver_sos2.jl")
+include("quadratic_approximations/manual_sos2.jl")
+include("quadratic_approximations/sawtooth.jl")
+
 # add_param_container! wrappers — must come after piecewise_linear.jl
 # (which defines VariableValueParameter and FixValueParameter)
 include("common_models/add_param_container.jl")

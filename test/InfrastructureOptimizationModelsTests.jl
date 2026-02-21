@@ -139,6 +139,9 @@ function run_tests()
                     # TODO tests?
                     include(joinpath(TEST_DIR, "test_jump_utils.jl"))
                     include(joinpath(TEST_DIR, "test_pwl_methods.jl"))
+
+                    # --- quadratic_approximations/ subfolder ---
+                    include(joinpath(TEST_DIR, "test_quadratic_approximations.jl"))
                 end
 
                 #=
