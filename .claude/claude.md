@@ -4,7 +4,7 @@ Library for Optimization modeling in Sienna. This is a utility library that defi
 routines for managing power optimization models. Julia compat: `^1.10`.
 
 > **General Sienna Programming Practices:** For information on performance requirements, code conventions, documentation practices, and contribution workflows that apply across all Sienna packages, see [Sienna.md](Sienna.md). Always
-check this file before making plans or changes.
+check this file before making plans, changes or running tests. Review in detail the testing proceedures at the beggining of every session.
 
 > **Maintenance note:** This file documents the repository structure and conventions. Update it
 whenever files, directories, or architectural patterns change so it stays accurate.
