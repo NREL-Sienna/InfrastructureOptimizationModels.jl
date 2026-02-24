@@ -92,7 +92,7 @@ function OptimizationContainer(
     ::Type{T},
 ) where {T}
     if isabstracttype(T)
-        error("Default Time Series Type $V can't be abstract")
+        error("Default Time Series Type $T can't be abstract")
     end
 
     if jump_model !== nothing && get_direct_mode_optimizer(settings)
