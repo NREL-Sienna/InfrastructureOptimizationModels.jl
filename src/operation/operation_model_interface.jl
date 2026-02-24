@@ -199,6 +199,17 @@ function advance_execution_count!(model::OperationModel)
     return
 end
 
+"""
+Extension point for downstream packages (e.g., PowerOperationsModels) to implement
+the initial conditions model build logic.
+"""
+function build_initial_conditions_model!(model::OperationModel)
+    error(
+        "build_initial_conditions_model! not implemented for $(typeof(model)). " *
+        "Implement this method in PowerOperationsModels.",
+    )
+end
+
 function build_initial_conditions!(model::OperationModel)
     @assert get_initial_conditions_model_container(get_internal(model)) ===
             nothing
