@@ -193,7 +193,6 @@ export DevicePower
 export DeviceStatus
 export InitialTimeDurationOn
 export InitialTimeDurationOff
-export InitialEnergyLevel
 
 # Functions
 export build!
@@ -236,8 +235,6 @@ export add_pwl_normalization_constraint!
 export add_pwl_sos2_constraint!
 export get_pwl_cost_expression
 export add_to_objective_function!
-export initial_condition_variable
-export initial_condition_default
 export process_market_bid_parameters!
 
 ## Results interfaces
@@ -330,7 +327,6 @@ export get_multiplier_value
 export add_expression_container!
 
 # Initial condition infrastructure (extension points for POM)
-export get_initial_conditions_value
 export update_initial_conditions!
 # Note: TimeDurationOn and TimeDurationOff are device-specific and defined in POM
 
@@ -404,6 +400,7 @@ export add_variable!, requires_initialization
 export write_results!
 export built_for_recurrent_solves
 export initialize_hvdc_system!
+export build_initial_conditions_model!
 
 # Bulk export: symbols POM needs that weren't previously exported
 # Core types
@@ -442,7 +439,7 @@ export get_optimization_container, get_internal
 # Container creation
 export add_constraints_container!, add_variable_cost!
 # Initial conditions
-export add_initial_condition!, add_initial_condition_container!
+export add_initial_condition_container!
 export has_initial_condition_value, set_ic_quantity!, get_last_recorded_value
 export get_component_type, get_component_name, add_jump_parameter
 # Template/model access
@@ -629,10 +626,7 @@ include("operation/time_series_interface.jl")
 include("operation/optimization_debugging.jl")
 include("operation/model_numerical_analysis_utils.jl")
 
-include("initial_conditions/add_initial_condition.jl")
 include("initial_conditions/calculate_initial_condition.jl")
-
-include("initial_conditions/initialization.jl")
 
 # Utils
 include("utils/indexing.jl")

@@ -365,34 +365,6 @@ function check_duration_off_initial_conditions_values(
     end
 end
 
-function check_energy_initial_conditions_values(model, ::Type{T}) where {T <: PSY.Component}
-    ic_data = PSI.get_initial_condition(
-        PSI.get_optimization_container(model),
-        InitialEnergyLevel(),
-        T,
-    )
-    for ic in ic_data
-        d = ic.component
-        name = PSY.get_name(ic.component)
-        e_value = PSI.jump_value(PSI.get_value(ic))
-        @test PSY.get_initial_storage_capacity_level(d) * PSY.get_storage_capacity(d) *
-              PSY.get_conversion_factor(d) == e_value
-    end
-end
-
-function check_energy_initial_conditions_values(model, ::Type{T}) where {T <: PSY.HydroGen}
-    ic_data = PSI.get_initial_condition(
-        PSI.get_optimization_container(model),
-        InitialEnergyLevel(),
-        T,
-    )
-    for ic in ic_data
-        name = PSY.get_name(ic.component)
-        e_value = PSI.jump_value(PSI.get_value(ic))
-        @test PSY.get_initial_storage(ic.component) == e_value
-    end
-end
-
 function check_status_initial_conditions_values(model, ::Type{T}) where {T <: PSY.Component}
     initial_conditions =
         PSI.get_initial_condition(PSI.get_optimization_container(model), DeviceStatus(), T)
