@@ -43,7 +43,15 @@ function _check_column_consistency(
     data::SortedDict{Dates.DateTime, DenseAxisArray{Float64, 2}},
     cols::NTuple{N, Vector{String}},
 ) where {N}
-    # TODO:
+    for val in values(data)
+        for (i, col) in enumerate(cols)
+            if axes(val)[i] != col
+                error(
+                    "Mismatch in DenseAxisArray axis $i column names: $(axes(val)[i]) $col",
+                )
+            end
+        end
+    end
 end
 
 function _check_column_consistency(
@@ -58,8 +66,6 @@ function _check_column_consistency(
         end
     end
 end
-
-# TODO: Implement consistency check for other sizes
 
 # This struct behaves like a dict, delegating to its 'data' field.
 Base.length(res::ResultsByTime) = length(res.data)
