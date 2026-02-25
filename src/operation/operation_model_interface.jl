@@ -199,6 +199,13 @@ function advance_execution_count!(model::OperationModel)
     return
 end
 
+"""
+Extension point for downstream packages (e.g., PowerOperationsModels) to implement
+the initial conditions model build logic.
+"""
+function build_initial_conditions_model! end
+function get_incompatible_devices end
+
 function build_initial_conditions!(model::OperationModel)
     @assert get_initial_conditions_model_container(get_internal(model)) ===
             nothing

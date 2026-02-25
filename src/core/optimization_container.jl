@@ -92,7 +92,7 @@ function OptimizationContainer(
     ::Type{T},
 ) where {T}
     if isabstracttype(T)
-        error("Default Time Series Type $V can't be abstract")
+        error("Default Time Series Type $T can't be abstract")
     end
 
     if jump_model !== nothing && get_direct_mode_optimizer(settings)
@@ -1734,7 +1734,7 @@ function lazy_container_addition!(
     T <: ExpressionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 }
-    meta = get(kwargs, :meta, IS.Optimization.CONTAINER_KEY_EMPTY_META)
+    meta = get(kwargs, :meta, CONTAINER_KEY_EMPTY_META)
     if !has_container_key(container, T, U, meta)
         expr_container =
             add_expression_container!(container, expression, U, axs...; kwargs...)
