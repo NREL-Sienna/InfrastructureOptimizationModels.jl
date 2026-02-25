@@ -372,6 +372,7 @@ export get_parameter_multiplier_array, get_aux_variable, get_condition
 export supports_milp, get_quadratic_cost_per_system_unit
 export check_hvdc_line_limits_unidirectional, check_hvdc_line_limits_consistency
 export add_sparse_pwl_interpolation_variables!
+export JuMPOrFloat
 export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
 # Constraint helpers
 export add_range_constraints!, add_parameterized_upper_bound_range_constraints
@@ -401,10 +402,12 @@ export write_results!
 export built_for_recurrent_solves
 export initialize_hvdc_system!
 export build_initial_conditions_model!
+export get_incompatible_devices
 
 # Bulk export: symbols POM needs that weren't previously exported
 # Core types
-export OptimizationContainer, OperationModel
+export OptimizationContainer, OperationModel, AbstractPowerFlowEvaluationModel
+export build_impl!
 export ArgumentConstructStage, ModelConstructStage
 export EmulationModelStore, DeviceModelForBranches
 export DeviceAboveMinPower, StartUpStages, SOSStatusVariable
@@ -441,9 +444,14 @@ export add_constraints_container!, add_variable_cost!
 # Initial conditions
 export add_initial_condition_container!
 export has_initial_condition_value, set_ic_quantity!, get_last_recorded_value
+export set_initial_conditions_model_container!, get_initial_conditions_model_container
+export get_initial_conditions_device_model, get_initial_conditions_service_model
+export _validate_warm_start_support, _add_services_to_device_model!
 export get_component_type, get_component_name, add_jump_parameter
 # Template/model access
 export get_use_slacks, get_template, get_model
+export get_attributes, get_parameter_column_values
+export get_services, get_contributing_devices, get_contributing_devices_map
 export set_resolution!, finalize_template!
 # JuMP access
 export get_jump_model
