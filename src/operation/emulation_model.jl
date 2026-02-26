@@ -360,7 +360,9 @@ function update_parameter_values!(
     # Enable again for detailed debugging
     # TimerOutputs.@timeit RUN_SIMULATION_TIMER "$T $U Parameter Update" begin
     optimization_container = get_optimization_container(model)
-    # FIXME update code doesn't belong here in IOM.
+    # FIXME: This parameter update logic belongs in POM or PSI, not IOM.
+    # Move this function (and the surrounding update chain) once EmulationModel
+    # lifecycle code is fully migrated.
     update_container_parameter_values!(optimization_container, model, key, input)
     parameter_attributes = get_parameter_attributes(optimization_container, key)
     IS.@record :execution ParameterUpdateEvent(

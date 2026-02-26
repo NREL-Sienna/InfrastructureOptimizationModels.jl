@@ -1,3 +1,5 @@
+# FIXME not working and not included in the tests. integration of emulation models in
+# POM-IOM split is a work in progress.
 @testset "Emulation Model Build" begin
     template = get_thermal_dispatch_template_network()
     c_sys5 = PSB.build_system(
