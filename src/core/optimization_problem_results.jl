@@ -103,6 +103,24 @@ get_total_cost(res::OptimizationProblemResults) = get_objective_value(res)
 get_optimizer_stats(res::OptimizationProblemResults) = res.optimizer_stats
 get_parameter_values(res::OptimizationProblemResults) = res.parameter_values
 get_source_data(res::OptimizationProblemResults) = res.source_data
+get_system(res::OptimizationProblemResults) = get_source_data(res)
+set_system!(res::OptimizationProblemResults, sys) = set_source_data!(res, sys)
+
+"""
+Load the system from disk if not already set, and return it.
+"""
+function get_system!(res::OptimizationProblemResults; kwargs...)
+    !isnothing(get_system(res)) && return get_system(res)
+    file = joinpath(get_results_dir(res), make_system_filename(get_source_data_uuid(res)))
+    if isfile(file)
+        sys = PSY.System(file; time_series_read_only = true)
+        @info "De-serialized the system from files."
+    else
+        error("Could not locate system file: $file")
+    end
+    set_system!(res, sys)
+    return get_system(res)
+end
 get_forecast_horizon(res::OptimizationProblemResults) = length(get_timestamps(res))
 get_output_dir(res::OptimizationProblemResults) = res.output_dir
 get_results_dir(res::OptimizationProblemResults) = res.results_dir
@@ -133,6 +151,48 @@ function get_resolution(res::OptimizationProblemResults)
         end
     end
     return nothing
+end
+
+function get_realized_timestamps(
+    res::IS.Results;
+    start_time::Union{Nothing, Dates.DateTime} = nothing,
+    len::Union{Int, Nothing} = nothing,
+)
+    timestamps = get_timestamps(res)
+    resolution = get_resolution(res)
+    intervals = diff(timestamps)
+    if isempty(intervals) && isnothing(resolution)
+        interval = Dates.Millisecond(1)
+        resolution = Dates.Millisecond(1)
+    elseif !isempty(intervals) && isnothing(resolution)
+        interval = first(intervals)
+        resolution = interval
+    elseif isempty(intervals) && !isnothing(resolution)
+        interval = resolution
+    else
+        interval = first(intervals)
+    end
+    horizon = get_forecast_horizon(res)
+    start_time = isnothing(start_time) ? first(timestamps) : start_time
+    end_time =
+        if isnothing(len)
+            last(timestamps) + interval - resolution
+        else
+            start_time + (len - 1) * resolution
+        end
+
+    requested_range = start_time:resolution:end_time
+    available_range =
+        first(timestamps):resolution:(last(timestamps) + (horizon - 1) * resolution)
+    invalid_timestamps = setdiff(requested_range, available_range)
+
+    if !isempty(invalid_timestamps)
+        msg = "Requested time does not match available results"
+        @error msg
+        throw(IS.InvalidValue(msg))
+    end
+
+    return requested_range
 end
 
 function export_result(

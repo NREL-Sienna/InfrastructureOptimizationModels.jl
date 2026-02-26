@@ -171,7 +171,7 @@ export BranchReductionOptimizationTracker
 export get_variable_dict, get_constraint_dict, get_constraint_map_by_type
 export get_number_of_steps, set_number_of_steps!
 # Note: Concrete network model types (PTDFPowerModel, CopperPlatePowerModel, etc.)
-# are defined in PowerSimulations, not here
+# are defined in PowerOperationsModels, not IOM.
 
 ######## Model Container Types ########
 export DeviceModel
@@ -195,7 +195,6 @@ export InitialTimeDurationOn
 export InitialTimeDurationOff
 
 # Functions
-export build!
 export validate_time_series!
 export init_optimization_container!
 ## Op Model Exports
@@ -203,11 +202,10 @@ export get_initial_conditions
 export serialize_problem
 export serialize_results
 export serialize_optimization_model
-## Decision Model Export
-export solve!
-## Emulation Model Exports
-export run!
 
+export get_device_models
+export get_branch_models
+export get_service_models
 export set_device_model!
 export set_service_model!
 export set_network_model!
@@ -328,7 +326,6 @@ export add_expression_container!
 
 # Initial condition infrastructure (extension points for POM)
 export update_initial_conditions!
-# Note: TimeDurationOn and TimeDurationOff are device-specific and defined in POM
 
 # Key Types (defined in IOM)
 export OptimizationContainerKey
@@ -358,7 +355,7 @@ export _get_ramp_constraint_devices
 export add_param_container!,
     add_param_container_split_axes!,
     add_param_container_shared_axes!, get_parameter_eltype
-export make_system_expressions!, remove_undef!
+export remove_undef!
 export get_branch_argument_variable_axis
 
 # Bulk-added: symbols used by POM but previously not exported
@@ -400,14 +397,11 @@ export add_variable!, requires_initialization
 # more extension points
 export write_results!
 export built_for_recurrent_solves
-export initialize_hvdc_system!
-export build_initial_conditions_model!
 export get_incompatible_devices
 
 # Bulk export: symbols POM needs that weren't previously exported
 # Core types
 export OptimizationContainer, OperationModel, AbstractPowerFlowEvaluationModel
-export build_impl!
 export ArgumentConstructStage, ModelConstructStage
 export EmulationModelStore, DeviceModelForBranches
 export DeviceAboveMinPower, StartUpStages, SOSStatusVariable
@@ -445,7 +439,7 @@ export add_constraints_container!, add_variable_cost!
 export add_initial_condition_container!
 export has_initial_condition_value, set_ic_quantity!, get_last_recorded_value
 export set_initial_conditions_model_container!, get_initial_conditions_model_container
-export get_initial_conditions_device_model, get_initial_conditions_service_model
+export get_initial_conditions_device_model
 export _validate_warm_start_support, _add_services_to_device_model!
 export get_component_type, get_component_name, add_jump_parameter
 # Template/model access
@@ -510,6 +504,8 @@ export RunStatus
 export SimulationBuildStatus
 
 # Problem Types
+export DecisionProblem
+export EmulationProblem
 export DefaultDecisionProblem
 export DefaultEmulationProblem
 
@@ -543,6 +539,12 @@ export get_model_base_power
 export get_optimizer_stats
 export get_timestamps
 export get_resolution
+
+export get_contributing_devices
+export get_contributing_devices_map
+export get_parameter_column_values
+export update_container_parameter_values!
+export export_results
 
 ## Note: Concrete PowerModels types (ACPPowerModel, DCPPowerModel, etc.) are now
 ## defined and exported by PowerOperationsModels, not IOM.
