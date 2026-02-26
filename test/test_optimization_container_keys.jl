@@ -9,9 +9,9 @@ import InfrastructureOptimizationModels:
     InitialConditionKey
 import InfrastructureSystems as IS
 
-IOM.convert_result_to_natural_units(::Type{MockVariable2}) = true
+IOM.convert_output_to_natural_units(::Type{MockVariable2}) = true
 IOM.should_write_resulting_value(::Type{MockVariable2}) = false
-IOM.convert_result_to_natural_units(::Type{MockExpression2}) = true
+IOM.convert_output_to_natural_units(::Type{MockExpression2}) = true
 IOM.should_write_resulting_value(::Type{MockExpression2}) = false
 @testset "Test optimization container keys" begin
     var_key = VariableKey(MockVariable, IS.TestComponent)
@@ -59,11 +59,11 @@ IOM.should_write_resulting_value(::Type{MockExpression2}) = false
 
     @test_throws IS.InvalidValue IOM.check_meta_chars("ZZ__CC")
 
-    @test !IOM.convert_result_to_natural_units(var_key)
-    @test !IOM.convert_result_to_natural_units(constraint_key)
-    @test !IOM.convert_result_to_natural_units(auxvar_key)
-    @test !IOM.convert_result_to_natural_units(expression_key)
-    @test !IOM.convert_result_to_natural_units(parameter_key)
+    @test !IOM.convert_output_to_natural_units(var_key)
+    @test !IOM.convert_output_to_natural_units(constraint_key)
+    @test !IOM.convert_output_to_natural_units(auxvar_key)
+    @test !IOM.convert_output_to_natural_units(expression_key)
+    @test !IOM.convert_output_to_natural_units(parameter_key)
 
     @test IOM.should_write_resulting_value(var_key)
     @test IOM.should_write_resulting_value(constraint_key)
@@ -72,7 +72,7 @@ IOM.should_write_resulting_value(::Type{MockExpression2}) = false
     @test !IOM.should_write_resulting_value(parameter_key)
 
     var_key2 = VariableKey(MockVariable2, IS.TestComponent)
-    @test IOM.convert_result_to_natural_units(var_key2)
+    @test IOM.convert_output_to_natural_units(var_key2)
     @test !IOM.should_write_resulting_value(var_key2)
 
     key_strings = IOM.encode_keys_as_strings([var_key, var_key2])

@@ -148,7 +148,7 @@ end
     @test run!(model) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
 end
 
-@testset "Emulation Model Results" begin
+@testset "Emulation Model Outputs" begin
     template = get_thermal_dispatch_template_network()
     c_sys5 = PSB.build_system(
         PSITestSystems,
@@ -166,30 +166,30 @@ end
     ) ==
           PSI.ModelBuildStatus.BUILT
     @test run!(model) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
-    results = OptimizationProblemResults(model)
-    @test list_aux_variable_names(results) == []
-    @test list_aux_variable_keys(results) == []
-    @test list_variable_names(results) == ["ActivePowerVariable__ThermalStandard"]
-    @test list_variable_keys(results) ==
+    outputs = OptimizationProblemOutputs(model)
+    @test list_aux_variable_names(outputs) == []
+    @test list_aux_variable_keys(outputs) == []
+    @test list_variable_names(outputs) == ["ActivePowerVariable__ThermalStandard"]
+    @test list_variable_keys(outputs) ==
           [PSI.VariableKey(ActivePowerVariable, ThermalStandard)]
-    @test list_dual_names(results) == []
-    @test list_dual_keys(results) == []
-    @test list_parameter_names(results) == ["ActivePowerTimeSeriesParameter__PowerLoad"]
-    @test list_parameter_keys(results) ==
+    @test list_dual_names(outputs) == []
+    @test list_dual_keys(outputs) == []
+    @test list_parameter_names(outputs) == ["ActivePowerTimeSeriesParameter__PowerLoad"]
+    @test list_parameter_keys(outputs) ==
           [PSI.ParameterKey(ActivePowerTimeSeriesParameter, PowerLoad)]
 
-    @test read_variable(results, "ActivePowerVariable__ThermalStandard") isa DataFrame
-    @test read_variable(results, ActivePowerVariable, ThermalStandard) isa DataFrame
+    @test read_variable(outputs, "ActivePowerVariable__ThermalStandard") isa DataFrame
+    @test read_variable(outputs, ActivePowerVariable, ThermalStandard) isa DataFrame
     @test read_variable(
-        results,
+        outputs,
         PSI.VariableKey(ActivePowerVariable, ThermalStandard),
     ) isa
           DataFrame
 
-    @test read_parameter(results, "ActivePowerTimeSeriesParameter__PowerLoad") isa DataFrame
-    @test read_parameter(results, ActivePowerTimeSeriesParameter, PowerLoad) isa DataFrame
+    @test read_parameter(outputs, "ActivePowerTimeSeriesParameter__PowerLoad") isa DataFrame
+    @test read_parameter(outputs, ActivePowerTimeSeriesParameter, PowerLoad) isa DataFrame
     @test read_parameter(
-        results,
+        outputs,
         PSI.ParameterKey(ActivePowerTimeSeriesParameter, PowerLoad),
     ) isa DataFrame
 
@@ -198,16 +198,16 @@ end
         stats_values = read_optimizer_stats(model)[!, n]
         if any(ismissing.(stats_values))
             @test ismissing.(stats_values) ==
-                  ismissing.(read_optimizer_stats(results)[!, n])
+                  ismissing.(read_optimizer_stats(outputs)[!, n])
         elseif any(isnan.(stats_values))
-            @test isnan.(stats_values) == isnan.(read_optimizer_stats(results)[!, n])
+            @test isnan.(stats_values) == isnan.(read_optimizer_stats(outputs)[!, n])
         else
-            @test stats_values == read_optimizer_stats(results)[!, n]
+            @test stats_values == read_optimizer_stats(outputs)[!, n]
         end
     end
 
     for i in 1:executions
-        @test get_objective_value(results, i) isa Float64
+        @test get_objective_value(outputs, i) isa Float64
     end
 end
 
@@ -232,7 +232,7 @@ end
     end
 end
 
-@testset "Test serialization/deserialization of EmulationModel results" begin
+@testset "Test serialization/deserialization of EmulationModel outputs" begin
     path = mktempdir(; cleanup = true)
     template = get_thermal_dispatch_template_network()
     c_sys5 = PSB.build_system(
@@ -246,34 +246,34 @@ end
     executions = 10
     @test build!(model; executions = executions, output_dir = path) ==
           PSI.ModelBuildStatus.BUILT
-    @test run!(model; export_problem_results = true) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
-    results1 = OptimizationProblemResults(model)
-    var1_a = read_variable(results1, ActivePowerVariable, ThermalStandard)
+    @test run!(model; export_problem_outputs = true) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
+    outputs1 = OptimizationProblemOutputs(model)
+    var1_a = read_variable(outputs1, ActivePowerVariable, ThermalStandard)
     # Ensure that we can deserialize strings into keys.
-    var1_b = read_variable(results1, "ActivePowerVariable__ThermalStandard")
+    var1_b = read_variable(outputs1, "ActivePowerVariable__ThermalStandard")
     @test var1_a == var1_b
 
-    # Results were automatically serialized here.
-    results2 = OptimizationProblemResults(PSI.get_output_dir(model))
-    var2 = read_variable(results2, ActivePowerVariable, ThermalStandard)
+    # Outputs were automatically serialized here.
+    outputs2 = OptimizationProblemOutputs(PSI.get_output_dir(model))
+    var2 = read_variable(outputs2, ActivePowerVariable, ThermalStandard)
     @test var1_a == var2
-    @test get_system(results2) === nothing
-    get_system!(results2)
-    @test get_system(results2) isa PSY.System
+    @test get_system(outputs2) === nothing
+    get_system!(outputs2)
+    @test get_system(outputs2) isa PSY.System
 
     # Serialize to a new directory with the exported function.
-    results_path = joinpath(path, "results")
-    serialize_results(results1, results_path)
-    @test isfile(joinpath(results_path, ISOPT._PROBLEM_RESULTS_FILENAME))
-    results3 = OptimizationProblemResults(results_path)
-    var3 = read_variable(results3, ActivePowerVariable, ThermalStandard)
+    outputs_path = joinpath(path, "outputs")
+    serialize_outputs(outputs1, outputs_path)
+    @test isfile(joinpath(outputs_path, ISOPT._PROBLEM_OUTPUTS_FILENAME))
+    outputs3 = OptimizationProblemOutputs(outputs_path)
+    var3 = read_variable(outputs3, ActivePowerVariable, ThermalStandard)
     @test var1_a == var3
-    @test get_system(results3) === nothing
-    set_system!(results3, get_system(results1))
-    @test get_system(results3) !== nothing
+    @test get_system(outputs3) === nothing
+    set_system!(outputs3, get_system(outputs1))
+    @test get_system(outputs3) !== nothing
 
     exp_file =
-        joinpath(path, "results", "variables", "ActivePowerVariable__ThermalStandard.csv")
+        joinpath(path, "outputs", "variables", "ActivePowerVariable__ThermalStandard.csv")
     var4 = read_dataframe(exp_file)
     # Manually Multiply by the base power var1_a has natural units and export writes directly from the solver
     @test var1_a.value == var4.value .* 100.0
@@ -294,8 +294,8 @@ end
     @test build!(model; executions = executions, output_dir = path) ==
           PSI.ModelBuildStatus.BUILT
     @test run!(model) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
-    results = OptimizationProblemResults(model)
-    var1 = read_variable(results, ActivePowerVariable, ThermalStandard)
+    outputs = OptimizationProblemOutputs(model)
+    var1 = read_variable(outputs, ActivePowerVariable, ThermalStandard)
 
     file_list = sort!(collect(readdir(path)))
     @test PSI._JUMP_MODEL_FILENAME in file_list
@@ -304,8 +304,8 @@ end
     model2 = EmulationModel(path, HiGHS_optimizer)
     build!(model2; output_dir = path2)
     @test run!(model2) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
-    results2 = OptimizationProblemResults(model2)
-    var2 = read_variable(results, ActivePowerVariable, ThermalStandard)
+    outputs2 = OptimizationProblemOutputs(model2)
+    var2 = read_variable(outputs, ActivePowerVariable, ThermalStandard)
 
     @test var1 == var2
 

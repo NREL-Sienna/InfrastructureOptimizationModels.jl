@@ -472,7 +472,7 @@ function execute_optimizer!(container::OptimizationContainer, system::PSY.System
         end
     end
 
-    # Order is important because if a dual is needed then it could move the results to the
+    # Order is important because if a dual is needed then it could move the outputs to the
     # temporary primal container
     _, optimizer_stats.timed_calculate_aux_variables =
         @timed calculate_aux_variables!(container, system)
@@ -756,7 +756,7 @@ function add_dual_container!(
     if is_milp(container)
         @warn("The model has resulted in a MILP, \\
               dual value retrieval requires solving an additional Linear Program \\
-              which increases simulation time and the results could be innacurate.")
+              which increases simulation time and the outputs could be innacurate.")
     end
     const_key = ConstraintKey(T, U, meta)
     if sparse

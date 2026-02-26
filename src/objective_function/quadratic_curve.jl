@@ -104,7 +104,7 @@ function _check_quadratic_monotonicity(
 
     if fp_lb < 0 || fp_ub < 0
         @warn "Cost function for component $name is not monotonically increasing in the range [$lb, $ub]. \
-               This can lead to unexpected results"
+               This can lead to unexpected outputs"
     end
     return
 end

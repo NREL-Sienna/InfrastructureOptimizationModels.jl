@@ -16,7 +16,7 @@ end
 # DecisionModel data or EmulationModel data
 # Note: DecisionModelIndexType and EmulationModelIndexType are defined in core/definitions.jl
 
-function write_results!(
+function write_outputs!(
     store::AbstractModelStore,
     model::OperationModel,
     index::Union{DecisionModelIndexType, EmulationModelIndexType},
@@ -36,15 +36,15 @@ function write_results!(
         export_params = nothing
     end
 
-    write_model_dual_results!(store, model, index, update_timestamp, export_params)
-    write_model_parameter_results!(store, model, index, update_timestamp, export_params)
-    write_model_variable_results!(store, model, index, update_timestamp, export_params)
-    write_model_aux_variable_results!(store, model, index, update_timestamp, export_params)
-    write_model_expression_results!(store, model, index, update_timestamp, export_params)
+    write_model_dual_outputs!(store, model, index, update_timestamp, export_params)
+    write_model_parameter_outputs!(store, model, index, update_timestamp, export_params)
+    write_model_variable_outputs!(store, model, index, update_timestamp, export_params)
+    write_model_aux_variable_outputs!(store, model, index, update_timestamp, export_params)
+    write_model_expression_outputs!(store, model, index, update_timestamp, export_params)
     return
 end
 
-function write_model_dual_results!(
+function write_model_dual_outputs!(
     store,
     model::T,
     index::Union{DecisionModelIndexType, EmulationModelIndexType},
@@ -61,7 +61,7 @@ function write_model_dual_results!(
     for (key, constraint) in get_duals(container)
         !should_write_resulting_value(key) && continue
         data = jump_value.(constraint)
-        write_result!(store, model_name, key, index, update_timestamp, data)
+        write_output!(store, model_name, key, index, update_timestamp, data)
 
         if export_params !== nothing &&
            should_export_dual(export_params[:exports], update_timestamp, model_name, key)
@@ -71,13 +71,13 @@ function write_model_dual_results!(
             df = to_dataframe(jump_value.(constraint), key)
             time_col = range(index; length = horizon_count, step = resolution)
             DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_result(file_type, exports_path, key, index, df)
+            ISOPT.export_output(file_type, exports_path, key, index, df)
         end
     end
     return
 end
 
-function write_model_parameter_results!(
+function write_model_parameter_outputs!(
     store,
     model::T,
     index::Union{DecisionModelIndexType, EmulationModelIndexType},
@@ -99,7 +99,7 @@ function write_model_parameter_results!(
     for (key, param_container) in parameters
         !should_write_resulting_value(key) && continue
         data = calculate_parameter_values(param_container)
-        write_result!(store, model_name, key, index, update_timestamp, data)
+        write_output!(store, model_name, key, index, update_timestamp, data)
 
         if export_params !== nothing &&
            should_export_parameter(
@@ -113,13 +113,13 @@ function write_model_parameter_results!(
             df = to_dataframe(data, key)
             time_col = range(index; length = horizon_count, step = resolution)
             DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_result(file_type, exports_path, key, index, df)
+            ISOPT.export_output(file_type, exports_path, key, index, df)
         end
     end
     return
 end
 
-function write_model_variable_results!(
+function write_model_variable_outputs!(
     store,
     model::T,
     index::Union{DecisionModelIndexType, EmulationModelIndexType},
@@ -142,7 +142,7 @@ function write_model_variable_results!(
     for (key, variable) in variables
         !should_write_resulting_value(key) && continue
         data = jump_value.(variable)
-        write_result!(store, model_name, key, index, update_timestamp, data)
+        write_output!(store, model_name, key, index, update_timestamp, data)
 
         if export_params !== nothing &&
            should_export_variable(
@@ -157,13 +157,13 @@ function write_model_variable_results!(
             df = to_dataframe(data, key)
             time_col = range(index; length = horizon_count, step = resolution)
             DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_result(file_type, exports_path, key, index, df)
+            ISOPT.export_output(file_type, exports_path, key, index, df)
         end
     end
     return
 end
 
-function write_model_aux_variable_results!(
+function write_model_aux_variable_outputs!(
     store,
     model::T,
     index::Union{DecisionModelIndexType, EmulationModelIndexType},
@@ -180,7 +180,7 @@ function write_model_aux_variable_results!(
     for (key, variable) in get_aux_variables(container)
         !should_write_resulting_value(key) && continue
         data = jump_value.(variable)
-        write_result!(store, model_name, key, index, update_timestamp, data)
+        write_output!(store, model_name, key, index, update_timestamp, data)
 
         if export_params !== nothing &&
            should_export_aux_variable(
@@ -195,13 +195,13 @@ function write_model_aux_variable_results!(
             df = to_dataframe(data, key)
             time_col = range(index; length = horizon_count, step = resolution)
             DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_result(file_type, exports_path, key, index, df)
+            ISOPT.export_output(file_type, exports_path, key, index, df)
         end
     end
     return
 end
 
-function write_model_expression_results!(
+function write_model_expression_outputs!(
     store,
     model::T,
     index::Union{DecisionModelIndexType, EmulationModelIndexType},
@@ -224,7 +224,7 @@ function write_model_expression_results!(
     for (key, expression) in expressions
         !should_write_resulting_value(key) && continue
         data = jump_value.(expression)
-        write_result!(store, model_name, key, index, update_timestamp, data)
+        write_output!(store, model_name, key, index, update_timestamp, data)
 
         if export_params !== nothing &&
            should_export_expression(
@@ -239,7 +239,7 @@ function write_model_expression_results!(
             df = to_dataframe(data, key)
             time_col = range(index; length = horizon_count, step = resolution)
             DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_result(file_type, exports_path, key, index, df)
+            ISOPT.export_output(file_type, exports_path, key, index, df)
         end
     end
     return

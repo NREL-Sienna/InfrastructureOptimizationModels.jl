@@ -28,7 +28,7 @@ struct DecrementalOffer <: OfferDirection end
 Base.string(::IncrementalOffer) = "incremental"
 Base.string(::DecrementalOffer) = "decremental"
 
-# Type alias for decision model indices - used for indexing into result stores
+# Type alias for decision model indices - used for indexing into output stores
 const DecisionModelIndexType = Dates.DateTime
 const EmulationModelIndexType = Int
 
@@ -125,9 +125,9 @@ const KNOWN_SIMULATION_PATHS = [
     "models_json",
     "problems",
     "recorder",
-    "results",
+    "outputs",
 ]
-"If the name of an extraneous file that appears in simulation results matches one of these regexes, it is safe to ignore"
+"If the name of an extraneous file that appears in simulation outputs matches one of these regexes, it is safe to ignore"
 const IGNORABLE_FILES = [
     r"^\.DS_Store$",
     r"^\.Trashes$",
@@ -135,7 +135,7 @@ const IGNORABLE_FILES = [
     r"^\.nfs.*$",
     r"^[Dd]esktop.ini$",
 ]
-const RESULTS_DIR = "results"
+const OUTPUTS_DIR = "outputs"
 
 # Enums
 ModelBuildStatus = ISOPT.ModelBuildStatus

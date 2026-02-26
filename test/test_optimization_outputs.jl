@@ -1,7 +1,7 @@
 # Test types defined in test_utils/test_types.jl
 import InfrastructureOptimizationModels:
     OptimizationContainerMetadata,
-    OptimizationProblemResults,
+    OptimizationProblemOutputs,
     VariableKey,
     ExpressionKey,
     read_variable,
@@ -11,7 +11,7 @@ import Dates:
     Millisecond
 import InfrastructureSystems as IS
 
-@testset "Test OptimizationProblemResults long format" begin
+@testset "Test OptimizationProblemOutputs long format" begin
     base_power = 10.0
     # 2 hours timestamp range
     timestamp_range =
@@ -24,8 +24,8 @@ import InfrastructureSystems as IS
     data = IS.SystemData()
     uuid = IS.make_uuid()
     aux_variable_values = Dict()
-    @test !IOM.convert_result_to_natural_units(MockVariable)
-    @test IOM.convert_result_to_natural_units(MockVariable2)
+    @test !IOM.convert_output_to_natural_units(MockVariable)
+    @test IOM.convert_output_to_natural_units(MockVariable2)
     var_key1 = VariableKey(MockVariable, IS.TestComponent)
     var_key2 = VariableKey(MockVariable2, IS.TestComponent)
     vals = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]
@@ -43,8 +43,8 @@ import InfrastructureSystems as IS
     )
     dual_values = Dict()
     parameter_values = Dict()
-    @test !IOM.convert_result_to_natural_units(MockExpression)
-    @test IOM.convert_result_to_natural_units(MockExpression2)
+    @test !IOM.convert_output_to_natural_units(MockExpression)
+    @test IOM.convert_output_to_natural_units(MockExpression2)
     exp_key1 = ExpressionKey(MockExpression, IS.TestComponent)
     exp_key2 = ExpressionKey(MockExpression2, MockThermalGen)
     # Expression only 1 time-step
@@ -63,7 +63,7 @@ import InfrastructureSystems as IS
     optimizer_stats = DataFrames.DataFrame()
     metadata = OptimizationContainerMetadata()
     # Test with StepRange
-    opt_res1 = OptimizationProblemResults(
+    opt_res1 = OptimizationProblemOutputs(
         base_power,
         timestamp_range,
         data,
@@ -80,7 +80,7 @@ import InfrastructureSystems as IS
         mktempdir(),
     )
     # Test with Vector{DateTime}
-    opt_res2 = OptimizationProblemResults(
+    opt_res2 = OptimizationProblemOutputs(
         base_power,
         timestamp_vec,
         data,
@@ -96,7 +96,7 @@ import InfrastructureSystems as IS
         mktempdir(),
         mktempdir(),
     )
-    opt_res3 = OptimizationProblemResults(
+    opt_res3 = OptimizationProblemOutputs(
         base_power,
         [timestamp_vec[1]],
         data,
@@ -156,7 +156,7 @@ import InfrastructureSystems as IS
     @test isnothing(IOM.get_resolution(opt_res3))
 end
 
-@testset "Test OptimizationProblemResults 3d long format" begin
+@testset "Test OptimizationProblemOutputs 3d long format" begin
     timestamps = StepRange(
         DateTime("2024-01-01T00:00:00"),
         Millisecond(3600000),
@@ -175,7 +175,7 @@ end
         ),
     )
     optimizer_stats = DataFrames.DataFrame()
-    res = OptimizationProblemResults(
+    res = OptimizationProblemOutputs(
         100.0,
         timestamps,
         data,
@@ -197,7 +197,7 @@ end
     @test @rsubset(var_res, :name == "c2" && :name2 == "c4")[!, :value] == [2.0, 4.0]
 end
 
-@testset "Test OptimizationProblemResults _process_timestamps" begin
+@testset "Test OptimizationProblemOutputs _process_timestamps" begin
     time_ids = [1, 2, 3, 4]
     timestamps = [
         DateTime("2024-01-01T00:00:00"),
@@ -217,7 +217,7 @@ end
     )
     optimizer_stats = DataFrames.DataFrame()
     metadata = OptimizationContainerMetadata()
-    opt_res = OptimizationProblemResults(
+    opt_res = OptimizationProblemOutputs(
         100.0,
         timestamps,
         data,

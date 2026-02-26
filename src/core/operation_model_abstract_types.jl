@@ -63,13 +63,13 @@ get_step_resolution(::SimulationSequence) = Dates.Hour(1)
 abstract type Simulation end
 
 #################################################################################
-# Simulation Results Type
-# Abstract type for simulation results
+# Simulation Outputs Type
+# Abstract type for simulation outputs
 # Concrete implementation should be in PowerSimulations
-abstract type SimulationResults end
+abstract type SimulationOutputs end
 
 #################################################################################
-# Simulation Problem Results Type
-# Abstract type for individual problem results within a simulation
+# Simulation Problem Outputs Type
+# Abstract type for individual problem outputs within a simulation
 # Concrete implementation should be in PowerSimulations
-abstract type SimulationProblemResults end
+abstract type SimulationProblemOutputs end

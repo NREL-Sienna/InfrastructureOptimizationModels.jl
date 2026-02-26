@@ -1,5 +1,5 @@
 """
-Stores results data for one EmulationModel
+Stores outputs data for one EmulationModel
 """
 mutable struct EmulationModelStore <: AbstractModelStore
     data_container::DatasetContainer{InMemoryDataset}
@@ -75,12 +75,12 @@ function initialize_storage!(
     num_of_executions = get_num_executions(params)
     for type in STORE_CONTAINERS
         field_containers = getfield(container, type)
-        results_container = get_data_field(store, type)
+        outputs_container = get_data_field(store, type)
         for (key, field_container) in field_containers
             @debug "Adding $(encode_key_as_string(key)) to EmulationModelStore" _group =
                 LOG_GROUP_MODEL_STORE
             column_names = get_column_names(container, type, field_container, key)
-            results_container[key] = InMemoryDataset(
+            outputs_container[key] = InMemoryDataset(
                 fill!(
                     DenseAxisArray{Float64}(undef, column_names..., 1:num_of_executions),
                     NaN,
@@ -91,7 +91,7 @@ function initialize_storage!(
     return
 end
 
-function write_result!(
+function write_output!(
     store::EmulationModelStore,
     name::Symbol,
     key::OptimizationContainerKey,
@@ -100,7 +100,7 @@ function write_result!(
     array::DenseAxisArray{Float64, 2},
 )
     if size(array, 2) == 1
-        write_result!(store, name, key, index, update_timestamp, array[:, 1])
+        write_output!(store, name, key, index, update_timestamp, array[:, 1])
     else
         container = get_data_field(store, get_store_container_type(key))
         set_value!(
@@ -114,7 +114,7 @@ function write_result!(
     return
 end
 
-function write_result!(
+function write_output!(
     store::EmulationModelStore,
     ::Symbol,
     key::OptimizationContainerKey,
@@ -133,7 +133,7 @@ function write_result!(
     return
 end
 
-function read_results(
+function read_outputs(
     store::EmulationModelStore,
     key::OptimizationContainerKey;
     index::Union{Int, Nothing} = nothing,

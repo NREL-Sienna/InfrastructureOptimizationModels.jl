@@ -54,7 +54,7 @@ end
 
 """
 Generate valid combinations of device_type/formulation and service_type/formulation and write
-the result to a JSON file.
+the output to a JSON file.
 
 # Arguments
 

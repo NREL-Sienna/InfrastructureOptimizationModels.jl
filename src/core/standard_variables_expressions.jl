@@ -62,7 +62,7 @@ struct NetActivePower <: ExpressionType end
 struct DCCurrentBalance <: ExpressionType end
 struct HVDCPowerBalance <: ExpressionType end
 
-# Result writing configuration for expression types
+# Output writing configuration for expression types
 should_write_resulting_value(::Type{<:CostExpressions}) = true
 should_write_resulting_value(::Type{FuelConsumptionExpression}) = true
 should_write_resulting_value(::Type{RawACE}) = true

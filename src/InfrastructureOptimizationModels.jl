@@ -72,7 +72,7 @@ import InfrastructureSystems:
     get_total_cost,
     get_optimizer_stats,
     get_timestamp,
-    write_results,
+    write_outputs,
     get_source_data,
     configure_logging,
     strip_module_name,
@@ -84,7 +84,7 @@ import InfrastructureSystems:
     # Additional imports needed by core optimization files
     InfrastructureSystemsType,
     InfrastructureSystemsComponent,
-    Results,
+    Outputs,
     TimeSeriesCacheKey,
     TimeSeriesCache,
     InvalidValue,
@@ -200,7 +200,7 @@ export init_optimization_container!
 ## Op Model Exports
 export get_initial_conditions
 export serialize_problem
-export serialize_results
+export serialize_outputs
 export serialize_optimization_model
 
 export get_device_models
@@ -235,7 +235,7 @@ export get_pwl_cost_expression
 export add_to_objective_function!
 export process_market_bid_parameters!
 
-## Results interfaces
+## Outputs interfaces
 export get_variable_values
 export get_dual_values
 export get_parameter_values
@@ -243,8 +243,8 @@ export get_aux_variable_values
 export get_expression_values
 export get_timestamps
 export get_model_name
-export get_decision_problem_results
-export get_emulation_problem_results
+export get_decision_problem_outputs
+export get_emulation_problem_outputs
 export get_system
 export get_system!
 export set_system!
@@ -260,7 +260,7 @@ export list_aux_variable_names
 export list_expression_names
 export list_decision_problems
 export list_supported_formats
-export load_results!
+export load_outputs!
 export read_variable
 export read_dual
 export read_parameter
@@ -287,8 +287,8 @@ export get_objective_value
 export read_optimizer_stats
 
 ## Utils Exports
-export OptimizationProblemResults
-export OptimizationProblemResultsExport
+export OptimizationProblemOutputs
+export OptimizationProblemOutputsExport
 export OptimizerStats
 export get_all_constraint_index
 export get_all_variable_index
@@ -395,7 +395,7 @@ export add_variable!, requires_initialization
 # End bulk-added
 
 # more extension points
-export write_results!
+export write_outputs!
 export built_for_recurrent_solves
 export get_incompatible_devices
 
@@ -451,8 +451,8 @@ export set_resolution!, finalize_template!
 export get_jump_model
 # Cost utilities
 export get_proportional_cost_per_system_unit
-# Result writing/conversion
-export should_write_resulting_value, convert_result_to_natural_units
+# Output writing/conversion
+export should_write_resulting_value, convert_output_to_natural_units
 # End bulk export
 
 export variable_cost
@@ -544,7 +544,7 @@ export get_contributing_devices
 export get_contributing_devices_map
 export get_parameter_column_values
 export update_container_parameter_values!
-export export_results
+export export_outputs
 
 ## Note: Concrete PowerModels types (ACPPowerModel, DCPPowerModel, etc.) are now
 ## defined and exported by PowerOperationsModels, not IOM.
@@ -562,8 +562,8 @@ include("core/parameter_container.jl")                # Parameter container infr
 include("core/abstract_model_store.jl")               # Store depends on keys
 include("core/optimizer_stats.jl")                    # Stats standalone
 include("core/optimization_container_metadata.jl")    # Metadata depends on keys
-include("core/optimization_problem_results_export.jl") # Export config
-include("core/optimization_problem_results.jl")       # Results depends on all above
+include("core/optimization_problem_outputs_export.jl") # Export config
+include("core/optimization_problem_outputs.jl")       # Outputs depends on all above
 include("core/model_internal.jl")                     # Internal state (needs ModelBuildStatus)
 
 include("core/time_series_parameter_types.jl")
@@ -578,7 +578,7 @@ include("core/initial_conditions.jl")
 include("core/settings.jl")
 include("core/dataset.jl")
 include("core/dataset_container.jl")
-include("core/results_by_time.jl")
+include("core/outputs_by_time.jl")
 
 # Order Required
 include("operation/problem_template.jl")
@@ -630,7 +630,7 @@ include("operation/store_common.jl")
 include("operation/initial_conditions_update_in_memory_store.jl")
 include("operation/decision_model.jl")
 include("operation/emulation_model.jl")
-include("operation/problem_results.jl")
+include("operation/problem_outputs.jl")
 include("operation/operation_model_serialization.jl")
 include("operation/time_series_interface.jl")
 include("operation/optimization_debugging.jl")
