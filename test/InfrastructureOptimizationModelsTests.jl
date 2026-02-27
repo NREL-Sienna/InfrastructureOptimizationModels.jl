@@ -40,7 +40,7 @@ include(joinpath(TEST_DIR, "test_utils/objective_function_helpers.jl"))
 
 # Environment flags for test selection
 const RUN_UNIT_TESTS = get(ENV, "IOM_RUN_UNIT_TESTS", "true") == "true"
-const RUN_INTEGRATION_TESTS = true # get(ENV, "IOM_RUN_INTEGRATION_TESTS", "false") == "true"
+const RUN_INTEGRATION_TESTS = get(ENV, "IOM_RUN_INTEGRATION_TESTS", "false") == "true"
 
 # Heavy dependencies - only load if we need tests that use them
 if RUN_INTEGRATION_TESTS
@@ -143,24 +143,6 @@ function run_tests()
 
                 #=
                 ============================================================================
-                INTEGRATION TESTS (require PowerSystems types)
-                ============================================================================
-                =#
-                if RUN_INTEGRATION_TESTS
-                    @testset "Tests with PowerSystems" begin
-                        @info "Running tests that require PowerSystems..."
-
-                        # --- objective_function/ subfolder ---
-                        # TODO integration tests for common.jl
-                        include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
-
-                        # --- operation/ subfolder ---
-                        include(joinpath(TEST_DIR, "test_model_store.jl"))
-                    end
-                end
-
-                #=
-                ============================================================================
                 BROKEN/NEEDS-WORK TEST FILES (not included)
                 ============================================================================
                 - test_basic_model_structs.jl: Uses PSY types directly, 2 failures (missing types?)
@@ -171,10 +153,20 @@ function run_tests()
             end
         end
 
-        # Integration tests - placeholder for future
+        #=
+        ============================================================================
+        INTEGRATION TESTS (require PowerSystems types)
+        ============================================================================
+        =#
         if RUN_INTEGRATION_TESTS
-            @info "Starting integration tests..."
-            @info "Note: Integration tests not yet implemented"
+            @time @testset "InfrastructureOptimizationModels Integration Tests" begin
+                @info "Starting integration tests..."                  # --- objective_function/ subfolder ---
+                # TODO integration tests for common.jl
+                include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
+
+                # --- operation/ subfolder ---
+                include(joinpath(TEST_DIR, "test_model_store.jl"))
+            end
         end
 
         @test length(IS.get_log_events(multi_logger.tracker, Logging.Error)) == 0
