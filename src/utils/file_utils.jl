@@ -37,7 +37,7 @@ Checks the hash value for each file made with the file is written with the new h
 
 # Arguments
 
-  - `path::String`: this is the folder path that contains the results and the check.sha256 file
+  - `path::String`: this is the folder path that contains the outputs and the check.sha256 file
 """
 function check_file_integrity(path::String)
     matched = true
@@ -55,7 +55,7 @@ function check_file_integrity(path::String)
     if !matched
         throw(
             IS.HashMismatchError(
-                "The hash value in the written files does not match the read files, results may have been tampered.",
+                "The hash value in the written files does not match the read files, outputs may have been tampered.",
             ),
         )
     end

@@ -1,13 +1,3 @@
-##########################################
-###### make_system_expressions! ##########
-##########################################
-
-"""
-Extension point: Create system-level balance expressions for a network formulation.
-Concrete implementations are in PowerOperationsModels for each network model type.
-"""
-function make_system_expressions! end
-
 ###############################
 ###### construct_device! ######
 ###############################
@@ -345,53 +335,6 @@ function start_up_cost(
     )
 end
 
-###############################
-###### Build-pipeline ext #####
-###############################
-
-"""
-Extension point: Construct all services for a given build stage.
-Called from `build_impl!`. Concrete implementations in PowerOperationsModels.
-"""
-function construct_services!(
-    ::OptimizationContainer,
-    ::IS.ComponentContainer,
-    ::ConstructStage,
-    ::ServicesModelContainer,
-    ::DevicesModelContainer,
-    ::NetworkModel{T},
-) where {T <: AbstractPowerModel}
-    error("construct_services! not implemented for network model with power model $T.")
-end
-
-"""
-Extension point: Construct the network model for a given build stage.
-Called from `build_impl!`. Concrete implementations in PowerOperationsModels.
-"""
-function construct_network!(
-    ::OptimizationContainer,
-    ::NetworkModel{T},
-    ::ProblemTemplate,
-) where {T <: AbstractPowerModel}
-    error("construct_network! not implemented for network model with power model $T.")
-end
-
-"""
-Extension point: Construct the HVDC network model.
-Called from `build_impl!`. Concrete implementations in PowerOperationsModels.
-"""
-function construct_hvdc_network!(
-    ::OptimizationContainer,
-    ::IS.ComponentContainer,
-    ::NetworkModel{T},
-    ::H,
-    ::ProblemTemplate,
-) where {T <: AbstractPowerModel, H <: AbstractHVDCNetworkModel}
-    error(
-        "construct_hvdc_network! not implemented for network model with power model $T and HVDC model $H.",
-    )
-end
-
 """
 Extension point: Add power flow evaluation data to the container.
 Default: no-op (handles the common case of no power flow evaluators).
@@ -457,10 +400,21 @@ variable_cost(
     ::AbstractDeviceFormulation,
 ) = 0.0
 
+"""
+Extension point: Get the device model to use for initialization.
+The FixedOutput case returns the model as-is; all other formulations must be
+implemented in PowerOperationsModels.
+"""
 get_initial_conditions_device_model(
     ::OperationModel,
     model::DeviceModel{T, FixedOutput},
 ) where {T <: PSY.Device} = model
+
+get_initial_conditions_device_model(
+    ::OperationModel,
+    ::DeviceModel{T, D},
+) where {T <: PSY.Device, D <: AbstractDeviceFormulation} =
+    error("`get_initial_conditions_device_model` must be implemented for $T and $D")
 
 """
 Extension point: get the initial condition type for a given constraint, device, and formulation.
@@ -471,3 +425,15 @@ _get_initial_condition_type(
     Y::Type{<:PSY.Component},
     Z::Type{<:AbstractDeviceFormulation},
 ) = error("`_get_initial_condition_type` not implemented for $X , $Y and $Z")
+
+"""
+    update_container_parameter_values!(optimization_container, model, key, input)
+
+Update parameter values in the optimization container from the given input data.
+This is an extension point — concrete implementations should be defined in
+PowerOperationsModels (or PowerSimulations for simulation-specific variants).
+
+Only called in `emulation_model.jl`: that file's contents and this function should 
+likely be moved to POM or PSI.
+"""
+function update_container_parameter_values! end

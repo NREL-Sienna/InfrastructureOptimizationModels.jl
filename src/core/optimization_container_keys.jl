@@ -3,14 +3,14 @@ abstract type OptimizationContainerKey{
     U <: InfrastructureSystemsType,
 } end
 
-# These functions define the column names of DataFrames in all read-result functions.
-# The function get_second_dimension_result_column_name is only used if the result data
+# These functions define the column names of DataFrames in all read-output functions.
+# The function get_second_dimension_output_column_name is only used if the output data
 # has three or more dimensions.
 # Parent packages can override these functions to provide their own column names.
 # We could consider making the time dimension ("DateTime") customizable, but it's probably
 # better not to.
-get_first_dimension_result_column_name(::OptimizationContainerKey) = "name"
-get_second_dimension_result_column_name(::OptimizationContainerKey) = "name2"
+get_first_dimension_output_column_name(::OptimizationContainerKey) = "name"
+get_second_dimension_output_column_name(::OptimizationContainerKey) = "name2"
 
 struct VariableKey{T <: VariableType, U <: InfrastructureSystemsType} <:
        OptimizationContainerKey{T, U}
@@ -130,10 +130,10 @@ function should_write_resulting_value(
     return should_write_resulting_value(T)
 end
 
-function convert_result_to_natural_units(
+function convert_output_to_natural_units(
     ::OptimizationContainerKey{T, <:InfrastructureSystemsType},
 ) where {T <: OptimizationKeyType}
-    return convert_result_to_natural_units(T)
+    return convert_output_to_natural_units(T)
 end
 
 Base.convert(::Type{ExpressionKey}, name::Symbol) = ExpressionKey(decode_symbol(name)...)

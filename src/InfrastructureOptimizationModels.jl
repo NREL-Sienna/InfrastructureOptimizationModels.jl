@@ -72,7 +72,7 @@ import InfrastructureSystems:
     get_total_cost,
     get_optimizer_stats,
     get_timestamp,
-    write_results,
+    write_outputs,
     get_source_data,
     configure_logging,
     strip_module_name,
@@ -84,7 +84,7 @@ import InfrastructureSystems:
     # Additional imports needed by core optimization files
     InfrastructureSystemsType,
     InfrastructureSystemsComponent,
-    Results,
+    Outputs,
     TimeSeriesCacheKey,
     TimeSeriesCache,
     InvalidValue,
@@ -171,7 +171,7 @@ export BranchReductionOptimizationTracker
 export get_variable_dict, get_constraint_dict, get_constraint_map_by_type
 export get_number_of_steps, set_number_of_steps!
 # Note: Concrete network model types (PTDFPowerModel, CopperPlatePowerModel, etc.)
-# are defined in PowerSimulations, not here
+# are defined in PowerOperationsModels, not IOM.
 
 ######## Model Container Types ########
 export DeviceModel
@@ -193,22 +193,19 @@ export DevicePower
 export DeviceStatus
 export InitialTimeDurationOn
 export InitialTimeDurationOff
-export InitialEnergyLevel
 
 # Functions
-export build!
 export validate_time_series!
 export init_optimization_container!
 ## Op Model Exports
 export get_initial_conditions
 export serialize_problem
-export serialize_results
+export serialize_outputs
 export serialize_optimization_model
-## Decision Model Export
-export solve!
-## Emulation Model Exports
-export run!
 
+export get_device_models
+export get_branch_models
+export get_service_models
 export set_device_model!
 export set_service_model!
 export set_network_model!
@@ -236,11 +233,9 @@ export add_pwl_normalization_constraint!
 export add_pwl_sos2_constraint!
 export get_pwl_cost_expression
 export add_to_objective_function!
-export initial_condition_variable
-export initial_condition_default
 export process_market_bid_parameters!
 
-## Results interfaces
+## Outputs interfaces
 export get_variable_values
 export get_dual_values
 export get_parameter_values
@@ -248,8 +243,8 @@ export get_aux_variable_values
 export get_expression_values
 export get_timestamps
 export get_model_name
-export get_decision_problem_results
-export get_emulation_problem_results
+export get_decision_problem_outputs
+export get_emulation_problem_outputs
 export get_system
 export get_system!
 export set_system!
@@ -265,7 +260,7 @@ export list_aux_variable_names
 export list_expression_names
 export list_decision_problems
 export list_supported_formats
-export load_results!
+export load_outputs!
 export read_variable
 export read_dual
 export read_parameter
@@ -292,8 +287,8 @@ export get_objective_value
 export read_optimizer_stats
 
 ## Utils Exports
-export OptimizationProblemResults
-export OptimizationProblemResultsExport
+export OptimizationProblemOutputs
+export OptimizationProblemOutputsExport
 export OptimizerStats
 export get_all_constraint_index
 export get_all_variable_index
@@ -330,9 +325,7 @@ export get_multiplier_value
 export add_expression_container!
 
 # Initial condition infrastructure (extension points for POM)
-export get_initial_conditions_value
 export update_initial_conditions!
-# Note: TimeDurationOn and TimeDurationOff are device-specific and defined in POM
 
 # Key Types (defined in IOM)
 export OptimizationContainerKey
@@ -362,7 +355,7 @@ export _get_ramp_constraint_devices
 export add_param_container!,
     add_param_container_split_axes!,
     add_param_container_shared_axes!, get_parameter_eltype
-export make_system_expressions!, remove_undef!
+export remove_undef!
 export get_branch_argument_variable_axis
 
 # Bulk-added: symbols used by POM but previously not exported
@@ -376,6 +369,7 @@ export get_parameter_multiplier_array, get_aux_variable, get_condition
 export supports_milp, get_quadratic_cost_per_system_unit
 export check_hvdc_line_limits_unidirectional, check_hvdc_line_limits_consistency
 export add_sparse_pwl_interpolation_variables!
+export JuMPOrFloat
 export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
 # Constraint helpers
 export add_range_constraints!, add_parameterized_upper_bound_range_constraints
@@ -401,13 +395,13 @@ export add_variable!, requires_initialization
 # End bulk-added
 
 # more extension points
-export write_results!
+export write_outputs!
 export built_for_recurrent_solves
-export initialize_hvdc_system!
+export get_incompatible_devices
 
 # Bulk export: symbols POM needs that weren't previously exported
 # Core types
-export OptimizationContainer, OperationModel
+export OptimizationContainer, OperationModel, AbstractPowerFlowEvaluationModel
 export ArgumentConstructStage, ModelConstructStage
 export EmulationModelStore, DeviceModelForBranches
 export DeviceAboveMinPower, StartUpStages, SOSStatusVariable
@@ -442,18 +436,23 @@ export get_optimization_container, get_internal
 # Container creation
 export add_constraints_container!, add_variable_cost!
 # Initial conditions
-export add_initial_condition!, add_initial_condition_container!
+export add_initial_condition_container!
 export has_initial_condition_value, set_ic_quantity!, get_last_recorded_value
+export set_initial_conditions_model_container!, get_initial_conditions_model_container
+export get_initial_conditions_device_model
+export _validate_warm_start_support, _add_services_to_device_model!
 export get_component_type, get_component_name, add_jump_parameter
 # Template/model access
 export get_use_slacks, get_template, get_model
+export get_attributes, get_parameter_column_values
+export get_services, get_contributing_devices, get_contributing_devices_map
 export set_resolution!, finalize_template!
 # JuMP access
 export get_jump_model
 # Cost utilities
 export get_proportional_cost_per_system_unit
-# Result writing/conversion
-export should_write_resulting_value, convert_result_to_natural_units
+# Output writing/conversion
+export should_write_resulting_value, convert_output_to_natural_units
 # End bulk export
 
 export variable_cost
@@ -505,6 +504,8 @@ export RunStatus
 export SimulationBuildStatus
 
 # Problem Types
+export DecisionProblem
+export EmulationProblem
 export DefaultDecisionProblem
 export DefaultEmulationProblem
 
@@ -539,6 +540,14 @@ export get_optimizer_stats
 export get_timestamps
 export get_resolution
 
+export get_contributing_devices
+export get_contributing_devices_map
+export get_parameter_column_values
+export update_container_parameter_values!
+export export_outputs
+export get_source_data
+export set_source_data!
+
 ## Note: Concrete PowerModels types (ACPPowerModel, DCPPowerModel, etc.) are now
 ## defined and exported by PowerOperationsModels, not IOM.
 
@@ -555,8 +564,8 @@ include("core/parameter_container.jl")                # Parameter container infr
 include("core/abstract_model_store.jl")               # Store depends on keys
 include("core/optimizer_stats.jl")                    # Stats standalone
 include("core/optimization_container_metadata.jl")    # Metadata depends on keys
-include("core/optimization_problem_results_export.jl") # Export config
-include("core/optimization_problem_results.jl")       # Results depends on all above
+include("core/optimization_problem_outputs_export.jl") # Export config
+include("core/optimization_problem_outputs.jl")       # Outputs depends on all above
 include("core/model_internal.jl")                     # Internal state (needs ModelBuildStatus)
 
 include("core/time_series_parameter_types.jl")
@@ -571,7 +580,7 @@ include("core/initial_conditions.jl")
 include("core/settings.jl")
 include("core/dataset.jl")
 include("core/dataset_container.jl")
-include("core/results_by_time.jl")
+include("core/outputs_by_time.jl")
 
 # Order Required
 include("operation/problem_template.jl")
@@ -628,16 +637,13 @@ include("operation/store_common.jl")
 include("operation/initial_conditions_update_in_memory_store.jl")
 include("operation/decision_model.jl")
 include("operation/emulation_model.jl")
-include("operation/problem_results.jl")
+include("operation/problem_outputs.jl")
 include("operation/operation_model_serialization.jl")
 include("operation/time_series_interface.jl")
 include("operation/optimization_debugging.jl")
 include("operation/model_numerical_analysis_utils.jl")
 
-include("initial_conditions/add_initial_condition.jl")
 include("initial_conditions/calculate_initial_condition.jl")
-
-include("initial_conditions/initialization.jl")
 
 # Utils
 include("utils/indexing.jl")

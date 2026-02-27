@@ -30,7 +30,7 @@ be available for all solvers.
 - `solve_bytes_alloc::Union{Missing, Float64}`: Memory allocated during solve
 - `sec_in_gc::Union{Missing, Float64}`: Time spent in garbage collection
 
-See also: [`OptimizationProblemResults`](@ref)
+See also: [`OptimizationProblemOutputs`](@ref)
 """
 mutable struct OptimizerStats
     detailed_stats::Bool

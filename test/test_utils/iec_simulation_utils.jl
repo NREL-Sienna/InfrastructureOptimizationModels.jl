@@ -188,12 +188,12 @@ end
 # TODO deduplicate after initial time-sensitive merge
 function cost_due_to_time_varying_iec(
     sys::System,
-    res::IS.Results,
+    res::IS.Outputs,
     ::Type{T},
 ) where {T <: PSY.Component}
     power_in_vars = read_variable_dict(res, PSI.ActivePowerInVariable, T)
     power_out_vars = read_variable_dict(res, PSI.ActivePowerOutVariable, T)
-    result = SortedDict{DateTime, DataFrame}()
+    output = SortedDict{DateTime, DataFrame}()
 
     for step_dt in keys(power_in_vars)
         power_in_df = power_in_vars[step_dt]
@@ -236,7 +236,7 @@ function cost_due_to_time_varying_iec(
 
         measure_vars = [x for x in names(step_df) if x != "DateTime"]
         # rows represent: [time, component, time-varying MBC cost for {component} at {time}]
-        result[step_dt] =
+        output[step_dt] =
             DataFrames.stack(
                 step_df,
                 measure_vars;
@@ -244,7 +244,7 @@ function cost_due_to_time_varying_iec(
                 value_name = :value,
             )
     end
-    return result
+    return output
 end
 
 function iec_obj_fun_test_wrapper(sys_constant, sys_varying; reservation = false)

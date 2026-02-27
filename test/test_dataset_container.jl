@@ -1,6 +1,6 @@
 """
 Unit tests for DatasetContainer in dataset_container.jl.
-Tests container operations for storing optimization results.
+Tests container operations for storing optimization outputs.
 Written entirely by Claude Code, so fairly surface-level, but serves its purpose of
 confirming that the code runs without errors.
 """

@@ -41,8 +41,8 @@ _validate_eltype(
     msg = "",
 ) where {T} =
     apply_maybe_across_time_series(component, ts_key) do x
-        result = _validate_eltype_helper(T, x)
-        result || throw(
+        output = _validate_eltype_helper(T, x)
+        output || throw(
             ArgumentError(
                 "Expected element type $T but got $(typeof(x)) in time series $(get_name(ts_key)) for $(get_name(component))" *
                 msg,
@@ -52,8 +52,8 @@ _validate_eltype(
 
 function _validate_eltype(::Type{T}, component::PSY.Component, element, msg = "") where {T}
     component_name = get_name(component)
-    result = _validate_eltype_helper(T, element)
-    result || throw(
+    output = _validate_eltype_helper(T, element)
+    output || throw(
         ArgumentError(
             "Expected element type $T but got $(typeof(element)) for $(get_name(component))" *
             msg,

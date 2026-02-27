@@ -229,7 +229,7 @@ function to_dataframe(array::SparseAxisArray, key::OptimizationContainerKey)
 end
 
 """
-Convert a DenseAxisArray containing components to a results DataFrame consumable by users.
+Convert a DenseAxisArray containing components to a outputs DataFrame consumable by users.
 
 # Arguments
 - `array: DenseAxisArray`: JuMP DenseAxisArray to convert
@@ -243,11 +243,11 @@ Convert a DenseAxisArray containing components to a results DataFrame consumable
   If it is TableFormat.WIDE, the DataFrame will have columns for each component. Wide
   format does not support arrays with more than two dimensions.
 """
-function to_results_dataframe(array::DenseAxisArray, timestamps)
-    return to_results_dataframe(array, timestamps, Val(TableFormat.LONG))()
+function to_outputs_dataframe(array::DenseAxisArray, timestamps)
+    return to_outputs_dataframe(array, timestamps, Val(TableFormat.LONG))()
 end
 
-function to_results_dataframe(
+function to_outputs_dataframe(
     array::DenseAxisArray{Float64, 1, <:Tuple{Vector{String}}},
     timestamps,
     ::Val{TableFormat.LONG},
@@ -259,7 +259,7 @@ function to_results_dataframe(
     )
 end
 
-function to_results_dataframe(
+function to_outputs_dataframe(
     array::DenseAxisArray{Float64, 2, <:Tuple{Vector{String}, IntegerAxis}},
     timestamps,
     ::Val{TableFormat.LONG},
@@ -296,7 +296,7 @@ end
 _collect_timestamps(timestamps::Vector{Dates.DateTime}) = timestamps
 _collect_timestamps(timestamps) = collect(timestamps)
 
-function to_results_dataframe(
+function to_outputs_dataframe(
     array::DenseAxisArray{Float64, 2, <:Tuple{Vector{String}, IntegerAxis}},
     ::Nothing,
     ::Val{TableFormat.LONG},
@@ -321,7 +321,7 @@ function to_results_dataframe(
     )
 end
 
-function to_results_dataframe(
+function to_outputs_dataframe(
     array::DenseAxisArray{Float64, 2, <:Tuple{Vector{String}, IntegerAxis}},
     timestamps,
     ::Val{TableFormat.WIDE},
@@ -331,7 +331,7 @@ function to_results_dataframe(
     return df
 end
 
-function to_results_dataframe(
+function to_outputs_dataframe(
     array::DenseAxisArray{Float64, 2, <:Tuple{Vector{String}, IntegerAxis}},
     ::Nothing,
     ::Val{TableFormat.WIDE},
@@ -341,7 +341,7 @@ function to_results_dataframe(
     return df
 end
 
-function to_results_dataframe(
+function to_outputs_dataframe(
     array::DenseAxisArray{
         Float64,
         3,
@@ -386,7 +386,7 @@ function to_results_dataframe(
     )
 end
 
-function to_results_dataframe(
+function to_outputs_dataframe(
     array::DenseAxisArray{
         Float64,
         3,

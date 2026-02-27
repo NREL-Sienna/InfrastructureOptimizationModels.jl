@@ -38,12 +38,13 @@ function _get_sos_value(
     ::Type{V},
     component::T,
 ) where {T <: IS.InfrastructureSystemsComponent, V <: AbstractDeviceFormulation}
-    if has_container_key(container, OnStatusParameter, T)
-        sos_val = SOSStatusVariable.PARAMETER
+    if skip_proportional_cost(component)
+        return SOSStatusVariable.NO_VARIABLE
+    elseif has_container_key(container, OnStatusParameter, T)
+        return SOSStatusVariable.PARAMETER
     else
-        sos_val = _sos_status(T, V())
+        return _sos_status(T, V())
     end
-    return sos_val
 end
 
 _get_sos_value(

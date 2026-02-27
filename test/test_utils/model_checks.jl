@@ -94,15 +94,15 @@ function psi_checksolve_test(model::DecisionModel, status)
     @test termination_status(model) in status
 end
 
-function psi_checksolve_test(model::DecisionModel, status, expected_result, tol = 0.0)
+function psi_checksolve_test(model::DecisionModel, status, expected_output, tol = 0.0)
     res = solve!(model)
     model = PSI.get_jump_model(model)
     @test termination_status(model) in status
     obj_value = JuMP.objective_value(model)
-    @test isapprox(obj_value, expected_result, atol = tol)
+    @test isapprox(obj_value, expected_output, atol = tol)
 end
 
-function psi_ptdf_lmps(res::OptimizationProblemResults, ptdf)
+function psi_ptdf_lmps(res::OptimizationProblemOutputs, ptdf)
     cp_duals =
         read_dual(res, PSI.ConstraintKey(CopperPlateBalanceConstraint, PSY.System))
     λ = Matrix{Float64}(cp_duals[:, propertynames(cp_duals) .!= :DateTime])
@@ -362,34 +362,6 @@ function check_duration_off_initial_conditions_values(
         elseif on_var == 0.0 && PSY.get_status(ic.component)
             @test duration_off == 0.0
         end
-    end
-end
-
-function check_energy_initial_conditions_values(model, ::Type{T}) where {T <: PSY.Component}
-    ic_data = PSI.get_initial_condition(
-        PSI.get_optimization_container(model),
-        InitialEnergyLevel(),
-        T,
-    )
-    for ic in ic_data
-        d = ic.component
-        name = PSY.get_name(ic.component)
-        e_value = PSI.jump_value(PSI.get_value(ic))
-        @test PSY.get_initial_storage_capacity_level(d) * PSY.get_storage_capacity(d) *
-              PSY.get_conversion_factor(d) == e_value
-    end
-end
-
-function check_energy_initial_conditions_values(model, ::Type{T}) where {T <: PSY.HydroGen}
-    ic_data = PSI.get_initial_condition(
-        PSI.get_optimization_container(model),
-        InitialEnergyLevel(),
-        T,
-    )
-    for ic in ic_data
-        name = PSY.get_name(ic.component)
-        e_value = PSI.jump_value(PSI.get_value(ic))
-        @test PSY.get_initial_storage(ic.component) == e_value
     end
 end
 

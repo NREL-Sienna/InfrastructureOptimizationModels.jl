@@ -104,7 +104,7 @@ function _check_quadratic_monotonicity(
 
     if fp_lb < 0 || fp_ub < 0
         @warn "Cost function for component $name is not monotonically increasing in the range [$lb, $ub]. \
-               This can lead to unexpected results"
+               This can lead to unexpected outputs"
     end
     return
 end
@@ -167,27 +167,6 @@ function add_variable_cost_to_objective!(
     )
     return
 end
-
-# FIXME: requires AbstractCompactUnitCommitment and ThermalCompactDispatch to be defined
-#=
-function add_variable_cost_to_objective!(
-    ::OptimizationContainer,
-    ::T,
-    component::PSY.Component,
-    cost_function::PSY.CostCurve{IS.QuadraticCurve},
-    ::U,
-) where {
-    T <: PowerAboveMinimumVariable,
-    U <: Union{AbstractCompactUnitCommitment, ThermalCompactDispatch},
-}
-    throw(
-        IS.ConflictingInputsError(
-            "Quadratic Cost Curves are not compatible with Compact formulations",
-        ),
-    )
-    return
-end
-=#
 
 function _add_fuel_quadratic_variable_cost!(
     container::OptimizationContainer,

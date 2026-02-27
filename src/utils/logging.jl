@@ -9,5 +9,5 @@ const LOG_GROUP_OPTIMIZATION_CONTAINER = :OptimizationContainer
 const LOG_GROUP_BUILD_INITIAL_CONDITIONS = :InitialConditionsBuild
 const LOG_GROUP_NETWORK_CONSTRUCTION = :NetworkConstructor
 const LOG_GROUP_MODEL_STORE = :ModelStore
-const LOG_GROUP_RESULTS = :Results
+const LOG_GROUP_OUTPUTS = :Outputs
 const LOG_GROUP_SIMULATION_STORE = :SimulationStore

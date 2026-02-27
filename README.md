@@ -14,7 +14,7 @@ InfrastructureOptimizationModels.jl provides core abstractions and optimization 
 - Device, service, and network formulation models
 - Initial conditions management
 - Time series parameter handling
-- Optimization results processing and serialization
+- Optimization outputs processing and serialization
 
 ## Installation
 

@@ -1,11 +1,11 @@
 """
-    struct OptimizationProblemResultsExport
+    struct OptimizationProblemOutputsExport
 
-Configuration for exporting optimization problem results to files.
+Configuration for exporting optimization problem outputs to files.
 
 Specifies which variables, duals, parameters, expressions, and auxiliary variables
-should be exported when calling [`export_results`](@ref) on an
-[`OptimizationProblemResults`](@ref) instance.
+should be exported when calling [`export_outputs`](@ref) on an
+[`OptimizationProblemOutputs`](@ref) instance.
 
 # Fields
 - `name::Symbol`: Name identifier for this export configuration
@@ -22,18 +22,18 @@ should be exported when calling [`export_results`](@ref) on an
 
 # Example
 ```julia
-export_config = OptimizationProblemResultsExport(
+export_config = OptimizationProblemOutputsExport(
     "MyExport";
     store_all_variables = true,
     store_all_duals = false,
     optimizer_stats = true,
 )
-export_results(results, export_config)
+export_outputs(outputs, export_config)
 ```
 
-See also: [`OptimizationProblemResults`](@ref), [`export_results`](@ref)
+See also: [`OptimizationProblemOutputs`](@ref), [`export_outputs`](@ref)
 """
-struct OptimizationProblemResultsExport
+struct OptimizationProblemOutputsExport
     name::Symbol
     duals::Set{ConstraintKey}
     expressions::Set{ExpressionKey}
@@ -43,7 +43,7 @@ struct OptimizationProblemResultsExport
     optimizer_stats::Bool
     store_all_flags::Dict{Symbol, Bool}
 
-    function OptimizationProblemResultsExport(
+    function OptimizationProblemOutputsExport(
         name,
         duals,
         expressions,
@@ -71,7 +71,7 @@ struct OptimizationProblemResultsExport
     end
 end
 
-function OptimizationProblemResultsExport(
+function OptimizationProblemOutputsExport(
     name;
     duals = Set{ConstraintKey}(),
     expressions = Set{ExpressionKey}(),
@@ -92,7 +92,7 @@ function OptimizationProblemResultsExport(
         :variables => store_all_variables,
         :aux_variables => store_all_aux_variables,
     )
-    return OptimizationProblemResultsExport(
+    return OptimizationProblemOutputsExport(
         Symbol(name),
         duals,
         expressions,
@@ -112,18 +112,18 @@ function _check_fields(fields)
     return fields
 end
 
-should_export_dual(x::OptimizationProblemResultsExport, key) =
+should_export_dual(x::OptimizationProblemOutputsExport, key) =
     _should_export(x, :duals, key)
-should_export_expression(x::OptimizationProblemResultsExport, key) =
+should_export_expression(x::OptimizationProblemOutputsExport, key) =
     _should_export(x, :expressions, key)
-should_export_parameter(x::OptimizationProblemResultsExport, key) =
+should_export_parameter(x::OptimizationProblemOutputsExport, key) =
     _should_export(x, :parameters, key)
-should_export_variable(x::OptimizationProblemResultsExport, key) =
+should_export_variable(x::OptimizationProblemOutputsExport, key) =
     _should_export(x, :variables, key)
-should_export_aux_variable(x::OptimizationProblemResultsExport, key) =
+should_export_aux_variable(x::OptimizationProblemOutputsExport, key) =
     _should_export(x, :aux_variables, key)
 
-function _should_export(exports::OptimizationProblemResultsExport, field_name, key)
+function _should_export(exports::OptimizationProblemOutputsExport, field_name, key)
     exports.store_all_flags[field_name] && return true
     container = getproperty(exports, field_name)
     return key in container

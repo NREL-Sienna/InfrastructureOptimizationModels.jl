@@ -1,7 +1,7 @@
 """
-Construct OptimizationProblemResults from a solved DecisionModel.
+Construct OptimizationProblemOutputs from a solved DecisionModel.
 """
-function OptimizationProblemResults(model::DecisionModel)
+function OptimizationProblemOutputs(model::DecisionModel)
     status = get_run_status(model)
     status != RunStatus.SUCCESSFULLY_FINALIZED &&
         error("problem was not solved successfully: $status")
@@ -26,7 +26,7 @@ function OptimizationProblemResults(model::DecisionModel)
 
     sys = get_system(model)
 
-    return OptimizationProblemResults(
+    return OptimizationProblemOutputs(
         get_problem_base_power(model),
         timestamps,
         sys,
@@ -40,14 +40,14 @@ function OptimizationProblemResults(model::DecisionModel)
         get_metadata(get_optimization_container(model)),
         IS.strip_module_name(typeof(model)),
         get_output_dir(model),
-        mkpath(joinpath(get_output_dir(model), "results")),
+        mkpath(joinpath(get_output_dir(model), "outputs")),
     )
 end
 
 """
-Construct OptimizationProblemResults from a solved EmulationModel.
+Construct OptimizationProblemOutputs from a solved EmulationModel.
 """
-function OptimizationProblemResults(model::EmulationModel)
+function OptimizationProblemOutputs(model::EmulationModel)
     status = get_run_status(model)
     status != RunStatus.SUCCESSFULLY_FINALIZED &&
         error("problem was not solved successfully: $status")
@@ -69,7 +69,7 @@ function OptimizationProblemResults(model::EmulationModel)
     container = get_optimization_container(model)
     sys = get_system(model)
 
-    return OptimizationProblemResults(
+    return OptimizationProblemOutputs(
         get_problem_base_power(model),
         StepRange(initial_time, get_resolution(model), initial_time),
         sys,
@@ -83,6 +83,6 @@ function OptimizationProblemResults(model::EmulationModel)
         get_metadata(container),
         IS.strip_module_name(typeof(model)),
         get_output_dir(model),
-        mkpath(joinpath(get_output_dir(model), "results")),
+        mkpath(joinpath(get_output_dir(model), "outputs")),
     )
 end
