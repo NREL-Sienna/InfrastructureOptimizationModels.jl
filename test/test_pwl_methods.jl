@@ -149,8 +149,8 @@ function setup_pwl_constraint_test(;
     formulation = TestPWLFormulation()
     model = IOM.DeviceModel(MockThermalGen, TestPWLFormulation)
 
-    IOM.add_variable!(container, TestOriginalVariable(), devices, formulation)
-    IOM.add_variable!(container, TestApproximatedVariable(), devices, formulation)
+    IOM.add_variables!(container, TestOriginalVariable, devices, formulation)
+    IOM.add_variables!(container, TestApproximatedVariable, devices, formulation)
     IOM.add_sparse_pwl_interpolation_variables!(
         container, TestInterpolationVariable(), devices, model, num_segments,
     )

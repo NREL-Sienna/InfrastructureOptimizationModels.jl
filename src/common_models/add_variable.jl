@@ -1,31 +1,3 @@
-"""
-Add variables to the OptimizationContainer for any component.
-"""
-function add_variables!(
-    container::OptimizationContainer,
-    ::Type{T},
-    devices::Union{Vector{U}, IS.FlattenIteratorWrapper{U}},
-    formulation::Union{AbstractServiceFormulation, AbstractDeviceFormulation},
-) where {T <: VariableType, U <: PSY.Component}
-    add_variable!(container, T(), devices, formulation)
-    return
-end
-
-"""
-Add variables to the OptimizationContainer for a service.
-"""
-function add_variables!(
-    container::OptimizationContainer,
-    ::Type{T},
-    service::U,
-    contributing_devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
-    formulation::AbstractReservesFormulation,
-) where {T <: VariableType, U <: PSY.AbstractReserve, V <: PSY.Component}
-    # PERF: compilation hotspot. Switch to TSC.
-    add_service_variable!(container, T(), service, contributing_devices, formulation)
-    return
-end
-
 @doc raw"""
 Adds a variable to the optimization model and to the affine expressions contained
 in the optimization_container model according to the specified sign. Based on the inputs, the variable can
@@ -59,9 +31,9 @@ If binary = true:
 * initial_value : Provides the function over device to obtain the warm start value
 
 """
-function add_variable!(
+function add_variables!(
     container::OptimizationContainer,
-    variable_type::T,
+    ::Type{T},
     devices::U,
     formulation,
 ) where {
@@ -69,6 +41,7 @@ function add_variable!(
     U <: Union{Vector{D}, IS.FlattenIteratorWrapper{D}},
 } where {D <: IS.InfrastructureSystemsComponent}
     @assert !isempty(devices)
+    variable_type = T()
     time_steps = get_time_steps(container)
     settings = get_settings(container)
     binary = get_variable_binary(variable_type, D, formulation)
@@ -103,9 +76,12 @@ function add_variable!(
     return
 end
 
-function add_service_variable!(
+"""
+Add variables to the OptimizationContainer for a service.
+"""
+function add_service_variables!(
     container::OptimizationContainer,
-    variable_type::T,
+    ::Type{T},
     service::U,
     contributing_devices::V,
     formulation::AbstractServiceFormulation,
@@ -115,6 +91,7 @@ function add_service_variable!(
     V <: Union{Vector{D}, IS.FlattenIteratorWrapper{D}},
 } where {D <: PSY.Component}
     @assert !isempty(contributing_devices)
+    variable_type = T()
     time_steps = get_time_steps(container)
 
     binary = get_variable_binary(variable_type, U, formulation)
