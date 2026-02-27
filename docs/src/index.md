@@ -6,7 +6,7 @@ CurrentModule = InfrastructureOptimizationModels
 
 ## Overview
 
-`InfrastructureOptimizationModels.jl` is a [`Julia`](http://www.julialang.org) package that provides core abstractions and optimization model structures for power systems operations modeling. It defines `DecisionModel` and `EmulationModel` types along with their associated optimization containers, formulations, and result handling capabilities.
+`InfrastructureOptimizationModels.jl` is a [`Julia`](http://www.julialang.org) package that provides core abstractions and optimization model structures for power systems operations modeling. It defines `DecisionModel` and `EmulationModel` types along with their associated optimization containers, formulations, and output handling capabilities.
 
 ## About
 

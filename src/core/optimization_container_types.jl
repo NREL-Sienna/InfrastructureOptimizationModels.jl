@@ -5,7 +5,7 @@
 # - ConstructStage, ArgumentConstructStage, ModelConstructStage
 
 # Utility functions for the imported types
-convert_result_to_natural_units(::Type{<:OptimizationKeyType}) = false
+convert_output_to_natural_units(::Type{<:OptimizationKeyType}) = false
 
 should_write_resulting_value(::Type{<:VariableType}) = true
 should_write_resulting_value(::Type{<:ConstraintType}) = true

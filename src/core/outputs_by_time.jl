@@ -1,18 +1,18 @@
-mutable struct ResultsByTime{T, N}
+mutable struct OutputsByTime{T, N}
     key::OptimizationContainerKey
     data::SortedDict{Dates.DateTime, T}
     resolution::Dates.Period
     column_names::NTuple{N, Vector{String}}
 end
 
-function ResultsByTime(
+function OutputsByTime(
     key::OptimizationContainerKey,
     data::SortedDict{Dates.DateTime, T},
     resolution::Dates.Period,
     column_names,
 ) where {T}
     _check_column_consistency(data, column_names)
-    ResultsByTime(key, data, resolution, column_names)
+    OutputsByTime(key, data, resolution, column_names)
 end
 
 function _check_column_consistency(
@@ -68,69 +68,69 @@ function _check_column_consistency(
 end
 
 # This struct behaves like a dict, delegating to its 'data' field.
-Base.length(res::ResultsByTime) = length(res.data)
-Base.iterate(res::ResultsByTime) = iterate(res.data)
-Base.iterate(res::ResultsByTime, state) = iterate(res.data, state)
-Base.getindex(res::ResultsByTime, i) = getindex(res.data, i)
-Base.setindex!(res::ResultsByTime, v, i) = setindex!(res.data, v, i)
-Base.firstindex(res::ResultsByTime) = firstindex(res.data)
-Base.lastindex(res::ResultsByTime) = lastindex(res.data)
+Base.length(res::OutputsByTime) = length(res.data)
+Base.iterate(res::OutputsByTime) = iterate(res.data)
+Base.iterate(res::OutputsByTime, state) = iterate(res.data, state)
+Base.getindex(res::OutputsByTime, i) = getindex(res.data, i)
+Base.setindex!(res::OutputsByTime, v, i) = setindex!(res.data, v, i)
+Base.firstindex(res::OutputsByTime) = firstindex(res.data)
+Base.lastindex(res::OutputsByTime) = lastindex(res.data)
 
-get_column_names(x::ResultsByTime) = x.column_names
-get_num_rows(::ResultsByTime{DenseAxisArray{Float64, 2}}, data) = size(data, 2)
-get_num_rows(::ResultsByTime{DenseAxisArray{Float64, 3}}, data) = size(data, 3)
-get_num_rows(::ResultsByTime{Matrix{Float64}}, data) = size(data, 1)
-get_num_rows(::ResultsByTime{DataFrame}, data) = DataFrames.nrow(data)
+get_column_names(x::OutputsByTime) = x.column_names
+get_num_rows(::OutputsByTime{DenseAxisArray{Float64, 2}}, data) = size(data, 2)
+get_num_rows(::OutputsByTime{DenseAxisArray{Float64, 3}}, data) = size(data, 3)
+get_num_rows(::OutputsByTime{Matrix{Float64}}, data) = size(data, 1)
+get_num_rows(::OutputsByTime{DataFrame}, data) = DataFrames.nrow(data)
 
 function _add_timestamps!(
     df::DataFrames.DataFrame,
-    results::ResultsByTime,
+    outputs::OutputsByTime,
     timestamp::Dates.DateTime,
     data,
 )
-    time_col = _get_timestamps(results, timestamp, get_num_rows(results, data))
+    time_col = _get_timestamps(outputs, timestamp, get_num_rows(outputs, data))
     if !isnothing(time_col)
         DataFrames.insertcols!(df, 1, :DateTime => time_col)
     end
     return
 end
 
-function _get_timestamps(results::ResultsByTime, timestamp::Dates.DateTime, len::Int)
-    if results.resolution == Dates.Period(Dates.Millisecond(0))
+function _get_timestamps(outputs::OutputsByTime, timestamp::Dates.DateTime, len::Int)
+    if outputs.resolution == Dates.Period(Dates.Millisecond(0))
         return nothing
     end
-    return range(timestamp; length = len, step = results.resolution)
+    return range(timestamp; length = len, step = outputs.resolution)
 end
 
 function make_dataframe(
-    results::ResultsByTime{DenseAxisArray{Float64, 2}},
+    outputs::OutputsByTime{DenseAxisArray{Float64, 2}},
     timestamp::Dates.DateTime;
     table_format::TableFormat = TableFormat.LONG,
 )
-    array = results.data[timestamp]
-    timestamps = _get_timestamps(results, timestamp, get_num_rows(results, array))
-    return to_results_dataframe(array, timestamps, Val(table_format))
+    array = outputs.data[timestamp]
+    timestamps = _get_timestamps(outputs, timestamp, get_num_rows(outputs, array))
+    return to_outputs_dataframe(array, timestamps, Val(table_format))
 end
 
 function make_dataframe(
-    results::ResultsByTime{DenseAxisArray{Float64, 3}},
+    outputs::OutputsByTime{DenseAxisArray{Float64, 3}},
     timestamp::Dates.DateTime;
     table_format::TableFormat = TableFormat.LONG,
 )
-    array = results.data[timestamp]
-    num_timestamps = get_num_rows(results, array)
-    timestamps = _get_timestamps(results, timestamp, num_timestamps)
-    return to_results_dataframe(array, timestamps, Val(table_format))
+    array = outputs.data[timestamp]
+    num_timestamps = get_num_rows(outputs, array)
+    timestamps = _get_timestamps(outputs, timestamp, num_timestamps)
+    return to_outputs_dataframe(array, timestamps, Val(table_format))
 end
 
 function make_dataframe(
-    results::ResultsByTime{Matrix{Float64}},
+    outputs::OutputsByTime{Matrix{Float64}},
     timestamp::Dates.DateTime;
     table_format::TableFormat = TableFormat.LONG,
 )
-    array = results.data[timestamp]
-    df_wide = DataFrames.DataFrame(array, results.column_names)
-    _add_timestamps!(df_wide, results, timestamp, array)
+    array = outputs.data[timestamp]
+    df_wide = DataFrames.DataFrame(array, outputs.column_names)
+    _add_timestamps!(df_wide, outputs, timestamp, array)
     return if table_format == TableFormat.LONG
         measure_vars = [x for x in names(df_wide) if x != "DateTime"]
         DataFrames.stack(
@@ -146,23 +146,23 @@ function make_dataframe(
     end
 end
 
-function make_dataframes(results::ResultsByTime; table_format::TableFormat = table_format)
+function make_dataframes(outputs::OutputsByTime; table_format::TableFormat = table_format)
     return SortedDict(
-        k => make_dataframe(results, k; table_format = table_format) for
-        k in keys(results.data)
+        k => make_dataframe(outputs, k; table_format = table_format) for
+        k in keys(outputs.data)
     )
 end
 
-struct ResultsByKeyAndTime
+struct OutputsByKeyAndTime
     "Contains all keys stored in the model."
-    result_keys::Vector{OptimizationContainerKey}
-    "Contains the results that have been read from the store and cached."
-    cached_results::Dict{OptimizationContainerKey, ResultsByTime}
+    output_keys::Vector{OptimizationContainerKey}
+    "Contains the outputs that have been read from the store and cached."
+    cached_outputs::Dict{OptimizationContainerKey, OutputsByTime}
 end
 
-ResultsByKeyAndTime(result_keys) = ResultsByKeyAndTime(
-    collect(result_keys),
-    Dict{OptimizationContainerKey, ResultsByTime}(),
+OutputsByKeyAndTime(output_keys) = OutputsByKeyAndTime(
+    collect(output_keys),
+    Dict{OptimizationContainerKey, OutputsByTime}(),
 )
 
-Base.empty!(res::ResultsByKeyAndTime) = empty!(res.cached_results)
+Base.empty!(res::OutputsByKeyAndTime) = empty!(res.cached_outputs)

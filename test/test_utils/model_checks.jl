@@ -94,15 +94,15 @@ function psi_checksolve_test(model::DecisionModel, status)
     @test termination_status(model) in status
 end
 
-function psi_checksolve_test(model::DecisionModel, status, expected_result, tol = 0.0)
+function psi_checksolve_test(model::DecisionModel, status, expected_output, tol = 0.0)
     res = solve!(model)
     model = PSI.get_jump_model(model)
     @test termination_status(model) in status
     obj_value = JuMP.objective_value(model)
-    @test isapprox(obj_value, expected_result, atol = tol)
+    @test isapprox(obj_value, expected_output, atol = tol)
 end
 
-function psi_ptdf_lmps(res::OptimizationProblemResults, ptdf)
+function psi_ptdf_lmps(res::OptimizationProblemOutputs, ptdf)
     cp_duals =
         read_dual(res, PSI.ConstraintKey(CopperPlateBalanceConstraint, PSY.System))
     λ = Matrix{Float64}(cp_duals[:, propertynames(cp_duals) .!= :DateTime])

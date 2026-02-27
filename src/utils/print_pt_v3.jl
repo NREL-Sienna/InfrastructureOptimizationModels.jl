@@ -450,24 +450,24 @@ function _show_method(io::IO, sim::Simulation, backend::Symbol; kwargs...)
     _show_method(io, sim.sequence, backend; kwargs...)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", input::SimulationResults)
+function Base.show(io::IO, ::MIME"text/plain", input::SimulationOutputs)
     _show_method(io, input, :auto)
 end
 
-function Base.show(io::IO, ::MIME"text/html", input::SimulationResults)
+function Base.show(io::IO, ::MIME"text/html", input::SimulationOutputs)
     # The tf_html_simple format was eliminated from PrettyTables and it was added to PowerSystems
     _show_method(io, input, :html; stand_alone = false, table_format = PSY.tf_html_simple)
 end
 
-function _show_method(io::IO, results::SimulationResults, backend::Symbol; kwargs...)
+function _show_method(io::IO, outputs::SimulationOutputs, backend::Symbol; kwargs...)
     header = ["Problem Name", "Initial Time", "Resolution", "Last Solution Timestamp"]
 
-    table = Matrix{Any}(undef, length(results.decision_problem_results), length(header))
-    for (ix, (key, result)) in enumerate(results.decision_problem_results)
+    table = Matrix{Any}(undef, length(outputs.decision_problem_outputs), length(header))
+    for (ix, (key, output)) in enumerate(outputs.decision_problem_outputs)
         table[ix, 1] = key
-        table[ix, 2] = first(result.timestamps)
-        table[ix, 3] = Dates.canonicalize(result.resolution)
-        table[ix, 4] = last(result.timestamps)
+        table[ix, 2] = first(output.timestamps)
+        table[ix, 3] = Dates.canonicalize(output.resolution)
+        table[ix, 4] = last(output.timestamps)
     end
     println(io)
     PrettyTables.pretty_table(
@@ -475,68 +475,68 @@ function _show_method(io::IO, results::SimulationResults, backend::Symbol; kwarg
         table;
         column_labels = header,
         backend = backend,
-        title = "Decision Problem Results",
+        title = "Decision Problem Outputs",
         alignment = :l,
     )
 
     println(io)
     table = [
-        "Name" results.emulation_problem_results.problem
-        "Resolution" Dates.Minute(results.emulation_problem_results.resolution)
-        "Number of steps" length(results.emulation_problem_results.timestamps)
+        "Name" outputs.emulation_problem_outputs.problem
+        "Resolution" Dates.Minute(outputs.emulation_problem_outputs.resolution)
+        "Number of steps" length(outputs.emulation_problem_outputs.timestamps)
     ]
     PrettyTables.pretty_table(
         io,
         table;
         show_column_labels = false,
         backend = backend,
-        title = "Emulator Results",
+        title = "Emulator Outputs",
         alignment = :l,
         kwargs...,
     )
 end
 
-ProblemResultsTypes = Union{OptimizationProblemResults, SimulationProblemResults}
-function Base.show(io::IO, ::MIME"text/plain", input::ProblemResultsTypes)
+ProblemOutputsTypes = Union{OptimizationProblemOutputs, SimulationProblemOutputs}
+function Base.show(io::IO, ::MIME"text/plain", input::ProblemOutputsTypes)
     _show_method(io, input, :auto)
 end
 
-function Base.show(io::IO, ::MIME"text/html", input::ProblemResultsTypes)
+function Base.show(io::IO, ::MIME"text/html", input::ProblemOutputsTypes)
     # The tf_html_simple format was eliminated from PrettyTables and it was added to PowerSystems
     _show_method(io, input, :html; stand_alone = false, table_format = PSY.tf_html_simple)
 end
 
 function _show_method(
     io::IO,
-    results::T,
+    outputs::T,
     backend::Symbol;
     kwargs...,
-) where {T <: ProblemResultsTypes}
-    timestamps = get_timestamps(results)
+) where {T <: ProblemOutputsTypes}
+    timestamps = get_timestamps(outputs)
 
     if backend == :html
         println(io, "<p> Start: $(first(timestamps))</p>")
         println(io, "<p> End: $(last(timestamps))</p>")
         println(
             io,
-            "<p> Resolution: $(Dates.Minute(ISOPT.get_resolution(results)))</p>",
+            "<p> Resolution: $(Dates.Minute(ISOPT.get_resolution(outputs)))</p>",
         )
     else
         println(io, "Start: $(first(timestamps))")
         println(io, "End: $(last(timestamps))")
-        println(io, "Resolution: $(Dates.Minute(ISOPT.get_resolution(results)))")
+        println(io, "Resolution: $(Dates.Minute(ISOPT.get_resolution(outputs)))")
     end
 
     values = Dict{String, Vector{String}}(
-        "Variables" => list_variable_names(results),
-        "Auxiliary variables" => list_aux_variable_names(results),
-        "Duals" => list_dual_names(results),
-        "Expressions" => list_expression_names(results),
-        "Parameters" => list_parameter_names(results),
+        "Variables" => list_variable_names(outputs),
+        "Auxiliary variables" => list_aux_variable_names(outputs),
+        "Duals" => list_dual_names(outputs),
+        "Expressions" => list_expression_names(outputs),
+        "Parameters" => list_parameter_names(outputs),
     )
 
     if hasfield(T, :problem)
-        name = results.problem
+        name = outputs.problem
     else
         name = "InfrastructureOptimizationModels"
     end
@@ -549,7 +549,7 @@ function _show_method(
                 val;
                 show_column_labels = false,
                 backend = backend,
-                title = "$name Problem $k Results",
+                title = "$name Problem $k Outputs",
                 alignment = :l,
                 kwargs...,
             )

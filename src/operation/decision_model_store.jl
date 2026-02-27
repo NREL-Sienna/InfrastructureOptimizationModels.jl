@@ -1,5 +1,5 @@
 """
-Stores results data for one DecisionModel
+Stores outputs data for one DecisionModel
 """
 mutable struct DecisionModelStore <: AbstractModelStore
     # All DenseAxisArrays have axes (column names, row indexes)
@@ -36,7 +36,7 @@ function initialize_storage!(
     model_interval = get_interval(params)
     for type in STORE_CONTAINERS
         field_containers = getfield(container, type)
-        results_container = getfield(store, type)
+        outputs_container = getfield(store, type)
         for (key, field_container) in field_containers
             !should_write_resulting_value(key) && continue
             @debug "Adding $(encode_key_as_string(key)) to DecisionModelStore" _group =
@@ -53,13 +53,13 @@ function initialize_storage!(
                     NaN,
                 )
             end
-            results_container[key] = data
+            outputs_container[key] = data
         end
     end
     return
 end
 
-function write_result!(
+function write_output!(
     store::DecisionModelStore,
     name::Symbol,
     key::OptimizationContainerKey,
@@ -72,7 +72,7 @@ function write_result!(
     return
 end
 
-function write_result!(
+function write_output!(
     store::DecisionModelStore,
     name::Symbol,
     key::OptimizationContainerKey,
@@ -86,7 +86,7 @@ function write_result!(
     return
 end
 
-function write_result!(
+function write_output!(
     store::DecisionModelStore,
     name::Symbol,
     key::OptimizationContainerKey,
@@ -99,7 +99,7 @@ function write_result!(
     return
 end
 
-function write_result!(
+function write_output!(
     store::DecisionModelStore,
     name::Symbol,
     key::OptimizationContainerKey,
@@ -112,7 +112,7 @@ function write_result!(
     return
 end
 
-function read_results(
+function read_outputs(
     store::DecisionModelStore,
     key::OptimizationContainerKey;
     index::Union{DecisionModelIndexType, Nothing} = nothing,

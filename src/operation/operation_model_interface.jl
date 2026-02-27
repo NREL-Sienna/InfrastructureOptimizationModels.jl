@@ -130,7 +130,8 @@ function get_initial_conditions(
     return get_initial_conditions(get_optimization_container(model), T, U)
 end
 
-function solve_impl!(model::OperationModel)
+# Called `solve_impl!(model)` in PSI.
+function solve_model!(model::OperationModel)
     container = get_optimization_container(model)
     model_name = get_name(model)
     ts = get_current_timestamp(model)
@@ -148,7 +149,7 @@ function solve_impl!(model::OperationModel)
         )
     end
 
-    status = solve_impl!(container, get_system(model))
+    status = execute_optimizer!(container, get_system(model))
     set_run_status!(model, status)
     if status != RunStatus.SUCCESSFULLY_FINALIZED
         settings = get_settings(model)
@@ -199,65 +200,6 @@ function advance_execution_count!(model::OperationModel)
     return
 end
 
-"""
-Extension point for downstream packages (e.g., PowerOperationsModels) to implement
-the initial conditions model build logic.
-"""
-function build_initial_conditions_model! end
-function get_incompatible_devices end
-
-function build_initial_conditions!(model::OperationModel)
-    @assert get_initial_conditions_model_container(get_internal(model)) ===
-            nothing
-    requires_init = false
-    for (device_type, device_model) in get_device_models(get_template(model))
-        requires_init = requires_initialization(get_formulation(device_model)())
-        if requires_init
-            @debug "initial_conditions required for $device_type" _group =
-                LOG_GROUP_BUILD_INITIAL_CONDITIONS
-            build_initial_conditions_model!(model)
-            break
-        end
-    end
-    if !requires_init
-        @info "No initial conditions in the model"
-    end
-    return
-end
-
-function write_initial_conditions_data!(model::OperationModel)
-    write_initial_conditions_data!(
-        get_optimization_container(model),
-        get_initial_conditions_model_container(get_internal(model)),
-    )
-    return
-end
-
-function initialize!(model::OperationModel)
-    container = get_optimization_container(model)
-    if get_initial_conditions_model_container(get_internal(model)) ===
-       nothing
-        return
-    end
-    @info "Solving Initialization Model for $(get_name(model))"
-    status = solve_impl!(
-        get_initial_conditions_model_container(get_internal(model)),
-        get_system(model),
-    )
-    if status == RunStatus.FAILED
-        error("Model failed to initialize")
-    end
-
-    write_initial_conditions_data!(
-        container,
-        get_initial_conditions_model_container(get_internal(model)),
-    )
-    init_file = get_initial_conditions_file(model)
-    Serialization.serialize(init_file, get_initial_conditions_data(container))
-    @info "Serialized initial conditions to $init_file"
-    return
-end
-
 function validate_template(model::OperationModel)
     template = get_template(model)
     if isempty(template)
@@ -274,24 +216,6 @@ function validate_template(model::OperationModel)
     for m in setdiff(system_component_types, union(modeled_types, exclusions))
         @warn "The template doesn't include models for components of type $(m), consider changing the template" _group =
             LOG_GROUP_MODELS_VALIDATION
-    end
-    return
-end
-
-function build_if_not_already_built!(model::OperationModel; kwargs...)
-    status = get_status(model)
-    if status == ModelBuildStatus.EMPTY
-        if !haskey(kwargs, :output_dir)
-            error(
-                "'output_dir' must be provided as a kwarg if the model build status is $status",
-            )
-        else
-            new_kwargs = Dict(k => v for (k, v) in kwargs if k != :optimizer)
-            status = build!(model; new_kwargs...)
-        end
-    end
-    if status != ModelBuildStatus.BUILT
-        error("build! of the $(typeof(model)) $(get_name(model)) failed: $status")
     end
     return
 end
@@ -360,15 +284,15 @@ function _list_names(model::OperationModel, container_type)
     )
 end
 
-read_dual(model::OperationModel, key::ConstraintKey) = _read_results(model, key)
-read_parameter(model::OperationModel, key::ParameterKey) = _read_results(model, key)
-read_aux_variable(model::OperationModel, key::AuxVarKey) = _read_results(model, key)
-read_variable(model::OperationModel, key::VariableKey) = _read_results(model, key)
-read_expression(model::OperationModel, key::ExpressionKey) = _read_results(model, key)
+read_dual(model::OperationModel, key::ConstraintKey) = _read_outputs(model, key)
+read_parameter(model::OperationModel, key::ParameterKey) = _read_outputs(model, key)
+read_aux_variable(model::OperationModel, key::AuxVarKey) = _read_outputs(model, key)
+read_variable(model::OperationModel, key::VariableKey) = _read_outputs(model, key)
+read_expression(model::OperationModel, key::ExpressionKey) = _read_outputs(model, key)
 
-function _read_results(model::OperationModel, key::OptimizationContainerKey)
-    array = read_results(get_store(model), key)
-    return to_results_dataframe(array, nothing, Val(TableFormat.LONG))
+function _read_outputs(model::OperationModel, key::OptimizationContainerKey)
+    array = read_outputs(get_store(model), key)
+    return to_outputs_dataframe(array, nothing, Val(TableFormat.LONG))
 end
 
 read_optimizer_stats(model::OperationModel) = read_optimizer_stats(get_store(model))

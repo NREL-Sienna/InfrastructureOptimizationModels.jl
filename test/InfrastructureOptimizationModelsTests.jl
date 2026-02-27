@@ -115,11 +115,11 @@ function run_tests()
                     include(joinpath(TEST_DIR, "test_optimization_container_metadata.jl"))
                     # optimization_container_types.jl: no need for tests
                     include(joinpath(TEST_DIR, "test_optimization_container.jl"))
-                    # optimization_problem_results_export.jl: low-complexity
-                    include(joinpath(TEST_DIR, "test_optimization_results.jl"))
+                    # optimization_problem_outputs_export.jl: low-complexity
+                    include(joinpath(TEST_DIR, "test_optimization_outputs.jl"))
                     include(joinpath(TEST_DIR, "test_optimizer_stats.jl"))
                     # parameter_container.jl: low-complexity
-                    # TODO results_by_time.jl
+                    # TODO outputs_by_time.jl
                     # TODO service_model.jl
                     include(joinpath(TEST_DIR, "test_settings.jl"))
                     # standard_variables_expressions.jl: low complexity
@@ -143,24 +143,6 @@ function run_tests()
 
                 #=
                 ============================================================================
-                INTEGRATION TESTS (require PowerSystems types)
-                ============================================================================
-                =#
-                if RUN_INTEGRATION_TESTS
-                    @testset "Tests with PowerSystems" begin
-                        @info "Running tests that require PowerSystems..."
-
-                        # --- objective_function/ subfolder ---
-                        # TODO integration tests for common.jl
-                        include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
-
-                        # --- operation/ subfolder ---
-                        include(joinpath(TEST_DIR, "test_model_store.jl"))
-                    end
-                end
-
-                #=
-                ============================================================================
                 BROKEN/NEEDS-WORK TEST FILES (not included)
                 ============================================================================
                 - test_basic_model_structs.jl: Uses PSY types directly, 2 failures (missing types?)
@@ -171,10 +153,20 @@ function run_tests()
             end
         end
 
-        # Integration tests - placeholder for future
+        #=
+        ============================================================================
+        INTEGRATION TESTS (require PowerSystems types)
+        ============================================================================
+        =#
         if RUN_INTEGRATION_TESTS
-            @info "Starting integration tests..."
-            @info "Note: Integration tests not yet implemented"
+            @time @testset "InfrastructureOptimizationModels Integration Tests" begin
+                @info "Starting integration tests..."                  # --- objective_function/ subfolder ---
+                # TODO integration tests for common.jl
+                include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
+
+                # --- operation/ subfolder ---
+                include(joinpath(TEST_DIR, "test_model_store.jl"))
+            end
         end
 
         @test length(IS.get_log_events(multi_logger.tracker, Logging.Error)) == 0

@@ -1,3 +1,5 @@
+# FIXME untested. Moved to accommodate a few methods dispatching on EmulationModelStore,
+# but not run in the tests and not yet refactored for IOM-POM split.
 """
 Abstract type for models that use default InfrastructureOptimizationModels formulations. For custom emulation problems
     use EmulationProblem as the super type.
@@ -298,119 +300,6 @@ function init_model_store_params!(model::EmulationModel)
     return
 end
 
-function build_pre_step!(model::EmulationModel)
-    TimerOutputs.@timeit BUILD_PROBLEMS_TIMER "Build pre-step" begin
-        validate_template(model)
-        if !isempty(model)
-            @info "EmulationProblem status not ModelBuildStatus.EMPTY. Resetting"
-            reset!(model)
-        end
-        container = get_optimization_container(model)
-        container.built_for_recurrent_solves = true
-
-        @info "Initializing Optimization Container For an EmulationModel"
-        init_optimization_container!(
-            get_optimization_container(model),
-            get_network_model(get_template(model)),
-            get_system(model),
-        )
-
-        @info "Initializing ModelStoreParams"
-        init_model_store_params!(model)
-        set_status!(model, ModelBuildStatus.IN_PROGRESS)
-    end
-    return
-end
-
-function build_impl!(model::EmulationModel{<:EmulationProblem})
-    build_pre_step!(model)
-    @info "Instantiating Network Model"
-    instantiate_network_model!(model)
-    handle_initial_conditions!(model)
-    build_model!(model)
-    serialize_metadata!(get_optimization_container(model), get_output_dir(model))
-    log_values(get_settings(model))
-    return
-end
-
-"""
-Implementation of build for any EmulationProblem
-"""
-function build!(
-    model::EmulationModel{<:EmulationProblem};
-    executions = 1,
-    output_dir::String,
-    recorders = [],
-    console_level = Logging.Error,
-    file_level = Logging.Info,
-    disable_timer_outputs = false,
-)
-    mkpath(output_dir)
-    set_output_dir!(model, output_dir)
-    set_console_level!(model, console_level)
-    set_file_level!(model, file_level)
-    TimerOutputs.reset_timer!(BUILD_PROBLEMS_TIMER)
-    disable_timer_outputs && TimerOutputs.disable_timer!(BUILD_PROBLEMS_TIMER)
-    file_mode = "w"
-    add_recorders!(model, recorders)
-    register_recorders!(model, file_mode)
-    logger = configure_logging(
-        get_internal(model),
-        PROBLEM_LOG_FILENAME,
-        file_mode,
-    )
-    try
-        Logging.with_logger(logger) do
-            try
-                set_executions!(model, executions)
-                TimerOutputs.@timeit BUILD_PROBLEMS_TIMER "Problem $(get_name(model))" begin
-                    build_impl!(model)
-                end
-                set_status!(model, ModelBuildStatus.BUILT)
-                @info "\n$(BUILD_PROBLEMS_TIMER)\n"
-            catch e
-                set_status!(model, ModelBuildStatus.FAILED)
-                bt = catch_backtrace()
-                @error "EmulationModel Build Failed" exception = e, bt
-            end
-        end
-    finally
-        unregister_recorders!(model)
-        close(logger)
-    end
-    return get_status(model)
-end
-
-"""
-Default implementation of build method for Emulation Problems for models conforming with  DecisionProblem specification. Overload this function to implement a custom build method
-"""
-function build_model!(model::EmulationModel{<:EmulationProblem})
-    container = get_optimization_container(model)
-    system = get_system(model)
-    build_impl!(container, get_template(model), system)
-    return
-end
-
-function reset!(model::EmulationModel{<:EmulationProblem})
-    if built_for_recurrent_solves(model)
-        set_execution_count!(model, 0)
-    end
-    set_container!(
-        get_internal(model),
-        OptimizationContainer(
-            get_system(model),
-            get_settings(model),
-            nothing,
-            PSY.SingleTimeSeries,
-        ),
-    )
-    set_initial_conditions_model_container!(get_internal(model), nothing)
-    empty_time_series_cache!(model)
-    empty!(get_store(model))
-    set_status!(model, ModelBuildStatus.EMPTY)
-    return
-end
-
 function update_parameters!(model::EmulationModel, store::EmulationModelStore)
     update_parameters!(model, store.data_container)
     return
@@ -444,6 +333,23 @@ function update_model!(
 end
 
 """
+Standalone update for EmulationModel (non-simulation context).
+Updates parameters and initial conditions from the model's own store.
+"""
+function update_model!(model::EmulationModel)
+    source = get_store(model)
+    TimerOutputs.@timeit RUN_OPERATION_MODEL_TIMER "Parameter Updates" begin
+        update_parameters!(model, source)
+    end
+    TimerOutputs.@timeit RUN_OPERATION_MODEL_TIMER "Ini Cond Updates" begin
+        for key in keys(get_initial_conditions(model))
+            update_initial_conditions!(model, key, source)
+        end
+    end
+    return
+end
+
+"""
 Update parameter function an OperationModel
 """
 function update_parameter_values!(
@@ -454,6 +360,9 @@ function update_parameter_values!(
     # Enable again for detailed debugging
     # TimerOutputs.@timeit RUN_SIMULATION_TIMER "$T $U Parameter Update" begin
     optimization_container = get_optimization_container(model)
+    # FIXME: This parameter update logic belongs in POM or PSI, not IOM.
+    # Move this function (and the surrounding update chain) once EmulationModel
+    # lifecycle code is fully migrated.
     update_container_parameter_values!(optimization_container, model, key, input)
     parameter_attributes = get_parameter_attributes(optimization_container, key)
     IS.@record :execution ParameterUpdateEvent(
@@ -464,186 +373,5 @@ function update_parameter_values!(
         get_name(model),
     )
     #end
-    return
-end
-
-function run_impl!(
-    model::EmulationModel;
-    optimizer = nothing,
-    enable_progress_bar = progress_meter_enabled(),
-    kwargs...,
-)
-    _pre_solve_model_checks(model, optimizer)
-    internal = get_internal(model)
-    executions = get_executions(internal)
-    # Temporary check. Needs better way to manage re-runs of the same model
-    if internal.execution_count > 0
-        error("Call build! again")
-    end
-    prog_bar = ProgressMeter.Progress(executions; enabled = enable_progress_bar)
-    initial_time = get_initial_time(model)
-    for execution in 1:executions
-        TimerOutputs.@timeit RUN_OPERATION_MODEL_TIMER "Run execution" begin
-            solve_impl!(model)
-            current_time = initial_time + (execution - 1) * get_resolution(model)
-            write_results!(get_store(model), model, execution, current_time)
-            write_optimizer_stats!(get_store(model), get_optimizer_stats(model), execution)
-            advance_execution_count!(model)
-            update_model!(model)
-            ProgressMeter.update!(
-                prog_bar,
-                get_execution_count(model);
-                showvalues = [(:Execution, execution)],
-            )
-        end
-    end
-    return
-end
-
-"""
-Default run method for problems that conform to the requirements of
-EmulationModel{<: EmulationProblem}
-
-This will call `build!` on the model if it is not already built. It will forward all
-keyword arguments to that function.
-
-# Arguments
-
-  - `model::EmulationModel = model`: Emulation model
-  - `optimizer::MOI.OptimizerWithAttributes`: The optimizer that is used to solve the model
-  - `executions::Int`: Number of executions for the emulator run
-  - `export_problem_results::Bool`: If true, export OptimizationProblemResults DataFrames to CSV files.
-  - `output_dir::String`: Required if the model is not already built, otherwise ignored
-  - `enable_progress_bar::Bool`: Enables/Disable progress bar printing
-  - `export_optimization_model::Bool`: If true, serialize the model to a file to allow re-execution later.
-
-# Examples
-
-```julia
-status = run!(model; optimizer = HiGHS.Optimizer, executions = 10)
-status = run!(model; output_dir = ./model_output, optimizer = HiGHS.Optimizer, executions = 10)
-```
-"""
-function run!(
-    model::EmulationModel{<:EmulationProblem};
-    export_problem_results = false,
-    console_level = Logging.Error,
-    file_level = Logging.Info,
-    disable_timer_outputs = false,
-    export_optimization_model = true,
-    kwargs...,
-)
-    build_if_not_already_built!(
-        model;
-        console_level = console_level,
-        file_level = file_level,
-        disable_timer_outputs = disable_timer_outputs,
-        kwargs...,
-    )
-    set_console_level!(model, console_level)
-    set_file_level!(model, file_level)
-    TimerOutputs.reset_timer!(RUN_OPERATION_MODEL_TIMER)
-    disable_timer_outputs && TimerOutputs.disable_timer!(RUN_OPERATION_MODEL_TIMER)
-    file_mode = "a"
-    register_recorders!(model, file_mode)
-    logger = configure_logging(
-        get_internal(model),
-        PROBLEM_LOG_FILENAME,
-        file_mode,
-    )
-    try
-        Logging.with_logger(logger) do
-            try
-                initialize_storage!(
-                    get_store(model),
-                    get_optimization_container(model),
-                    get_store_params(model),
-                )
-                TimerOutputs.@timeit RUN_OPERATION_MODEL_TIMER "Run" begin
-                    run_impl!(model; kwargs...)
-                    set_run_status!(model, RunStatus.SUCCESSFULLY_FINALIZED)
-                end
-                if export_optimization_model
-                    TimerOutputs.@timeit RUN_OPERATION_MODEL_TIMER "Serialize" begin
-                        optimizer = get(kwargs, :optimizer, nothing)
-                        serialize_problem(model; optimizer = optimizer)
-                        serialize_optimization_model(model)
-                    end
-                end
-                TimerOutputs.@timeit RUN_OPERATION_MODEL_TIMER "Results processing" begin
-                    results = OptimizationProblemResults(model)
-                    serialize_results(results, get_output_dir(model))
-                    export_problem_results && export_results(results)
-                end
-                @info "\n$(RUN_OPERATION_MODEL_TIMER)\n"
-            catch e
-                @error "Emulation Problem Run failed" exception = (e, catch_backtrace())
-                set_run_status!(model, RunStatus.FAILED)
-            end
-        end
-    finally
-        unregister_recorders!(model)
-        close(logger)
-    end
-    return get_run_status(model)
-end
-
-# NOTE: Simulation-specific solve! method removed - requires SimulationStore type
-# which should be defined in a simulation framework package (e.g., PowerSimulations.jl)
-# That package should extend solve! with its own SimulationStore parameter
-
-function handle_initial_conditions!(model::EmulationModel{<:EmulationProblem})
-    # This code is a duplicate of DecisionModel initial conditions handling.
-    # It should be refactored to better handle AGC emulator initial conditions
-    TimerOutputs.@timeit BUILD_PROBLEMS_TIMER "Model Initialization" begin
-        if isempty(get_template(model))
-            return
-        end
-        settings = get_settings(model)
-        initialize_model = get_initialize_model(settings)
-        deserialize_initial_conditions = get_deserialize_initial_conditions(settings)
-        serialized_initial_conditions_file = get_initial_conditions_file(model)
-        custom_init_file = get_initialization_file(settings)
-
-        if !initialize_model && deserialize_initial_conditions
-            throw(
-                IS.ConflictingInputsError(
-                    "!initialize_model && deserialize_initial_conditions",
-                ),
-            )
-        elseif !initialize_model && !isempty(custom_init_file)
-            throw(IS.ConflictingInputsError("!initialize_model && initialization_file"))
-        end
-
-        if !initialize_model
-            @info "Skip build of initial conditions"
-            return
-        end
-
-        if !isempty(custom_init_file)
-            if !isfile(custom_init_file)
-                error("initialization_file = $custom_init_file does not exist")
-            end
-            if abspath(custom_init_file) != abspath(serialized_initial_conditions_file)
-                cp(custom_init_file, serialized_initial_conditions_file; force = true)
-            end
-        end
-
-        if deserialize_initial_conditions && isfile(serialized_initial_conditions_file)
-            set_initial_conditions_data!(
-                get_optimization_container(model),
-                Serialization.deserialize(serialized_initial_conditions_file),
-            )
-            @info "Deserialized initial_conditions_data"
-        else
-            @info "Make Initial Conditions Model"
-            build_initial_conditions!(model)
-            initialize!(model)
-        end
-        set_initial_conditions_model_container!(
-            get_internal(model),
-            nothing,
-        )
-    end
     return
 end

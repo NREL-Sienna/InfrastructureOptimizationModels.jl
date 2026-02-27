@@ -21,7 +21,7 @@ src/
     optimization_container_keys.jl
     optimization_container_types.jl
     optimization_container_metadata.jl
-    dataset.jl / dataset_container.jl  # Result dataset storage
+    dataset.jl / dataset_container.jl  # Output dataset storage
     device_model.jl           # DeviceModel parametric wrapper
     network_model.jl          # NetworkModel parametric wrapper
     service_model.jl          # ServiceModel parametric wrapper
@@ -32,10 +32,10 @@ src/
     initial_conditions.jl     # Initial condition types
     parameter_container.jl    # Parameter container type
     operation_model_abstract_types.jl  # Abstract supertypes for models
-    optimization_problem_results.jl    # Results access layer
-    optimization_problem_results_export.jl
+    optimization_problem_outputs.jl    # Outputs access layer
+    optimization_problem_outputs_export.jl
     optimizer_stats.jl        # Solve statistics tracking
-    results_by_time.jl        # Time-indexed results cache
+    outputs_by_time.jl        # Time-indexed outputs cache
     standard_variables_expressions.jl  # Standard variable/expression names
     time_series_parameter_types.jl     # Time series parameter wrappers
     network_reductions.jl     # Network reduction utilities
@@ -70,13 +70,13 @@ src/
     start_up_shut_down.jl     # Start-up/shut-down cost terms
   operation/              # Operation model types and workflows
     decision_model.jl         # DecisionModel (single-period optimization)
-    decision_model_store.jl   # DecisionModel result store
+    decision_model_store.jl   # DecisionModel output store
     emulation_model.jl        # EmulationModel (rolling horizon)
-    emulation_model_store.jl  # EmulationModel result store
+    emulation_model_store.jl  # EmulationModel output store
     operation_model_interface.jl        # Shared model interface methods
     operation_model_serialization.jl    # Serialization/deserialization
     problem_template.jl       # ProblemTemplate (model specification)
-    problem_results.jl        # Result post-processing
+    problem_outputs.jl        # Output post-processing
     store_common.jl           # Shared store utilities
     time_series_interface.jl  # Time series integration
     initial_conditions_update_in_memory_store.jl
@@ -143,7 +143,7 @@ scripts/formatter/        # Code formatting (JuliaFormatter)
 - **`src/objective_function/`** translates cost curves into JuMP objective terms. Each cost
   curve type has its own file.
 - **`src/operation/`** implements `DecisionModel` and `EmulationModel` — the two main model
-  types — plus serialization, result stores, and the problem template.
+  types — plus serialization, output stores, and the problem template.
 - **`src/utils/`** is for pure utility functions with no domain coupling.
 - **`test/mocks/`** provides lightweight stand-ins so tests don't depend on PowerSystems
   concrete types.

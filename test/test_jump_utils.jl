@@ -180,16 +180,16 @@ struct MockVariableType <: ISOPT.VariableType end
     @testset "remove_undef! - SparseAxisArray passthrough" begin
         contents = Dict(("a", 1) => 1.0)
         sparse = SparseAxisArray(contents)
-        result = IOM.remove_undef!(sparse)
-        @test result === sparse
+        output = IOM.remove_undef!(sparse)
+        @test output === sparse
     end
 
     @testset "supports_milp" begin
         # Create a model with a solver that supports MILP
         model = JuMP.Model()
         # Without optimizer, this should still work (returns based on backend)
-        result = IOM.supports_milp(model)
-        @test isa(result, Bool)
+        output = IOM.supports_milp(model)
+        @test isa(output, Bool)
     end
 
     @testset "to_dataframe - DenseAxisArray 2D" begin
@@ -204,14 +204,14 @@ struct MockVariableType <: ISOPT.VariableType end
         @test names(df) == ["gen1", "gen2"]
     end
 
-    @testset "to_results_dataframe - 2D LONG format with timestamps" begin
+    @testset "to_outputs_dataframe - 2D LONG format with timestamps" begin
         data = DenseAxisArray(
             [1.0 2.0; 3.0 4.0],
             ["gen1", "gen2"],
             1:2,
         )
         timestamps = [DateTime(2024, 1, 1, 0), DateTime(2024, 1, 1, 1)]
-        df = IOM.to_results_dataframe(data, timestamps, Val(IOM.TableFormat.LONG))
+        df = IOM.to_outputs_dataframe(data, timestamps, Val(IOM.TableFormat.LONG))
         @test isa(df, DataFrame)
         @test :DateTime in propertynames(df)
         @test :name in propertynames(df)
@@ -219,27 +219,27 @@ struct MockVariableType <: ISOPT.VariableType end
         @test nrow(df) == 4
     end
 
-    @testset "to_results_dataframe - 2D LONG format without timestamps" begin
+    @testset "to_outputs_dataframe - 2D LONG format without timestamps" begin
         data = DenseAxisArray(
             [1.0 2.0; 3.0 4.0],
             ["gen1", "gen2"],
             1:2,
         )
-        df = IOM.to_results_dataframe(data, nothing, Val(IOM.TableFormat.LONG))
+        df = IOM.to_outputs_dataframe(data, nothing, Val(IOM.TableFormat.LONG))
         @test isa(df, DataFrame)
         @test :time_index in propertynames(df)
         @test :name in propertynames(df)
         @test :value in propertynames(df)
     end
 
-    @testset "to_results_dataframe - 2D WIDE format with timestamps" begin
+    @testset "to_outputs_dataframe - 2D WIDE format with timestamps" begin
         data = DenseAxisArray(
             [1.0 2.0; 3.0 4.0],
             ["gen1", "gen2"],
             1:2,
         )
         timestamps = [DateTime(2024, 1, 1, 0), DateTime(2024, 1, 1, 1)]
-        df = IOM.to_results_dataframe(data, timestamps, Val(IOM.TableFormat.WIDE))
+        df = IOM.to_outputs_dataframe(data, timestamps, Val(IOM.TableFormat.WIDE))
         @test isa(df, DataFrame)
         @test :DateTime in propertynames(df)
         @test Symbol("gen1") in propertynames(df)
@@ -247,7 +247,7 @@ struct MockVariableType <: ISOPT.VariableType end
         @test nrow(df) == 2
     end
 
-    @testset "to_results_dataframe - 3D LONG format" begin
+    @testset "to_outputs_dataframe - 3D LONG format" begin
         data = DenseAxisArray(
             zeros(2, 2, 3),
             ["gen1", "gen2"],
@@ -258,7 +258,7 @@ struct MockVariableType <: ISOPT.VariableType end
         data["gen2", "area2", 2] = 2.0
 
         timestamps = [DateTime(2024, 1, 1, i) for i in 0:2]
-        df = IOM.to_results_dataframe(data, timestamps, Val(IOM.TableFormat.LONG))
+        df = IOM.to_outputs_dataframe(data, timestamps, Val(IOM.TableFormat.LONG))
         @test isa(df, DataFrame)
         @test :DateTime in propertynames(df)
         @test :name in propertynames(df)
