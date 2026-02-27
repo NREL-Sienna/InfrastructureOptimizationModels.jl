@@ -545,6 +545,8 @@ export get_contributing_devices_map
 export get_parameter_column_values
 export update_container_parameter_values!
 export export_outputs
+export get_source_data
+export set_source_data!
 
 ## Note: Concrete PowerModels types (ACPPowerModel, DCPPowerModel, etc.) are now
 ## defined and exported by PowerOperationsModels, not IOM.

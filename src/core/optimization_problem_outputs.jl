@@ -103,14 +103,14 @@ get_total_cost(res::OptimizationProblemOutputs) = get_objective_value(res)
 get_optimizer_stats(res::OptimizationProblemOutputs) = res.optimizer_stats
 get_parameter_values(res::OptimizationProblemOutputs) = res.parameter_values
 get_source_data(res::OptimizationProblemOutputs) = res.source_data
-get_system(res::OptimizationProblemOutputs) = get_source_data(res)
-set_system!(res::OptimizationProblemOutputs, sys) = set_source_data!(res, sys)
 
 """
 Load the system from disk if not already set, and return it.
+
+Currently only used in the tests, not downstream in POM.
 """
-function get_system!(res::OptimizationProblemOutputs; kwargs...)
-    !isnothing(get_system(res)) && return get_system(res)
+function load_system(res::OptimizationProblemOutputs; kwargs...)
+    !isnothing(get_source_data(res)) && return
     file = joinpath(get_outputs_dir(res), make_system_filename(get_source_data_uuid(res)))
     if isfile(file)
         sys = PSY.System(file; time_series_read_only = true)
@@ -118,9 +118,10 @@ function get_system!(res::OptimizationProblemOutputs; kwargs...)
     else
         error("Could not locate system file: $file")
     end
-    set_system!(res, sys)
-    return get_system(res)
+    set_source_data!(res, sys)
+    return
 end
+
 get_forecast_horizon(res::OptimizationProblemOutputs) = length(get_timestamps(res))
 get_output_dir(res::OptimizationProblemOutputs) = res.output_dir
 get_outputs_dir(res::OptimizationProblemOutputs) = res.outputs_dir
