@@ -14,10 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
-        with:
-          version: '1.6'
       - name: Install dependencies
         run: julia --project=docs/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Install InfrastructureSystems#IS4 in docs environment
+        run: |
+          julia --project=docs/ -e '
+            using Pkg
+            Pkg.add(PackageSpec(name="InfrastructureSystems", url="https://github.com/NREL-Sienna/InfrastructureSystems.jl.git", rev="IS4"))
+            Pkg.instantiate()
+          '
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
