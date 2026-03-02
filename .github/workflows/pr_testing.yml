@@ -27,7 +27,7 @@ jobs:
         run: |
           julia --project=test -e '
             using Pkg
-            Pkg.develop(PackageSpec(name="InfrastructureSystems", url="https://github.com/NREL-Sienna/InfrastructureSystems.jl.git", rev="IS4"))
+            Pkg.add(PackageSpec(name="InfrastructureSystems", url="https://github.com/NREL-Sienna/InfrastructureSystems.jl.git", rev="IS4"))
             Pkg.instantiate()
           '
       - name: Run tests with coverage
