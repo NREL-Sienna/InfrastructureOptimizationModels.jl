@@ -30,6 +30,8 @@ jobs:
             Pkg.add(PackageSpec(name="InfrastructureSystems", url="https://github.com/NREL-Sienna/InfrastructureSystems.jl.git", rev="IS4"))
             Pkg.instantiate()
           '
+      - name: Install local package in test environment
+        run: julia --project=test/ -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Run tests with coverage
         run: julia --project=test --code-coverage=user test/runtests.jl
         env:
