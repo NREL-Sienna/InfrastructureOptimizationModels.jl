@@ -13,9 +13,8 @@ import Aqua
     Aqua.find_persistent_tasks_deps(InfrastructureOptimizationModels)
     Aqua.test_persistent_tasks(InfrastructureOptimizationModels)
     Aqua.test_unbound_args(InfrastructureOptimizationModels)
-    # Note: These tests are known to fail and are tracked separately:
-    # - test_undefined_exports: Has 216 undefined exports (PowerSimulations types)
-    # - test_stale_deps: Has 2 stale dependencies (Distributions, ProgressMeter)
+    Aqua.test_exported_names(InfrastructureOptimizationModels)
+    Aqua.test_stale_deps(InfrastructureOptimizationModels)
 end
 
 # Load the test module
