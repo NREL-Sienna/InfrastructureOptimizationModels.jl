@@ -188,12 +188,6 @@ export CostFunctionAttributes
 export EventParametersAttributes
 export ValidDataParamEltypes
 
-# Initial Conditions Quantities
-export DevicePower
-export DeviceStatus
-export InitialTimeDurationOn
-export InitialTimeDurationOff
-
 # Functions
 export validate_time_series!
 export init_optimization_container!
@@ -242,12 +236,7 @@ export get_parameter_values
 export get_aux_variable_values
 export get_expression_values
 export get_timestamps
-export get_model_name
-export get_decision_problem_outputs
-export get_emulation_problem_outputs
 export get_system
-export get_system!
-export set_system!
 export list_variable_keys
 export list_dual_keys
 export list_parameter_keys
@@ -258,9 +247,6 @@ export list_dual_names
 export list_parameter_names
 export list_aux_variable_names
 export list_expression_names
-export list_decision_problems
-export list_supported_formats
-export load_outputs!
 export read_variable
 export read_dual
 export read_parameter
@@ -271,16 +257,6 @@ export read_duals
 export read_parameters
 export read_aux_variables
 export read_expressions
-export read_realized_variable
-export read_realized_dual
-export read_realized_parameter
-export read_realized_aux_variable
-export read_realized_expression
-export read_realized_variables
-export read_realized_duals
-export read_realized_parameters
-export read_realized_aux_variables
-export read_realized_expressions
 export get_realized_timestamps
 export get_problem_base_power
 export get_objective_value
@@ -295,8 +271,6 @@ export get_all_variable_index
 export get_constraint_index
 export get_variable_index
 export list_recorder_events
-export show_recorder_events
-export get_num_partitions
 export jump_value
 export ConstraintBounds
 export VariableBounds
@@ -354,7 +328,7 @@ export _get_ramp_constraint_devices
 # add_param_container!
 export add_param_container!,
     add_param_container_split_axes!,
-    add_param_container_shared_axes!, get_parameter_eltype
+    add_param_container_shared_axes!
 export remove_undef!
 export get_branch_argument_variable_axis
 
@@ -388,8 +362,6 @@ export AbstractThermalDispatchFormulation, AbstractThermalUnitCommitment
 # Service/misc helpers
 # NOTE: get_time_series NOT exported — conflicts with IS.get_time_series. Use IOM.get_time_series.
 export process_import_export_parameters!, process_market_bid_parameters!
-# Types
-export AreaControlError
 # Extension point functions
 export add_variable!, requires_initialization
 # End bulk-added
@@ -404,7 +376,7 @@ export get_incompatible_devices
 export OptimizationContainer, OperationModel, AbstractPowerFlowEvaluationModel
 export ArgumentConstructStage, ModelConstructStage
 export EmulationModelStore, DeviceModelForBranches
-export DeviceAboveMinPower, StartUpStages, SOSStatusVariable
+export StartUpStages, SOSStatusVariable
 # Parameter types
 export FuelCostParameter, VariableValueParameter, FixValueParameter
 # Offer curve types (parameter, variable, constraint)
