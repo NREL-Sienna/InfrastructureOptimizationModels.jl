@@ -38,7 +38,7 @@ function _add_sos2_quadratic_approx!(
     x_max::Float64,
     num_segments::Int,
     meta::String,
-) where {C <: IS.InfrastructureSystemsComponent}
+) where {C<:IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
         _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments)
     n_points = num_segments + 1
@@ -64,14 +64,14 @@ function _add_sos2_quadratic_approx!(
         meta,
     )
 
-    result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
+    result = Dict{Tuple{String,Int},JuMP.AffExpr}()
 
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
 
         # Create lambda variables: λ_i ∈ [0, 1]
         lambda = Vector{JuMP.VariableRef}(undef, n_points)
-        for i in 1:n_points
+        for i = 1:n_points
             lambda[i] =
                 lambda_container[(name, i, t)] = JuMP.@variable(
                     jump_model,
@@ -88,17 +88,14 @@ function _add_sos2_quadratic_approx!(
         )
 
         # Σ λ_i = 1
-        norm_container[name, t] = JuMP.@constraint(
-            jump_model,
-            sum(lambda) == 1.0
-        )
+        norm_container[name, t] = JuMP.@constraint(jump_model, sum(lambda) == 1.0)
 
         # λ ∈ SOS2 (solver-native)
         JuMP.@constraint(jump_model, lambda in MOI.SOS2(collect(1:n_points)))
 
         # Build x̂² = Σ λ_i * x_i² as an affine expression
         x_hat_sq = JuMP.AffExpr(0.0)
-        for i in 1:n_points
+        for i = 1:n_points
             JuMP.add_to_expression!(x_hat_sq, x_sq_bkpts[i], lambda[i])
         end
         result[(name, t)] = x_hat_sq
