@@ -37,7 +37,7 @@ function _add_manual_sos2_quadratic_approx!(
     x_max::Float64,
     num_segments::Int,
     meta::String,
-) where {C<:IS.InfrastructureSystemsComponent}
+) where {C <: IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
         _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments)
     n_points = num_segments + 1
@@ -73,14 +73,14 @@ function _add_manual_sos2_quadratic_approx!(
         meta,
     )
 
-    result = Dict{Tuple{String,Int},JuMP.AffExpr}()
+    result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
 
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
 
         # Create lambda variables: λ_i ∈ [0, 1]
         lambda = Vector{JuMP.VariableRef}(undef, n_points)
-        for i = 1:n_points
+        for i in 1:n_points
             lambda[i] =
                 lambda_container[(name, i, t)] = JuMP.@variable(
                     jump_model,
@@ -101,7 +101,7 @@ function _add_manual_sos2_quadratic_approx!(
 
         # Create binary segment-selection variables z_j
         z_vars = Vector{JuMP.VariableRef}(undef, n_bins)
-        for j = 1:n_bins
+        for j in 1:n_bins
             z_vars[j] =
                 z_container[(name, j, t)] = JuMP.@variable(
                     jump_model,
@@ -117,15 +117,15 @@ function _add_manual_sos2_quadratic_approx!(
         # λ_1 ≤ z_1
         JuMP.@constraint(jump_model, lambda[1] <= z_vars[1])
         # λ_i ≤ z_{i-1} + z_i for i = 2..n-1
-        for i = 2:(n_points-1)
-            JuMP.@constraint(jump_model, lambda[i] <= z_vars[i-1] + z_vars[i])
+        for i in 2:(n_points - 1)
+            JuMP.@constraint(jump_model, lambda[i] <= z_vars[i - 1] + z_vars[i])
         end
         # λ_n ≤ z_{n-1}
         JuMP.@constraint(jump_model, lambda[n_points] <= z_vars[n_bins])
 
         # Build x̂² = Σ λ_i * x_i² as an affine expression
         x_hat_sq = JuMP.AffExpr(0.0)
-        for i = 1:n_points
+        for i in 1:n_points
             JuMP.add_to_expression!(x_hat_sq, x_sq_bkpts[i], lambda[i])
         end
         result[(name, t)] = x_hat_sq

@@ -42,7 +42,7 @@ function _add_sawtooth_quadratic_approx!(
     x_max::Float64,
     depth::Int,
     meta::String,
-) where {C<:IS.InfrastructureSystemsComponent}
+) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op depth >= 1
     jump_model = get_jump_model(container)
@@ -78,7 +78,7 @@ function _add_sawtooth_quadratic_approx!(
         meta,
     )
 
-    result = Dict{Tuple{String,Int},JuMP.AffExpr}()
+    result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
 
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
@@ -110,7 +110,7 @@ function _add_sawtooth_quadratic_approx!(
 
         # S^L constraints for j = 1,...,L
         for j in alpha_levels
-            g_prev = g_container[name, j-1, t]
+            g_prev = g_container[name, j - 1, t]
             g_curr = g_container[name, j, t]
             alpha_j = alpha_container[name, j, t]
 

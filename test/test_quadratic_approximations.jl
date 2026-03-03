@@ -59,7 +59,7 @@ end
                 MockThermalGen,
                 TEST_META,
             )
-            for i = 1:n_points
+            for i in 1:n_points
                 @test haskey(lambda_container, ("dev1", i, 1))
                 var = lambda_container[("dev1", i, 1)]
                 @test JuMP.lower_bound(var) == 0.0
@@ -175,12 +175,12 @@ end
                 MockThermalGen,
                 TEST_META,
             )
-            for t = 1:3, i = 1:5
+            for t in 1:3, i in 1:5
                 @test haskey(lambda_container, ("dev1", i, t))
             end
 
             # Result dict should have entries for all (name, t) pairs
-            for t = 1:3
+            for t in 1:3
                 @test haskey(result, ("dev1", t))
             end
         end
@@ -217,8 +217,8 @@ end
                 push!(errors, abs(obj_val - analytic_min))
             end
             # Each doubling of segments should reduce error (or maintain if already exact)
-            for i = 2:length(errors)
-                @test errors[i] <= errors[i-1] + 1e-10
+            for i in 2:length(errors)
+                @test errors[i] <= errors[i - 1] + 1e-10
             end
         end
     end
@@ -252,7 +252,7 @@ end
                 MockThermalGen,
                 TEST_META,
             )
-            for i = 1:n_points
+            for i in 1:n_points
                 @test haskey(lambda_container, ("dev1", i, 1))
             end
 
@@ -263,7 +263,7 @@ end
                 MockThermalGen,
                 TEST_META,
             )
-            for j = 1:(n_points-1)
+            for j in 1:(n_points - 1)
                 @test haskey(z_container, ("dev1", j, 1))
                 @test JuMP.is_binary(z_container[("dev1", j, 1)])
             end
@@ -373,7 +373,7 @@ end
                 MockThermalGen,
                 TEST_META,
             )
-            for j = 0:depth
+            for j in 0:depth
                 var = g_container["dev1", j, 1]
                 @test JuMP.lower_bound(var) == 0.0
                 @test JuMP.upper_bound(var) == 1.0
@@ -386,7 +386,7 @@ end
                 MockThermalGen,
                 TEST_META,
             )
-            for j = 1:depth
+            for j in 1:depth
                 @test JuMP.is_binary(alpha_container["dev1", j, 1])
             end
 
@@ -494,15 +494,15 @@ end
                 MockThermalGen,
                 TEST_META,
             )
-            for t = 1:3, j = 0:2
+            for t in 1:3, j in 0:2
                 @test JuMP.lower_bound(g_container["dev1", j, t]) == 0.0
             end
-            for t = 1:3, j = 1:2
+            for t in 1:3, j in 1:2
                 @test JuMP.is_binary(alpha_container["dev1", j, t])
             end
 
             # Result dict should have entries for all (name, t) pairs
-            for t = 1:3
+            for t in 1:3
                 @test haskey(result, ("dev1", t))
             end
         end
@@ -511,7 +511,7 @@ end
             # min (√2)x² - (√3)x on [0, 6], analytic minimum at x=√3/8
             analytic_min = sqrt(2)*(sqrt(3/8)^2) - sqrt(3)*sqrt(3/8)
             errors = Float64[]
-            for depth = 1:6
+            for depth in 1:6
                 setup = _setup_qa_test(["dev1"], 1:1)
                 x_var = setup.var_container["dev1", 1]
                 JuMP.set_lower_bound(x_var, 0.0)
@@ -538,14 +538,14 @@ end
                 obj_val = JuMP.objective_value(setup.jump_model)
                 push!(errors, abs(obj_val - analytic_min))
             end
-            for i = 2:length(errors)
-                @test errors[i] <= errors[i-1] + 1e-10
+            for i in 2:length(errors)
+                @test errors[i] <= errors[i - 1] + 1e-10
             end
         end
 
         @testset "Agrees with SOS2 at aligned breakpoints" begin
             # SOS2 and Sawtooth should agree when n_sos2_segments = 2^(sawtooth_depth)
-            for depth = 1:6
+            for depth in 1:6
                 sos2_value = nothing
                 for method in [:sos2, :sawtooth]
                     setup = _setup_qa_test(["dev1"], 1:1)
