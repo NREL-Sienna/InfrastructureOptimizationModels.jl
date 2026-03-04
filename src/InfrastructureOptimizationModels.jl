@@ -597,6 +597,8 @@ include("objective_function/market_bid.jl")
 include("quadratic_approximations/solver_sos2.jl")
 include("quadratic_approximations/manual_sos2.jl")
 include("quadratic_approximations/sawtooth.jl")
+include("quadratic_approximations/mccormick.jl")
+include("quadratic_approximations/bilinear.jl")
 
 # add_param_container! wrappers — must come after piecewise_linear.jl
 # (which defines VariableValueParameter and FixValueParameter)
