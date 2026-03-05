@@ -210,10 +210,7 @@ export set_hvdc_network_model!
 # Extension points for downstream packages (e.g., PowerOperationsModels)
 # These functions have fallback implementations in IOM but are meant to be
 # extended with device-specific methods in POM
-export construct_device!
-export construct_service!
 export add_variables!
-export add_constraints!
 export add_to_expression!
 export add_constant_to_jump_expression!
 export add_proportional_to_jump_expression!
@@ -226,7 +223,6 @@ export add_pwl_linking_constraint!
 export add_pwl_normalization_constraint!
 export add_pwl_sos2_constraint!
 export get_pwl_cost_expression
-export add_to_objective_function!
 export process_market_bid_parameters!
 
 ## Outputs interfaces
@@ -293,9 +289,6 @@ export get_multiplier_array
 export get_parameter_column_refs
 export get_service_name
 export get_default_time_series_type
-export get_expression_multiplier
-export get_variable_multiplier
-export get_multiplier_value
 export add_expression_container!
 
 # Initial condition infrastructure (extension points for POM)
@@ -363,7 +356,7 @@ export AbstractThermalDispatchFormulation, AbstractThermalUnitCommitment
 # NOTE: get_time_series NOT exported — conflicts with IS.get_time_series. Use IOM.get_time_series.
 export process_import_export_parameters!, process_market_bid_parameters!
 # Extension point functions
-export add_variable!, requires_initialization
+export add_service_variables!, requires_initialization
 # End bulk-added
 
 # more extension points
@@ -411,7 +404,6 @@ export add_constraints_container!, add_variable_cost!
 export add_initial_condition_container!
 export has_initial_condition_value, set_ic_quantity!, get_last_recorded_value
 export set_initial_conditions_model_container!, get_initial_conditions_model_container
-export get_initial_conditions_device_model
 export _validate_warm_start_support, _add_services_to_device_model!
 export get_component_type, get_component_name, add_jump_parameter
 # Template/model access
@@ -634,6 +626,4 @@ include("utils/jump_utils.jl")
 include("utils/powersystems_utils.jl")
 include("utils/time_series_utils.jl")
 include("utils/datetime_utils.jl")
-include("utils/generate_valid_formulations.jl")
-
 end

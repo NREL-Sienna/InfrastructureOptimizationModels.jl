@@ -1,93 +1,3 @@
-###############################
-###### construct_device! ######
-###############################
-
-_to_string(::Type{ArgumentConstructStage}) = "ArgumentConstructStage"
-_to_string(::Type{ModelConstructStage}) = "ModelConstructStage"
-
-"""
-Stub implementation: downstream modules should implement `construct_device!` for 
-`ArgumentConstructStage` and for `ModelConstructStage` stages separately.
-"""
-function construct_device!(
-    ::OptimizationContainer,
-    ::IS.ComponentContainer,
-    ::M,
-    model::DeviceModel{D, F},
-    network_model::NetworkModel{S},
-) where {
-    M <: ConstructStage,
-    D <: IS.InfrastructureSystemsComponent,
-    F <: AbstractDeviceFormulation,
-    S,
-}
-    error(
-        "construct_device! not implemented for device type $D with formulation $F " *
-        "at $(_to_string(M)). Implement this method to add variables and expressions.",
-    )
-end
-
-# for some reason this one doesn't print the stage name.
-function construct_service!(
-    ::OptimizationContainer,
-    ::IS.ComponentContainer,
-    ::ConstructStage,
-    model::ServiceModel{S, F},
-    devices_template::Dict{Symbol, DeviceModel},
-    incompatible_device_types::Set{<:DataType},
-    network_model::NetworkModel{N},
-) where {S <: PSY.Service, F <: AbstractServiceFormulation, N}
-    error(
-        "construct_service! not implemented for service type $S with formulation $F. " *
-        "Implement this method in PowerOperationsModels.",
-    )
-end
-
-###############################
-###### add_foo functions ######
-###############################
-
-# previously called objective_function!, but renamed to be more consistent with others.
-"""
-Add objective function contributions for devices.
-"""
-function add_to_objective_function!(
-    ::OptimizationContainer,
-    ::Union{Vector{U}, IS.FlattenIteratorWrapper{U}},
-    ::DeviceModel{U, F},
-    ::Type{S},
-) where {
-    U <: IS.InfrastructureSystemsComponent,
-    F <: AbstractDeviceFormulation,
-    S <: AbstractPowerModel,
-}
-    error(
-        "add_to_objective_function! not implemented for device type $U with formulation $F and power model $S.",
-    )
-    return
-end
-
-"""
-Add constraints to the optimization container. Stub implementation.
-"""
-function add_constraints!(
-    ::OptimizationContainer,
-    ::Type{T},
-    devices::Union{Vector{U}, IS.FlattenIteratorWrapper{U}},
-    model::DeviceModel{U, F},
-    network_model::NetworkModel{S},
-) where {
-    T <: ConstraintType,
-    U <: IS.InfrastructureSystemsComponent,
-    F <: AbstractDeviceFormulation,
-    S,
-}
-    error(
-        "add_constraints! not implemented for constraint type $T, " *
-        "device type $U with formulation $F. Implement this method to add constraints.",
-    )
-end
-
 """
 Extension point: Add parameters to the optimization container.
 Concrete implementations are in PowerOperationsModels.
@@ -110,75 +20,6 @@ end
 ###############################
 ###### get_foo functions ######
 ###############################
-
-# Variable multipliers: default to 1.0
-
-"""
-Get the multiplier for a variable type when adding to an expression.
-Default implementation returns 1.0. Override for specific variable/device/formulation combinations.
-"""
-get_variable_multiplier(
-    ::VariableType,
-    ::Type{<:IS.InfrastructureSystemsComponent},
-    ::AbstractDeviceFormulation,
-) = 1.0
-
-# Expression multipliers: error by default.
-"""
-Get the multiplier for an expression type based on parameter type.
-"""
-function get_expression_multiplier(
-    ::P,
-    ::Type{T},
-    ::D,
-    ::F,
-) where {
-    P <: ParameterType,
-    T <: ExpressionType,
-    D <: IS.InfrastructureSystemsComponent,
-    F <: AbstractDeviceFormulation,
-}
-    error(
-        "get_expression_multiplier not implemented for parameter $P, expression $T, " *
-        "device $D, formulation $F. Implement this method in PowerOperationsModels.",
-    )
-end
-
-# parameter multipliers: time series defaults to 1.0, other types error by default.
-
-"""
-Extension point: Get multiplier value for a time series parameter.
-This scales the time series values for each device.
-"""
-function get_multiplier_value(
-    ::T,
-    ::U,
-    ::F,
-) where {
-    T <: TimeSeriesParameter,
-    U <: IS.InfrastructureSystemsComponent,
-    F <: AbstractDeviceFormulation,
-}
-    return 1.0  # Default: no scaling
-end
-
-"""
-Get the multiplier value for a parameter type.
-"""
-function get_multiplier_value(
-    ::P,
-    ::D,
-    ::F,
-) where {
-    P <: ParameterType,
-    D <: IS.InfrastructureSystemsComponent,
-    F <: AbstractDeviceFormulation,
-}
-    error(
-        "get_multiplier_value not implemented for parameter $P, device $D, formulation $F. " *
-        "Implement this method in PowerOperationsModels.",
-    )
-end
 
 # stuff associated to a formulation: attributes, time series names
 """
@@ -320,7 +161,7 @@ Extension point: Convert raw startup cost to a scalar value.
 Device-specific implementations (e.g., for StartUpStages, MultiStartVariable) are in POM.
 """
 function start_up_cost(
-    cost::Any, # could be NamedTuple, StartUpStages, AffExpr, or Float. 
+    cost::Any, # could be NamedTuple, StartUpStages, AffExpr, or Float.
     ::Type{T},
     ::V,
     ::F,
@@ -333,22 +174,6 @@ function start_up_cost(
         "start_up_cost not implemented for cost type $(typeof(cost)), device type $T, " *
         "variable type $V, formulation $F.",
     )
-end
-
-"""
-Extension point: Add power flow evaluation data to the container.
-Default: no-op (handles the common case of no power flow evaluators).
-"""
-function add_power_flow_data!(
-    ::OptimizationContainer,
-    evaluators::Vector{<:AbstractPowerFlowEvaluationModel},
-    ::IS.ComponentContainer,
-)
-    if !isempty(evaluators)
-        error(
-            "Power flow in-the-loop with the new IOM-POM-PSI split isn't working yet.",
-        )
-    end
 end
 
 """
@@ -381,7 +206,7 @@ get_min_max_limits(
 """
 Extension point: variable cost.
 
-The one exception where it isn't just `get_variable(cost)`: storage devices, where we 
+The one exception where it isn't just `get_variable(cost)`: storage devices, where we
 need to map `ActivePower{In/Out}` to {charge/discharge} variable cost.
 """
 function variable_cost(
@@ -401,22 +226,6 @@ variable_cost(
 ) = 0.0
 
 """
-Extension point: Get the device model to use for initialization.
-The FixedOutput case returns the model as-is; all other formulations must be
-implemented in PowerOperationsModels.
-"""
-get_initial_conditions_device_model(
-    ::OperationModel,
-    model::DeviceModel{T, FixedOutput},
-) where {T <: PSY.Device} = model
-
-get_initial_conditions_device_model(
-    ::OperationModel,
-    ::DeviceModel{T, D},
-) where {T <: PSY.Device, D <: AbstractDeviceFormulation} =
-    error("`get_initial_conditions_device_model` must be implemented for $T and $D")
-
-"""
 Extension point: get the initial condition type for a given constraint, device, and formulation.
 Concrete implementations in POM. Used for ramp constraints.
 """
@@ -433,7 +242,7 @@ Update parameter values in the optimization container from the given input data.
 This is an extension point — concrete implementations should be defined in
 PowerOperationsModels (or PowerSimulations for simulation-specific variants).
 
-Only called in `emulation_model.jl`: that file's contents and this function should 
+Only called in `emulation_model.jl`: that file's contents and this function should
 likely be moved to POM or PSI.
 """
 function update_container_parameter_values! end
