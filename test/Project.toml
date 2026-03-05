@@ -27,3 +27,6 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 [compat]
 HiGHS = "1"
 julia = "^1.10"
+
+[sources]
+InfrastructureSystems = {url = "https://github.com/NREL-Sienna/InfrastructureSystems.jl", rev = "IS4"}
