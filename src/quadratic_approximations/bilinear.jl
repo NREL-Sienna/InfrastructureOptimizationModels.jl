@@ -1,11 +1,9 @@
 # Bin2 separable approximation of bilinear products z = x·y.
-# Uses the difference-of-squares identity: x·y = ¼((x+y)² − (x−y)²).
-# Calls existing quadratic approximation functions twice for u² and v².
+# Uses the identity: x·y = (1/2)*((x+y)² − x² - y²).
+# Calls existing quadratic approximation functions for p²=(x+y)²
 
-struct BilinearApproxSumVariable <: VariableType end              # u = x + y
-struct BilinearApproxDiffVariable <: VariableType end             # v = x − y
-struct BilinearApproxSumLinkingConstraint <: ConstraintType end   # u == x + y
-struct BilinearApproxDiffLinkingConstraint <: ConstraintType end  # v == x − y
+struct BilinearApproxSumVariable <: VariableType end              # p = x + y
+struct BilinearApproxSumLinkingConstraint <: ConstraintType end   # p == x + y
 struct BilinearProductVariable <: VariableType end                # z ≈ x·y
 
 """
@@ -56,6 +54,8 @@ function _add_bilinear_approx_impl!(
 
     jump_model = get_jump_model(container)
     meta_plus = meta * "_plus"
+    meta_x = meta * "_x"
+    meta_y = meta * "_y"
 
     # Create p variable container
     p_container = add_variable_container!(
@@ -105,9 +105,27 @@ function _add_bilinear_approx_impl!(
         meta_plus,
     )
     zx_dict =
-        quad_approx_fn(container, C, names, time_steps, x_var_container, x_min, x_max, meta)
+        quad_approx_fn(
+            container,
+            C,
+            names,
+            time_steps,
+            x_var_container,
+            x_min,
+            x_max,
+            meta_x,
+        )
     zy_dict =
-        quad_approx_fn(container, C, names, time_steps, y_var_container, y_min, y_max, meta)
+        quad_approx_fn(
+            container,
+            C,
+            names,
+            time_steps,
+            y_var_container,
+            y_min,
+            y_max,
+            meta_y,
+        )
 
     # Create z variable container for the bilinear product
     z_container = add_variable_container!(

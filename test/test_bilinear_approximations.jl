@@ -47,19 +47,12 @@ end
             @test haskey(result, ("dev1", 1))
             @test result[("dev1", 1)] isa JuMP.AffExpr
 
-            # u = x + y variable container should exist
+            # p = x + y variable container should exist
             @test IOM.has_container_key(
                 setup.container,
                 IOM.BilinearApproxSumVariable,
                 MockThermalGen,
                 BILINEAR_META * "_plus",
-            )
-            # v = x - y variable container should exist
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearApproxDiffVariable,
-                MockThermalGen,
-                BILINEAR_META * "_minus",
             )
             # z ≈ x·y variable container should exist
             @test IOM.has_container_key(
@@ -75,12 +68,6 @@ end
                 MockThermalGen,
                 BILINEAR_META * "_plus",
             )
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearApproxDiffLinkingConstraint,
-                MockThermalGen,
-                BILINEAR_META * "_minus",
-            )
             # Inner quadratic approx containers should exist with _plus/_minus meta
             @test IOM.has_container_key(
                 setup.container,
@@ -88,14 +75,8 @@ end
                 MockThermalGen,
                 BILINEAR_META * "_plus",
             )
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.QuadraticApproxVariable,
-                MockThermalGen,
-                BILINEAR_META * "_minus",
-            )
 
-            # u bounds should be [0+0, 4+4] = [0, 8]
+            # p bounds should be [0+0, 4+4] = [0, 8]
             u_container = IOM.get_variable(
                 setup.container,
                 IOM.BilinearApproxSumVariable(),
@@ -104,16 +85,6 @@ end
             )
             @test JuMP.lower_bound(u_container["dev1", 1]) == 0.0
             @test JuMP.upper_bound(u_container["dev1", 1]) == 8.0
-
-            # v bounds should be [0-4, 4-0] = [-4, 4]
-            v_container = IOM.get_variable(
-                setup.container,
-                IOM.BilinearApproxDiffVariable(),
-                MockThermalGen,
-                BILINEAR_META * "_minus",
-            )
-            @test JuMP.lower_bound(v_container["dev1", 1]) == -4.0
-            @test JuMP.upper_bound(v_container["dev1", 1]) == 4.0
         end
 
         @testset "Constraint structure with McCormick" begin
@@ -355,12 +326,6 @@ end
                 MockThermalGen,
                 BILINEAR_META * "_plus",
             )
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.ManualSOS2BinaryVariable,
-                MockThermalGen,
-                BILINEAR_META * "_minus",
-            )
 
             # NO solver SOS2 constraints
             sos2_count = JuMP.num_constraints(
@@ -550,18 +515,6 @@ end
                 IOM.SawtoothBinaryVariable,
                 MockThermalGen,
                 BILINEAR_META * "_plus",
-            )
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.SawtoothAuxVariable,
-                MockThermalGen,
-                BILINEAR_META * "_minus",
-            )
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.SawtoothBinaryVariable,
-                MockThermalGen,
-                BILINEAR_META * "_minus",
             )
         end
 
