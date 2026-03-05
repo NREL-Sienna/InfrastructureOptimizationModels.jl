@@ -1,8 +1,11 @@
 # SOS2-based piecewise linear approximation of x² for use in constraints.
 # Uses solver-native MOI.SOS2 constraints for adjacency enforcement.
 
+"Lambda (λ) convex combination weight variables for SOS2 quadratic approximation."
 struct QuadraticApproxVariable <: SparseVariableType end
+"Links x to the weighted sum of breakpoints in SOS2 quadratic approximation."
 struct QuadraticApproxLinkingConstraint <: ConstraintType end
+"Ensures the sum of λ weights equals 1 in SOS2 quadratic approximation."
 struct QuadraticApproxNormalizationConstraint <: ConstraintType end
 
 """
