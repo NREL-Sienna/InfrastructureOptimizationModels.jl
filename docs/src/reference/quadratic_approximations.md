@@ -54,11 +54,11 @@ decreases as ``O(1/S^2)``.
 
 ### Variables and Constraints
 
-| Container Type | Description |
-|:---|:---|
-| [`QuadraticApproxVariable`](@ref) | Lambda (``\lambda``) convex combination weights |
-| [`QuadraticApproxLinkingConstraint`](@ref) | Links ``x`` to weighted breakpoints |
-| [`QuadraticApproxNormalizationConstraint`](@ref) | Ensures ``\sum \lambda_i = 1`` |
+| Container Type                                   | Description                                     |
+|:------------------------------------------------ |:----------------------------------------------- |
+| [`QuadraticApproxVariable`](@ref)                | Lambda (``\lambda``) convex combination weights |
+| [`QuadraticApproxLinkingConstraint`](@ref)       | Links ``x`` to weighted breakpoints             |
+| [`QuadraticApproxNormalizationConstraint`](@ref) | Ensures ``\sum \lambda_i = 1``                  |
 
 ## Manual SOS2
 
@@ -88,13 +88,13 @@ linear constraints per component per time step. Same approximation quality as So
 
 ### Variables and Constraints
 
-| Container Type | Description |
-|:---|:---|
-| [`QuadraticApproxVariable`](@ref) | Lambda (``\lambda``) convex combination weights |
-| [`ManualSOS2BinaryVariable`](@ref) | Binary segment-selection variables (``z``) |
-| [`QuadraticApproxLinkingConstraint`](@ref) | Links ``x`` to weighted breakpoints |
-| [`QuadraticApproxNormalizationConstraint`](@ref) | Ensures ``\sum \lambda_i = 1`` |
-| [`ManualSOS2SegmentSelectionConstraint`](@ref) | Ensures ``\sum z_j = 1`` |
+| Container Type                                   | Description                                     |
+|:------------------------------------------------ |:----------------------------------------------- |
+| [`QuadraticApproxVariable`](@ref)                | Lambda (``\lambda``) convex combination weights |
+| [`ManualSOS2BinaryVariable`](@ref)               | Binary segment-selection variables (``z``)      |
+| [`QuadraticApproxLinkingConstraint`](@ref)       | Links ``x`` to weighted breakpoints             |
+| [`QuadraticApproxNormalizationConstraint`](@ref) | Ensures ``\sum \lambda_i = 1``                  |
+| [`ManualSOS2SegmentSelectionConstraint`](@ref)   | Ensures ``\sum z_j = 1``                        |
 
 ## Sawtooth
 
@@ -143,21 +143,21 @@ constraints per component per time step. The approximation interpolates ``x^2`` 
 
 ### Variables and Constraints
 
-| Container Type | Description |
-|:---|:---|
-| [`SawtoothAuxVariable`](@ref) | Auxiliary continuous variables (``g_0, \ldots, g_L``) |
-| [`SawtoothBinaryVariable`](@ref) | Binary variables (``\alpha_1, \ldots, \alpha_L``) |
-| [`SawtoothLinkingConstraint`](@ref) | Links ``g_0`` to normalized ``x`` |
+| Container Type                      | Description                                           |
+|:----------------------------------- |:----------------------------------------------------- |
+| [`SawtoothAuxVariable`](@ref)       | Auxiliary continuous variables (``g_0, \ldots, g_L``) |
+| [`SawtoothBinaryVariable`](@ref)    | Binary variables (``\alpha_1, \ldots, \alpha_L``)     |
+| [`SawtoothLinkingConstraint`](@ref) | Links ``g_0`` to normalized ``x``                     |
 
 ## Comparison
 
-| Property | Solver SOS2 | Manual SOS2 | Sawtooth |
-|:---|:---|:---|:---|
-| Binary variables | 0 | ``S`` | ``L`` |
-| Continuous variables | ``S + 1`` | ``S + 1`` | ``L + 1`` |
-| Breakpoints | ``S + 1`` | ``S + 1`` | ``2^L + 1`` |
-| Max error | ``O(\Delta^2 / S^2)`` | ``O(\Delta^2 / S^2)`` | ``\Delta^2 \cdot 2^{-2L-2}`` |
-| Solver requirements | SOS2 support | MIP only | MIP only |
+| Property             | Solver SOS2           | Manual SOS2           | Sawtooth                     |
+|:-------------------- |:--------------------- |:--------------------- |:---------------------------- |
+| Binary variables     | 0                     | ``S``                 | ``L``                        |
+| Continuous variables | ``S + 1``             | ``S + 1``             | ``L + 1``                    |
+| Breakpoints          | ``S + 1``             | ``S + 1``             | ``2^L + 1``                  |
+| Max error            | ``O(\Delta^2 / S^2)`` | ``O(\Delta^2 / S^2)`` | ``\Delta^2 \cdot 2^{-2L-2}`` |
+| Solver requirements  | SOS2 support          | MIP only              | MIP only                     |
 
 To match the number of breakpoints between methods, set ``S = 2^L``. At equal breakpoint
 count the approximation quality is identical, but the sawtooth uses ``L = \log_2 S``

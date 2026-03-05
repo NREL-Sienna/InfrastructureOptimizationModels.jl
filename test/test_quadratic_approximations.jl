@@ -187,7 +187,7 @@ end
 
         @testset "Approximation quality improves with more segments" begin
             # min (√2)x² - (√3)x on [0, 6], analytic minimum at x=√3/8
-            analytic_min = sqrt(2)*(sqrt(3/8)^2) - sqrt(3)*sqrt(3/8)
+            analytic_min = sqrt(2) * (sqrt(3 / 8)^2) - sqrt(3) * sqrt(3 / 8)
             errors = Float64[]
             for num_segments in 2 .^ (1:6)
                 setup = _setup_qa_test(["dev1"], 1:1)
@@ -208,7 +208,7 @@ end
                 )
                 x_sq = result[("dev1", 1)]
 
-                JuMP.@objective(setup.jump_model, Min, sqrt(2)*x_sq - sqrt(3)*x_var)
+                JuMP.@objective(setup.jump_model, Min, sqrt(2) * x_sq - sqrt(3) * x_var)
                 JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
                 JuMP.set_silent(setup.jump_model)
                 JuMP.optimize!(setup.jump_model)
@@ -509,7 +509,7 @@ end
 
         @testset "Approximation quality improves with depth" begin
             # min (√2)x² - (√3)x on [0, 6], analytic minimum at x=√3/8
-            analytic_min = sqrt(2)*(sqrt(3/8)^2) - sqrt(3)*sqrt(3/8)
+            analytic_min = sqrt(2) * (sqrt(3 / 8)^2) - sqrt(3) * sqrt(3 / 8)
             errors = Float64[]
             for depth in 1:6
                 setup = _setup_qa_test(["dev1"], 1:1)
@@ -530,7 +530,7 @@ end
                 )
                 x_sq = result[("dev1", 1)]
 
-                JuMP.@objective(setup.jump_model, Min, sqrt(2)*x_sq - sqrt(3)*x_var)
+                JuMP.@objective(setup.jump_model, Min, sqrt(2) * x_sq - sqrt(3) * x_var)
                 JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
                 JuMP.set_silent(setup.jump_model)
                 JuMP.optimize!(setup.jump_model)
@@ -581,7 +581,7 @@ end
                         x_sq = result[("dev1", 1)]
                     end
 
-                    JuMP.@objective(setup.jump_model, Min, sqrt(2)*x_sq - sqrt(3)*x_var)
+                    JuMP.@objective(setup.jump_model, Min, sqrt(2) * x_sq - sqrt(3) * x_var)
                     JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
                     JuMP.set_silent(setup.jump_model)
                     JuMP.optimize!(setup.jump_model)
