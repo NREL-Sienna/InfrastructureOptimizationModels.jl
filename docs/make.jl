@@ -1,18 +1,26 @@
 using Documenter
 import DataStructures: OrderedDict
 using InfrastructureOptimizationModels
+using DocumenterInterLinks
+
+links = InterLinks(
+    "PowerSystems" => "https://nrel-sienna.github.io/PowerSystems.jl/stable/",
+    "PowerSimulations" => "https://nrel-sienna.github.io/PowerSimulations.jl/stable/",
+)
+
+include(joinpath(@__DIR__, "make_tutorials.jl"))
+make_tutorials()
 
 pages = OrderedDict(
     "Welcome Page" => "index.md",
-    "Tutorials" => Any["stub" => "tutorials/stub.md"],
-    "How to..." => Any["stub" => "how_to_guides/stub.md"],
-    "Explanation" => Any["stub" => "explanation/stub.md"],
+    # "Tutorials" => Any["stub" => "tutorials/generated_stub.md"],
+    # "How to..." => Any["stub" => "how_to_guides/stub.md"],
+    # "Explanation" => Any["stub" => "explanation/stub.md"],
     "Reference" => Any[
         "Developers" => ["Developer Guidelines" => "reference/developer_guidelines.md",
         "Internals" => "reference/internal.md"],
         "Public API" => "reference/public.md",
         "Quadratic Approximations" => "reference/quadratic_approximations.md",
-        "Stub" => "reference/stub.md"
     ],
 )
 
@@ -25,6 +33,7 @@ makedocs(
     authors = "NREL-Sienna",
     pages = Any[p for p in pages],
     draft = false,
+    plugins = [links],
 )
 
 deploydocs(
