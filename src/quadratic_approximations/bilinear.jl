@@ -104,28 +104,26 @@ function _add_bilinear_approx_impl!(
         p_max,
         meta_plus,
     )
-    zx_dict =
-        quad_approx_fn(
-            container,
-            C,
-            names,
-            time_steps,
-            x_var_container,
-            x_min,
-            x_max,
-            meta_x,
-        )
-    zy_dict =
-        quad_approx_fn(
-            container,
-            C,
-            names,
-            time_steps,
-            y_var_container,
-            y_min,
-            y_max,
-            meta_y,
-        )
+    zx_dict = quad_approx_fn(
+        container,
+        C,
+        names,
+        time_steps,
+        x_var_container,
+        x_min,
+        x_max,
+        meta_x,
+    )
+    zy_dict = quad_approx_fn(
+        container,
+        C,
+        names,
+        time_steps,
+        y_var_container,
+        y_min,
+        y_max,
+        meta_y,
+    )
 
     # Create z variable container for the bilinear product
     z_container = add_variable_container!(

@@ -68,7 +68,7 @@ end
                 MockThermalGen,
                 BILINEAR_META * "_plus",
             )
-            # Inner quadratic approx containers should exist with _plus/_minus meta
+            # Inner quadratic approx containers should exist with _plus meta
             @test IOM.has_container_key(
                 setup.container,
                 IOM.QuadraticApproxVariable,
