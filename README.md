@@ -1,6 +1,6 @@
 # InfrastructureOptimizationModels.jl
 
-[![main - CI](https://github.com/NREL-Sienna/InfrastructureOptimizationModels.jl/workflows/main%20-%20CI/badge.svg)](https://github.com/NREL-Sienna/InfrastructureOptimizationModels.jl/actions/workflows/main-tests.yml)
+[![Main - CI](https://github.com/NREL-Sienna/InfrastructureOptimizationModels.jl/actions/workflows/main-tests.yml/badge.svg)](https://github.com/NREL-Sienna/InfrastructureOptimizationModels.jl/actions/workflows/main-tests.yml)
 [![codecov](https://codecov.io/gh/NREL-Sienna/InfrastructureOptimizationModels.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/NREL-SIENNA/InfrastructureOptimizationModels.jl)
 [![Documentation Build](https://github.com/NREL-Sienna/InfrastructureOptimizationModels.jl/workflows/Documentation/badge.svg?)](https://nrel-sienna.github.io/InfrastructureOptimizationModels.jl/stable)
 [<img src="https://img.shields.io/badge/slack-@Sienna/InfrastructureOptimizationModels-sienna.svg?logo=slack">](https://join.slack.com/t/nrel-sienna/shared_invite/zt-glam9vdu-o8A9TwZTZqqNTKHa7q3BpQ)
