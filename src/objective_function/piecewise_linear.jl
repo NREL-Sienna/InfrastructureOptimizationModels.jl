@@ -17,7 +17,7 @@ struct FixValueParameter <: VariableValueParameter end
 """
 Struct to create the PiecewiseLinearCostConstraint associated with a specified variable.
 
-See [Piecewise linear cost functions](@ref pwl_cost) for more information.
+See the piecewise linear cost functions section for more information.
 """
 struct PiecewiseLinearCostConstraint <: ConstraintType end
 
