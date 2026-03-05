@@ -4,7 +4,6 @@
 [![codecov](https://codecov.io/gh/NREL-Sienna/InfrastructureOptimizationModels.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/NREL-SIENNA/InfrastructureOptimizationModels.jl)
 [![Documentation Build](https://github.com/NREL-Sienna/InfrastructureOptimizationModels.jl/workflows/Documentation/badge.svg?)](https://nrel-sienna.github.io/InfrastructureOptimizationModels.jl/stable)
 [<img src="https://img.shields.io/badge/slack-@Sienna/InfrastructureOptimizationModels-sienna.svg?logo=slack">](https://join.slack.com/t/nrel-sienna/shared_invite/zt-glam9vdu-o8A9TwZTZqqNTKHa7q3BpQ)
-[![InfrastructureOptimizationModels.jl Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/InfrastructureOptimizationModels)](https://pkgs.genieframework.com?packages=InfrastructureOptimizationModels)
 
 InfrastructureOptimizationModels.jl provides core abstractions and optimization model structures for power systems operations modeling in the Sienna ecosystem. It defines `DecisionModel`, `EmulationModel`, `OptimizationContainer`, and related types used for formulating and solving power system optimization problems.
 
