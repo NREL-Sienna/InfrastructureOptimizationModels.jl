@@ -20,6 +20,7 @@ pages = OrderedDict(
         "Developers" => ["Developer Guidelines" => "reference/developer_guidelines.md",
         "Internals" => "reference/internal.md"],
         "Public API" => "reference/public.md",
+        "Quadratic Approximations" => "reference/quadratic_approximations.md",
     ],
 )
 
