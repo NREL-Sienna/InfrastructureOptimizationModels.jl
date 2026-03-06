@@ -95,7 +95,7 @@ function OptimizationContainer(
         error("Default Time Series Type $T can't be abstract")
     end
 
-    if jump_model !== nothing && get_direct_mode_optimizer(settings)
+    if jump_model !== nothing && get_direct_model_optimizer(settings)
         throw(
             IS.ConflictingInputsError(
                 "Externally provided JuMP models are not compatible with the direct model keyword argument. Use JuMP.direct_model before passing the custom model",
@@ -302,7 +302,7 @@ function _finalize_jump_model!(container::OptimizationContainer, settings::Setti
         )
     end
 
-    if get_direct_mode_optimizer(settings)
+    if get_direct_model_optimizer(settings)
         optimizer = () -> MOI.instantiate(get_optimizer(settings))
         container.JuMPmodel = JuMP.direct_model(optimizer())
     elseif get_optimizer(settings) === nothing
