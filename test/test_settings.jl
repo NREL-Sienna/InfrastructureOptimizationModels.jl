@@ -27,7 +27,7 @@ end
         @test PSI.get_resolution(settings) == Dates.Millisecond(Hour(1))
         @test PSI.get_warm_start(settings) == true
         @test PSI.get_optimizer(settings) === nothing
-        @test PSI.get_direct_mode_optimizer(settings) == false
+        @test PSI.get_direct_model_optimizer(settings) == false
         @test PSI.get_optimizer_solve_log_print(settings) == false
         @test PSI.get_detailed_optimizer_stats(settings) == false
         @test PSI.get_calculate_conflict(settings) == false

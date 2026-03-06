@@ -49,7 +49,7 @@ Build the optimization problem of type M with the specific system and template.
   - `optimizer_solve_log_print::Bool = false`: Uses JuMP.unset_silent() to print the optimizer's log. By default all solvers are set to MOI.Silent()
   - `detailed_optimizer_stats::Bool = false`: True to save detailed optimizer stats log.
   - `calculate_conflict::Bool = false`: True to use solver to calculate conflicts for infeasible problems. Only specific solvers are able to calculate conflicts.
-  - `direct_mode_optimizer::Bool = false`: True to use the solver in direct mode. Creates a [JuMP.direct_model](https://jump.dev/JuMP.jl/dev/reference/models/#JuMP.direct_model).
+  - `direct_model_optimizer::Bool = false`: True to use the solver in direct mode. Creates a [JuMP.direct_model](https://jump.dev/JuMP.jl/dev/reference/models/#JuMP.direct_model).
   - `store_variable_names::Bool = false`: to store variable names in optimization model. Decreases the build times.
   - `rebuild_model::Bool = false`: It will force the rebuild of the underlying JuMP model with each call to update the model. It increases solution times, use only if the model can't be updated in memory.
   - `initial_time::Dates.DateTime = UNSET_INI_TIME`: Initial Time for the model solve.
@@ -112,7 +112,7 @@ function DecisionModel{M}(
     optimizer_solve_log_print = false,
     detailed_optimizer_stats = false,
     calculate_conflict = false,
-    direct_mode_optimizer = false,
+    direct_model_optimizer = false,
     store_variable_names = false,
     rebuild_model = false,
     export_optimization_model = false,
@@ -137,7 +137,7 @@ function DecisionModel{M}(
         calculate_conflict = calculate_conflict,
         optimizer_solve_log_print = optimizer_solve_log_print,
         detailed_optimizer_stats = detailed_optimizer_stats,
-        direct_mode_optimizer = direct_mode_optimizer,
+        direct_model_optimizer = direct_model_optimizer,
         check_numerical_bounds = check_numerical_bounds,
         store_variable_names = store_variable_names,
         rebuild_model = rebuild_model,
