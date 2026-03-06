@@ -170,7 +170,7 @@ end
         # Add the PWL constraint
         break_points = IS.get_x_coords(pwl_data)
         power_var =
-            IOM.get_variable(container, TestPWLVariable(), MockThermalGen)["gen1", 1]
+            IOM.get_variable(container, TestPWLVariable, MockThermalGen)["gen1", 1]
         InfrastructureOptimizationModels._add_pwl_constraint_standard!(
             container,
             device,

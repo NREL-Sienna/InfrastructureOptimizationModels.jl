@@ -183,12 +183,12 @@ function setup_pwl_constraint_test(;
 
     return (;
         container,
-        x_var = IOM.get_variable(container, TestOriginalVariable(), MockThermalGen),
-        y_var = IOM.get_variable(container, TestApproximatedVariable(), MockThermalGen),
-        δ_var = IOM.get_variable(container, TestInterpolationVariable(), MockThermalGen),
+        x_var = IOM.get_variable(container, TestOriginalVariable, MockThermalGen),
+        y_var = IOM.get_variable(container, TestApproximatedVariable, MockThermalGen),
+        δ_var = IOM.get_variable(container, TestInterpolationVariable, MockThermalGen),
         z_var = IOM.get_variable(
             container,
-            TestBinaryInterpolationVariable(),
+            TestBinaryInterpolationVariable,
             MockThermalGen,
         ),
         jump_model = IOM.get_jump_model(container),
@@ -476,7 +476,7 @@ end
 
         # Verify PWL variables were created
         pwl_vars =
-            IOM.get_variable(container, IOM.PiecewiseLinearCostVariable(), MockThermalGen)
+            IOM.get_variable(container, IOM.PiecewiseLinearCostVariable, MockThermalGen)
         for t in time_steps
             for i in 1:num_points
                 @test pwl_vars[device_name, i, t] isa JuMP.VariableRef

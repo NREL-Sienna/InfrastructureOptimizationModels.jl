@@ -165,7 +165,7 @@ function check_flow_variable_values(
     limit::Float64,
 ) where {T <: PSI.VariableType, U <: PSY.Component}
     psi_cont = PSI.get_optimization_container(model)
-    variable = PSI.get_variable(psi_cont, T(), U)
+    variable = PSI.get_variable(psi_cont, T, U)
     for var in variable[device_name, :]
         if !(PSI.jump_value(var) <= (limit + 1e-2))
             @error "$device_name out of bounds $(PSI.jump_value(var))"
@@ -189,9 +189,9 @@ function check_flow_variable_values(
     net_formulation = PSI.get_network_formulation(template)
     if dev_formulation <: Union{PSI.StaticBranch, PSI.StaticBranchUnbounded} &&
        net_formulation <: PSI.PTDFPowerModel
-        variable = PSI.get_expression(psi_cont, PSI.PTDFBranchFlow(), U)
+        variable = PSI.get_expression(psi_cont, PSI.PTDFBranchFlow, U)
     else
-        variable = PSI.get_variable(psi_cont, T(), U)
+        variable = PSI.get_variable(psi_cont, T, U)
     end
     for var in variable[device_name, :]
         if !(PSI.jump_value(var) <= (limit + 1e-2))
@@ -211,7 +211,7 @@ function check_flow_variable_values(
     limit_max::Float64,
 ) where {T <: PSI.VariableType, U <: PSY.Component}
     psi_cont = PSI.get_optimization_container(model)
-    variable = PSI.get_variable(psi_cont, T(), U)
+    variable = PSI.get_variable(psi_cont, T, U)
     for var in variable[device_name, :]
         if !(PSI.jump_value(var) <= (limit_max + 1e-2)) ||
            !(PSI.jump_value(var) >= (limit_min - 1e-2))
@@ -236,9 +236,9 @@ function check_flow_variable_values(
     net_formulation = PSI.get_network_formulation(template)
     if dev_formulation <: Union{PSI.StaticBranch, PSI.StaticBranchUnbounded} &&
        net_formulation <: PSI.PTDFPowerModel
-        variable = PSI.get_expression(psi_cont, PSI.PTDFBranchFlow(), U)
+        variable = PSI.get_expression(psi_cont, PSI.PTDFBranchFlow, U)
     else
-        variable = PSI.get_variable(psi_cont, T(), U)
+        variable = PSI.get_variable(psi_cont, T, U)
     end
     for var in variable[device_name, :]
         if !(PSI.jump_value(var) <= (limit_max + 1e-2)) ||
@@ -260,8 +260,8 @@ function check_flow_variable_values(
 ) where {T <: PSI.VariableType, U <: PSI.VariableType, V <: PSY.Component}
     psi_cont = PSI.get_optimization_container(model)
     time_steps = PSI.get_time_steps(psi_cont)
-    pvariable = PSI.get_variable(psi_cont, T(), V)
-    qvariable = PSI.get_variable(psi_cont, U(), V)
+    pvariable = PSI.get_variable(psi_cont, T, V)
+    qvariable = PSI.get_variable(psi_cont, U, V)
     for t in time_steps
         fp = PSI.jump_value(pvariable[device_name, t])
         fq = PSI.jump_value(qvariable[device_name, t])
@@ -283,8 +283,8 @@ function check_flow_variable_values(
 ) where {T <: PSI.VariableType, U <: PSI.VariableType, V <: PSY.Component}
     psi_cont = PSI.get_optimization_container(model)
     time_steps = PSI.get_time_steps(psi_cont)
-    pvariable = PSI.get_variable(psi_cont, T(), V)
-    qvariable = PSI.get_variable(psi_cont, U(), V)
+    pvariable = PSI.get_variable(psi_cont, T, V)
+    qvariable = PSI.get_variable(psi_cont, U, V)
     for t in time_steps
         fp = PSI.jump_value(pvariable[device_name, t])
         fq = PSI.jump_value(qvariable[device_name, t])
@@ -462,7 +462,7 @@ function check_initialization_constraint_count(
         ISOPT.get_initial_conditions_model_container(PSI.get_internal(model))
     no_component = length(PSY.get_components(filter_func, T, model.sys))
     time_steps = PSI.get_time_steps(container)[end]
-    constraint = PSI.get_constraint(container, S(), T, meta)
+    constraint = PSI.get_constraint(container, S, T, meta)
     @test length(constraint) == no_component * time_steps
 end
 
