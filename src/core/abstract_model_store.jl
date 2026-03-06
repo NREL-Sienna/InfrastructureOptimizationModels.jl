@@ -88,10 +88,16 @@ end
 
 @generated function get_value(
     store::AbstractModelStore,
-    ::T,
+    ::Type{T},
     ::Type{U},
 ) where {T <: OptimizationKeyType, U <: InfrastructureSystemsType}
     K = key_for_type(T)
     field = QuoteNode(store_field_for_type(T))
     return :(return getfield(store, $field)[$K(T, U)])
 end
+
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_value(
+    store::AbstractModelStore, ::T, ::Type{U},
+) where {T <: OptimizationKeyType, U <: InfrastructureSystemsType} =
+    get_value(store, T, U)

@@ -1,11 +1,3 @@
-# note that we skip duals because they correspond to constraint keys.
-field_for_key(::Type{<:VariableKey}) = :variables
-field_for_key(::Type{<:AuxVarKey}) = :aux_variables
-field_for_key(::Type{<:ConstraintKey}) = :constraints
-field_for_key(::Type{<:ExpressionKey}) = :expressions
-field_for_key(::Type{<:ParameterKey}) = :parameters
-field_for_key(::Type{<:InitialConditionKey}) = :initial_conditions
-
 field_for_type(::Type{<:VariableType}) = :variables
 field_for_type(::Type{<:AuxVariableType}) = :aux_variables
 field_for_type(::Type{<:ConstraintType}) = :constraints
