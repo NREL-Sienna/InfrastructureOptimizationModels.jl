@@ -49,7 +49,7 @@ Test types defined in test_utils/test_types.jl.
 
             # Verify expression was updated
             expr_container =
-                IOM.get_expression(container, TestCostExpression(), MockThermalGen)
+                IOM.get_expression(container, TestCostExpression, MockThermalGen)
             expr = expr_container["gen1", 1]
             @test JuMP.coefficient(expr, var) ≈ rate
         end
@@ -144,7 +144,7 @@ Test types defined in test_utils/test_types.jl.
             )
 
             # Verify expression was updated
-            expr_container = IOM.get_expression(container, TestCostExpression(), MockThermalGen)
+            expr_container = IOM.get_expression(container, TestCostExpression, MockThermalGen)
             expr = expr_container["gen1", 1]
             @test JuMP.coefficient(expr, var) ≈ 15.0
         end
@@ -172,7 +172,7 @@ Test types defined in test_utils/test_types.jl.
             end
 
             # Verify stored in container
-            var_container = IOM.get_variable(container, TestPWLVariable(), MockThermalGen)
+            var_container = IOM.get_variable(container, TestPWLVariable, MockThermalGen)
             for i in 1:4
                 @test var_container["gen1", i, 1] === pwl_vars[i]
             end
@@ -227,7 +227,7 @@ Test types defined in test_utils/test_types.jl.
 
             # Get the constraint
             con_container =
-                IOM.get_constraint(container, TestCostConstraint(), MockThermalGen)
+                IOM.get_constraint(container, TestCostConstraint, MockThermalGen)
             con = con_container["gen1", 1]
 
             # Verify constraint: power_var == sum(pwl_vars .* breakpoints)
@@ -252,7 +252,7 @@ Test types defined in test_utils/test_types.jl.
             )
 
             con_container =
-                IOM.get_constraint(container, TestCostConstraint(), MockThermalGen)
+                IOM.get_constraint(container, TestCostConstraint, MockThermalGen)
             con = con_container["gen1", 1]
 
             # Verify constraint: sum(pwl_vars) == on_status
@@ -277,7 +277,7 @@ Test types defined in test_utils/test_types.jl.
             )
 
             con_container =
-                IOM.get_constraint(container, TestCostConstraint(), MockThermalGen)
+                IOM.get_constraint(container, TestCostConstraint, MockThermalGen)
             con = con_container["gen1", 1]
 
             # Verify constraint includes the on_status variable

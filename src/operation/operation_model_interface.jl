@@ -278,9 +278,9 @@ function _pre_solve_model_checks(model::OperationModel, optimizer = nothing)
     return
 end
 
-function _list_names(model::OperationModel, container_type)
+function list_names(model::OperationModel, ::Type{T}) where {T <: OptimizationKeyType}
     return encode_keys_as_strings(
-        list_keys(get_store(model), container_type),
+        list_keys(get_store(model), T),
     )
 end
 
@@ -342,25 +342,20 @@ function instantiate_network_model!(model::OperationModel)
     return
 end
 
-list_aux_variable_keys(x::OperationModel) =
-    list_keys(get_store(x), STORE_CONTAINER_AUX_VARIABLES)
-list_aux_variable_names(x::OperationModel) = _list_names(x, STORE_CONTAINER_AUX_VARIABLES)
-list_variable_keys(x::OperationModel) =
-    list_keys(get_store(x), STORE_CONTAINER_VARIABLES)
-list_variable_names(x::OperationModel) = _list_names(x, STORE_CONTAINER_VARIABLES)
-list_parameter_keys(x::OperationModel) =
-    list_keys(get_store(x), STORE_CONTAINER_PARAMETERS)
-list_parameter_names(x::OperationModel) = _list_names(x, STORE_CONTAINER_PARAMETERS)
-list_dual_keys(x::OperationModel) =
-    list_keys(get_store(x), STORE_CONTAINER_DUALS)
-list_dual_names(x::OperationModel) = _list_names(x, STORE_CONTAINER_DUALS)
-list_expression_keys(x::OperationModel) =
-    list_keys(get_store(x), STORE_CONTAINER_EXPRESSIONS)
-list_expression_names(x::OperationModel) = _list_names(x, STORE_CONTAINER_EXPRESSIONS)
+list_aux_variable_keys(x::OperationModel) = list_keys(get_store(x), AuxVariableType)
+list_aux_variable_names(x::OperationModel) = list_names(x, AuxVariableType)
+list_variable_keys(x::OperationModel) = list_keys(get_store(x), VariableType)
+list_variable_names(x::OperationModel) = list_names(x, VariableType)
+list_parameter_keys(x::OperationModel) = list_keys(get_store(x), ParameterType)
+list_parameter_names(x::OperationModel) = list_names(x, ParameterType)
+list_dual_keys(x::OperationModel) = list_keys(get_store(x), ConstraintType)
+list_dual_names(x::OperationModel) = list_names(x, ConstraintType)
+list_expression_keys(x::OperationModel) = list_keys(get_store(x), ExpressionType)
+list_expression_names(x::OperationModel) = list_names(x, ExpressionType)
 
 function list_all_keys(x::OperationModel)
     return Iterators.flatten(
-        keys(get_data_field(get_store(x), f)) for f in STORE_CONTAINERS
+        list_fields(get_store(x), T) for T in STORE_CONTAINER_TYPES
     )
 end
 

@@ -93,119 +93,51 @@ function has_dataset(container::DatasetContainer, key::OptimizationContainerKey)
     return haskey(datasets, key)
 end
 
-function get_dataset(
+@generated function get_dataset(
     container::DatasetContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
 ) where {
-    T <: ConstraintType,
+    T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 }
-    return get_dataset(container, ConstraintKey(T, U))
+    field = QuoteNode(store_field_for_type(T))
+    K = key_for_type(T)
+    return :(return getfield(container, $field)[$K(T, U)])
 end
 
-function get_dataset(
-    container::DatasetContainer,
-    ::T,
-    ::Type{U},
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_dataset(
+    container::DatasetContainer, ::T, ::Type{U},
 ) where {
-    T <: VariableType,
+    T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_dataset(container, VariableKey(T, U))
-end
-
-function get_dataset(
-    container::DatasetContainer,
-    ::T,
-    ::Type{U},
-) where {
-    T <: AuxVariableType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_dataset(container, AuxVarKey(T, U))
-end
-
-function get_dataset(
-    container::DatasetContainer,
-    ::T,
-    ::Type{U},
-) where {
-    T <: ParameterType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_dataset(container, ParameterKey(T, U))
-end
-
-function get_dataset(
-    container::DatasetContainer,
-    ::T,
-    ::Type{U},
-) where {
-    T <: ExpressionType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_dataset(container, ExpressionKey(T, U))
-end
+} = get_dataset(container, T, U)
 
 function get_dataset_values(container::DatasetContainer, key::OptimizationContainerKey)
     return get_dataset(container, key).values
 end
 
-function get_dataset_values(
+@generated function get_dataset_values(
     container::DatasetContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
 ) where {
-    T <: ConstraintType,
+    T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 }
-    return get_dataset_values(container, ConstraintKey(T, U))
+    field = QuoteNode(store_field_for_type(T))
+    K = key_for_type(T)
+    return :(return getfield(container, $field)[$K(T, U)].values)
 end
 
-function get_dataset_values(
-    container::DatasetContainer,
-    ::T,
-    ::Type{U},
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_dataset_values(
+    container::DatasetContainer, ::T, ::Type{U},
 ) where {
-    T <: VariableType,
+    T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_dataset_values(container, VariableKey(T, U))
-end
-
-function get_dataset_values(
-    container::DatasetContainer,
-    ::T,
-    ::Type{U},
-) where {
-    T <: AuxVariableType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_dataset_values(container, AuxVarKey(T, U))
-end
-
-function get_dataset_values(
-    container::DatasetContainer,
-    ::T,
-    ::Type{U},
-) where {
-    T <: ParameterType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_dataset_values(container, ParameterKey(T, U))
-end
-
-function get_dataset_values(
-    container::DatasetContainer,
-    ::T,
-    ::Type{U},
-) where {
-    T <: ExpressionType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_dataset_values(container, ExpressionKey(T, U))
-end
+} = get_dataset_values(container, T, U)
 
 function get_dataset_values(
     container::DatasetContainer,

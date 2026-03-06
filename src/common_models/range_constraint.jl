@@ -37,7 +37,7 @@ function add_range_constraints!(
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
-    array = get_variable(container, U(), V)
+    array = get_variable(container, U, V)
     _add_bound_range_constraints_impl!(container, T, LowerBound(), array, devices, model)
     _add_bound_range_constraints_impl!(container, T, UpperBound(), array, devices, model)
     return
@@ -57,7 +57,7 @@ function add_range_constraints!(
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
-    array = get_expression(container, U(), V)
+    array = get_expression(container, U, V)
     _add_bound_range_constraints_impl!(container, T, LowerBound(), array, devices, model)
     return
 end
@@ -76,7 +76,7 @@ function add_range_constraints!(
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
-    array = get_expression(container, U(), V)
+    array = get_expression(container, U, V)
     _add_bound_range_constraints_impl!(container, T, UpperBound(), array, devices, model)
     return
 end
@@ -143,7 +143,7 @@ function add_semicontinuous_range_constraints!(
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
-    array = get_variable(container, U(), V)
+    array = get_variable(container, U, V)
     _add_semicontinuous_bound_range_constraints_impl!(
         container, T, LowerBound(), array, devices, model)
     _add_semicontinuous_bound_range_constraints_impl!(
@@ -165,7 +165,7 @@ function add_semicontinuous_range_constraints!(
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
-    array = get_expression(container, U(), V)
+    array = get_expression(container, U, V)
     _add_semicontinuous_bound_range_constraints_impl!(
         container, T, LowerBound(), array, devices, model)
     return
@@ -185,7 +185,7 @@ function add_semicontinuous_range_constraints!(
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
-    array = get_expression(container, U(), V)
+    array = get_expression(container, U, V)
     _add_semicontinuous_bound_range_constraints_impl!(
         container, T, UpperBound(), array, devices, model)
     return
@@ -205,7 +205,7 @@ function _add_semicontinuous_bound_range_constraints_impl!(
     jump_model = get_jump_model(container)
     con = add_constraints_container!(
         container, T(), V, names, time_steps; meta = constraint_meta(dir))
-    varbin = get_variable(container, OnVariable(), V)
+    varbin = get_variable(container, OnVariable, V)
 
     for device in devices, t in time_steps
         ci_name = PSY.get_name(device)
@@ -231,7 +231,7 @@ function _add_semicontinuous_bound_range_constraints_impl!(
     jump_model = get_jump_model(container)
     con = add_constraints_container!(
         container, T(), V, names, time_steps; meta = constraint_meta(dir))
-    varbin = get_variable(container, OnVariable(), V)
+    varbin = get_variable(container, OnVariable, V)
 
     for device in devices
         ci_name = PSY.get_name(device)
@@ -263,7 +263,7 @@ function add_reserve_bound_range_constraints!(
 
     con = add_constraints_container!(
         container, T(), V, names, time_steps; meta = constraint_meta(dir))
-    varbin = get_variable(container, ReservationVariable(), V)
+    varbin = get_variable(container, ReservationVariable, V)
 
     for device in devices, t in time_steps
         ci_name = PSY.get_name(device)
@@ -293,7 +293,7 @@ function add_parameterized_bound_range_constraints(
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
-    array = get_expression(container, U(), V)
+    array = get_expression(container, U, V)
     _add_parameterized_bound_range_constraints_impl!(
         container, T, dir, array, P(), devices, model)
     return
@@ -316,7 +316,7 @@ function add_parameterized_bound_range_constraints(
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
-    array = get_variable(container, U(), V)
+    array = get_variable(container, U, V)
     _add_parameterized_bound_range_constraints_impl!(
         container, T, dir, array, P(), devices, model)
     return
@@ -452,8 +452,8 @@ function _bound_range_with_parameter!(
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     ::DeviceModel{V, W},
 ) where {P <: ParameterType, V <: PSY.Component, W <: AbstractDeviceFormulation}
-    param_array = get_parameter_array(container, param, V)
-    param_multiplier = get_parameter_multiplier_array(container, P(), V)
+    param_array = get_parameter_array(container, P, V)
+    param_multiplier = get_parameter_multiplier_array(container, P, V)
     jump_model = get_jump_model(container)
     time_steps = axes(constraint_container)[2]
     for device in devices, t in time_steps
@@ -502,7 +502,7 @@ function _bound_range_with_parameter!(
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
 ) where {P <: TimeSeriesParameter, V <: PSY.Component, W <: AbstractDeviceFormulation}
-    param_container = get_parameter(container, param, V)
+    param_container = get_parameter(container, P, V)
     mult = get_multiplier_array(param_container)
     jump_model = get_jump_model(container)
     time_steps = axes(constraint_container)[2]
