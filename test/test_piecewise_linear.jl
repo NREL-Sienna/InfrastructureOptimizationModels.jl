@@ -95,9 +95,9 @@ function setup_pwl_test(;
     # When fuel_cost is provided, the device's operation_cost must also have it
     # because get_fuel_cost(device) is called to look up the cost multiplier
     if isnothing(fuel_cost)
-        op_cost = MockOperationCost(0.0, false, 0.0)
+        op_cost = MockProportionalCost(0.0, false, 0.0)
     else
-        op_cost = MockOperationCost(0.0, false, fuel_cost)
+        op_cost = MockProportionalCost(0.0, false, fuel_cost)
     end
     device = make_mock_thermal(
         device_name;
