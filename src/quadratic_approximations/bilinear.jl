@@ -135,10 +135,16 @@ function _add_bilinear_approx_impl!(
         meta,
     )
 
+    # Compute valid bounds for z = x·y from variable bounds
+    z_lo = min(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
+    z_hi = max(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
+
     for name in names, t in time_steps
         z_var = JuMP.@variable(
             jump_model,
             base_name = "BilinearProduct_$(C)_{$(name), $(t)}",
+            lower_bound = z_lo,
+            upper_bound = z_hi,
         )
         z_container[name, t] = z_var
 

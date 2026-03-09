@@ -134,6 +134,13 @@ function _add_dnmdt_univariate_approx!(
     eps_L = 2.0^(-depth)
     ws_hi = eps_L + 1.0
 
+    # Precompute power-of-two coefficients (invariant across names and time steps)
+    pow2_neg = [2.0^(-j) for j in 1:depth]
+
+    # Valid bounds for z ≈ x²
+    z_ub = max(x_min^2, x_max^2)
+    z_lb = (x_min <= 0.0 <= x_max) ? 0.0 : min(x_min^2, x_max^2)
+
     # ── Allocate containers ──────────────────────────────────────────────
 
     # Binary expansion
@@ -231,6 +238,7 @@ function _add_dnmdt_univariate_approx!(
                 jump_model,
                 base_name = "DNMDTu_$(C)_{$(name), $(j), $(t)}",
                 lower_bound = 0.0,
+                upper_bound = ws_hi,
             )
             u_j = u_con[name, j, t]
             beta_j = beta_con[name, j, t]
@@ -242,10 +250,12 @@ function _add_dnmdt_univariate_approx!(
                 JuMP.@constraint(jump_model, u_j <= w_sum)
         end
 
-        # Residual
+        # Residual (bounded by product of residual ranges [0, eps_L]²)
         dz_con[name, t] = JuMP.@variable(
             jump_model,
             base_name = "DNMDTdz_$(C)_{$(name), $(t)}",
+            lower_bound = 0.0,
+            upper_bound = eps_L * eps_L,
         )
         if tighten
             ub[name, t] = JuMP.@constraint(
@@ -257,7 +267,7 @@ function _add_dnmdt_univariate_approx!(
         # Scaled product z_hat as expression
         zh = JuMP.AffExpr(0.0)
         for j in 1:depth
-            JuMP.add_to_expression!(zh, 2.0^(-j), u_con[name, j, t])
+            JuMP.add_to_expression!(zh, pow2_neg[j], u_con[name, j, t])
         end
         JuMP.add_to_expression!(zh, 1.0, dz_con[name, t])
         zh_expr[name, t] = zh
@@ -266,6 +276,8 @@ function _add_dnmdt_univariate_approx!(
         z_var = JuMP.@variable(
             jump_model,
             base_name = "DNMDTz_$(C)_{$(name), $(t)}",
+            lower_bound = z_lb,
+            upper_bound = z_ub,
         )
         z_con[name, t] = z_var
         bt[name, t] = JuMP.@constraint(
@@ -353,6 +365,13 @@ function _add_dnmdt_bilinear_approx!(
     eps_L = 2.0^(-depth)
     meta_x = meta * "_x"
     meta_y = meta * "_y"
+
+    # Precompute power-of-two coefficients
+    pow2_neg = [2.0^(-j) for j in 1:depth]
+
+    # Valid bounds for z ≈ x·y
+    z_lo = min(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
+    z_hi = max(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
 
     # Blended-term bounds
     lambda = DNMDT_LAMBDA
@@ -481,11 +500,13 @@ function _add_dnmdt_bilinear_approx!(
                 jump_model,
                 base_name = "DNMDTu_$(C)_{$(name), $(j), $(t)}",
                 lower_bound = 0.0,
+                upper_bound = wu_hi,
             )
             v_con[name, j, t] = JuMP.@variable(
                 jump_model,
                 base_name = "DNMDTv_$(C)_{$(name), $(j), $(t)}",
                 lower_bound = 0.0,
+                upper_bound = wv_hi,
             )
 
             u_j = u_con[name, j, t]
@@ -507,17 +528,19 @@ function _add_dnmdt_bilinear_approx!(
                 JuMP.@constraint(jump_model, v_j <= w_v)
         end
 
-        # Residual product variable
+        # Residual product variable (bounded by [0, eps_L²])
         dz_con[name, t] = JuMP.@variable(
             jump_model,
             base_name = "DNMDTdz_$(C)_{$(name), $(t)}",
+            lower_bound = 0.0,
+            upper_bound = eps_L * eps_L,
         )
 
         # Scaled product z_hat as expression
         zh = JuMP.AffExpr(0.0)
         for j in 1:depth
-            JuMP.add_to_expression!(zh, 2.0^(-j), u_con[name, j, t])
-            JuMP.add_to_expression!(zh, 2.0^(-j), v_con[name, j, t])
+            JuMP.add_to_expression!(zh, pow2_neg[j], u_con[name, j, t])
+            JuMP.add_to_expression!(zh, pow2_neg[j], v_con[name, j, t])
         end
         JuMP.add_to_expression!(zh, 1.0, dz_con[name, t])
         zh_expr[name, t] = zh
@@ -526,6 +549,8 @@ function _add_dnmdt_bilinear_approx!(
         z_var = JuMP.@variable(
             jump_model,
             base_name = "DNMDTz_$(C)_{$(name), $(t)}",
+            lower_bound = z_lo,
+            upper_bound = z_hi,
         )
         z_con[name, t] = z_var
         bt[name, t] = JuMP.@constraint(
