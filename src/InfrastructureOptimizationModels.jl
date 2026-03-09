@@ -597,6 +597,7 @@ include("quadratic_approximations/solver_sos2.jl")
 include("quadratic_approximations/manual_sos2.jl")
 include("quadratic_approximations/sawtooth.jl")
 include("quadratic_approximations/epigraph.jl")
+include("quadratic_approximations/dnmdt.jl")
 
 # Bilinear approximations (x·y via Bin2/HybS decomposition)
 include("bilinear_approximations/mccormick.jl")
