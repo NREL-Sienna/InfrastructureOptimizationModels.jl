@@ -1,7 +1,9 @@
 # SOS2-based piecewise linear approximation of x² for use in constraints.
 # Uses manually-implemented SOS2 adjacency via binary variables and linear constraints.
 
+"Binary segment-selection variables (z) for manual SOS2 quadratic approximation."
 struct ManualSOS2BinaryVariable <: SparseVariableType end
+"Ensures exactly one segment is active (∑zⱼ = 1) in manual SOS2 quadratic approximation."
 struct ManualSOS2SegmentSelectionConstraint <: ConstraintType end
 
 """

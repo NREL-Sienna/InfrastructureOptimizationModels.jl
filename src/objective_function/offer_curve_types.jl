@@ -76,7 +76,7 @@ abstract type AbstractPiecewiseLinearBlockOfferConstraint <: ConstraintType end
 """
 Struct to create the PiecewiseLinearBlockIncrementalOfferConstraint associated with a specified variable.
 
-See [Piecewise linear cost functions](@ref pwl_cost) for more information.
+See the piecewise linear cost functions section for more information.
 """
 struct PiecewiseLinearBlockIncrementalOfferConstraint <:
        AbstractPiecewiseLinearBlockOfferConstraint end
@@ -84,7 +84,7 @@ struct PiecewiseLinearBlockIncrementalOfferConstraint <:
 """
 Struct to create the PiecewiseLinearBlockDecrementalOfferConstraint associated with a specified variable.
 
-See [Piecewise linear cost functions](@ref pwl_cost) for more information.
+See the piecewise linear cost functions section for more information.
 """
 struct PiecewiseLinearBlockDecrementalOfferConstraint <:
        AbstractPiecewiseLinearBlockOfferConstraint end

@@ -2,8 +2,11 @@
 # Uses recursive tooth function compositions with O(log(1/ε)) binary variables.
 # Reference: Beach, Burlacu, Hager, Hildebrand (2024).
 
+"Auxiliary continuous variables (g₀, …, g_L) for sawtooth quadratic approximation."
 struct SawtoothAuxVariable <: VariableType end
+"Binary variables (α₁, …, α_L) for sawtooth quadratic approximation."
 struct SawtoothBinaryVariable <: VariableType end
+"Links g₀ to the normalized x value in sawtooth quadratic approximation."
 struct SawtoothLinkingConstraint <: ConstraintType end
 
 """
