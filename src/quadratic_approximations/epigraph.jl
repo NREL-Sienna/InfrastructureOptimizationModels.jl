@@ -84,9 +84,10 @@ function _add_epigraph_quadratic_approx!(
         meta,
     )
 
-    # Precompute breakpoint values (invariant across names and time steps)
+    # Precompute breakpoint values and upper bound (invariant across names and time steps)
     step = delta / (n_breakpoints - 1)
     breakpoints = [(x_min + (k - 1) * step) for k in 1:n_breakpoints]
+    z_ub = max(x_min^2, x_max^2)
 
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
@@ -96,6 +97,7 @@ function _add_epigraph_quadratic_approx!(
             jump_model,
             base_name = "EpigraphVar_$(C)_{$(name), $(t)}",
             lower_bound = 0.0,
+            upper_bound = z_ub,
         )
         z_container[name, t] = z_var
 
