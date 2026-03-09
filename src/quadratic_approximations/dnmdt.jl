@@ -166,7 +166,7 @@ function _add_dnmdt_univariate_approx!(
     )
     bmc = add_constraints_container!(
         container, DNMDTBinaryMcCormickConstraint(), C,
-        names, 1:4, 1:depth, time_steps; sparse = true, meta = meta,
+        names, 1:3, 1:depth, time_steps; sparse = true, meta = meta,
     )
 
     # Residual Delta_z
@@ -230,16 +230,15 @@ function _add_dnmdt_univariate_approx!(
             u_con[name, j, t] = JuMP.@variable(
                 jump_model,
                 base_name = "DNMDTu_$(C)_{$(name), $(j), $(t)}",
+                lower_bound = 0.0,
             )
             u_j = u_con[name, j, t]
             beta_j = beta_con[name, j, t]
             bmc[(name, 1, j, t)] =
-                JuMP.@constraint(jump_model, u_j >= 0.0)
-            bmc[(name, 2, j, t)] =
                 JuMP.@constraint(jump_model, u_j <= ws_hi * beta_j)
-            bmc[(name, 3, j, t)] =
+            bmc[(name, 2, j, t)] =
                 JuMP.@constraint(jump_model, u_j >= w_sum - ws_hi * (1 - beta_j))
-            bmc[(name, 4, j, t)] =
+            bmc[(name, 3, j, t)] =
                 JuMP.@constraint(jump_model, u_j <= w_sum)
         end
 
@@ -421,7 +420,7 @@ function _add_dnmdt_bilinear_approx!(
     # Binary McCormick constraints
     bmc = add_constraints_container!(
         container, DNMDTBinaryMcCormickConstraint(), C,
-        names, 1:4, 1:depth, ["u", "v"], time_steps; sparse = true, meta = meta,
+        names, 1:3, 1:depth, ["u", "v"], time_steps; sparse = true, meta = meta,
     )
 
     # Residual product Delta_z
@@ -481,33 +480,31 @@ function _add_dnmdt_bilinear_approx!(
             u_con[name, j, t] = JuMP.@variable(
                 jump_model,
                 base_name = "DNMDTu_$(C)_{$(name), $(j), $(t)}",
+                lower_bound = 0.0,
             )
             v_con[name, j, t] = JuMP.@variable(
                 jump_model,
                 base_name = "DNMDTv_$(C)_{$(name), $(j), $(t)}",
+                lower_bound = 0.0,
             )
 
             u_j = u_con[name, j, t]
             beta_xj = beta_x_con[name, j, t]
             bmc[(name, 1, j, "u", t)] =
-                JuMP.@constraint(jump_model, u_j >= wu_lo * beta_xj)
-            bmc[(name, 2, j, "u", t)] =
                 JuMP.@constraint(jump_model, u_j <= wu_hi * beta_xj)
-            bmc[(name, 3, j, "u", t)] =
+            bmc[(name, 2, j, "u", t)] =
                 JuMP.@constraint(jump_model, u_j >= w_u - wu_hi * (1 - beta_xj))
-            bmc[(name, 4, j, "u", t)] =
-                JuMP.@constraint(jump_model, u_j <= w_u - wu_lo * (1 - beta_xj))
+            bmc[(name, 3, j, "u", t)] =
+                JuMP.@constraint(jump_model, u_j <= w_u)
 
             v_j = v_con[name, j, t]
             beta_yj = beta_y_con[name, j, t]
             bmc[(name, 1, j, "v", t)] =
-                JuMP.@constraint(jump_model, v_j >= wv_lo * beta_yj)
-            bmc[(name, 2, j, "v", t)] =
                 JuMP.@constraint(jump_model, v_j <= wv_hi * beta_yj)
-            bmc[(name, 3, j, "v", t)] =
+            bmc[(name, 2, j, "v", t)] =
                 JuMP.@constraint(jump_model, v_j >= w_v - wv_hi * (1 - beta_yj))
-            bmc[(name, 4, j, "v", t)] =
-                JuMP.@constraint(jump_model, v_j <= w_v - wv_lo * (1 - beta_yj))
+            bmc[(name, 3, j, "v", t)] =
+                JuMP.@constraint(jump_model, v_j <= w_v)
         end
 
         # Residual product variable
