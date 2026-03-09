@@ -593,6 +593,7 @@ include("quadratic_approximations/mccormick.jl")
 include("quadratic_approximations/epigraph.jl")
 include("quadratic_approximations/bilinear.jl")
 include("quadratic_approximations/hybs.jl")
+include("quadratic_approximations/dnmdt.jl")
 
 # add_param_container! wrappers — must come after piecewise_linear.jl
 # (which defines VariableValueParameter and FixValueParameter)
