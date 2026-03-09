@@ -16,7 +16,8 @@ Approximate x² using the sawtooth MIP formulation.
 
 Creates auxiliary continuous variables g_0,...,g_L and binary variables α_1,...,α_L,
 adds S^L constraints (4 per level) and a linking constraint for each component and
-time step, and returns a dictionary of JuMP affine expressions approximating x².
+time step, and stores affine expressions approximating x² in a
+`QuadraticApproximationExpression` expression container.
 
 For depth L, the approximation interpolates x² at 2^L + 1 uniformly spaced breakpoints
 with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
@@ -31,9 +32,6 @@ with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
 - `x_max::Float64`: upper bound of x domain
 - `depth::Int`: sawtooth depth L (number of binary variables per component per time step)
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
-
-# Returns
-- `Dict{Tuple{String, Int}, JuMP.AffExpr}`: maps (name, t) to affine expression approximating x²
 """
 function _add_sawtooth_quadratic_approx!(
     container::OptimizationContainer,
@@ -81,7 +79,14 @@ function _add_sawtooth_quadratic_approx!(
         meta,
     )
 
-    result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
+    expr_container = add_expression_container!(
+        container,
+        QuadraticApproximationExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
 
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
@@ -139,8 +144,8 @@ function _add_sawtooth_quadratic_approx!(
             JuMP.add_to_expression!(x_sq_approx, -coeff, g_container[name, j, t])
         end
 
-        result[(name, t)] = x_sq_approx
+        expr_container[name, t] = x_sq_approx
     end
 
-    return result
+    return nothing
 end

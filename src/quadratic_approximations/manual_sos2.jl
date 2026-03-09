@@ -13,7 +13,8 @@ Approximate x² using a piecewise linear function with manually-implemented SOS2
 
 Creates lambda (λ) variables representing convex combination weights over breakpoints,
 adds linking, normalization, and manual adjacency constraints using binary variables,
-and returns a dictionary of JuMP affine expressions approximating x².
+and stores affine expressions approximating x² in a `QuadraticApproximationExpression`
+expression container.
 
 # Arguments
 - `container::OptimizationContainer`: the optimization container
@@ -25,9 +26,6 @@ and returns a dictionary of JuMP affine expressions approximating x².
 - `x_max::Float64`: upper bound of x domain
 - `num_segments::Int`: number of PWL segments
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
-
-# Returns
-- `Dict{Tuple{String, Int}, JuMP.AffExpr}`: maps (name, t) to affine expression approximating x²
 """
 function _add_manual_sos2_quadratic_approx!(
     container::OptimizationContainer,
@@ -75,7 +73,14 @@ function _add_manual_sos2_quadratic_approx!(
         meta,
     )
 
-    result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
+    expr_container = add_expression_container!(
+        container,
+        QuadraticApproximationExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
 
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
@@ -130,8 +135,8 @@ function _add_manual_sos2_quadratic_approx!(
         for i in 1:n_points
             JuMP.add_to_expression!(x_hat_sq, x_sq_bkpts[i], lambda[i])
         end
-        result[(name, t)] = x_hat_sq
+        expr_container[name, t] = x_hat_sq
     end
 
-    return result
+    return nothing
 end
