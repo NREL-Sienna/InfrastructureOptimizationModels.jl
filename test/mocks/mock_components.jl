@@ -16,17 +16,31 @@ const IS = InfrastructureSystems
 # Mock formulation type for testing DeviceModel
 struct TestDeviceFormulation <: PSI.AbstractDeviceFormulation end
 
+abstract type AbstractMockCost end
+
 # Mock operation cost for testing proportional cost functions
-struct MockOperationCost
+struct MockProportionalCost <: AbstractMockCost
     proportional_term::Float64
     is_time_variant::Bool
     fuel_cost::Float64
 end
 
-MockOperationCost(proportional_term::Float64) =
-    MockOperationCost(proportional_term, false, 0.0)
-MockOperationCost(proportional_term::Float64, is_time_variant::Bool) =
-    MockOperationCost(proportional_term, is_time_variant, 0.0)
+MockProportionalCost(proportional_term::Float64) =
+    MockProportionalCost(proportional_term, false, 0.0)
+MockProportionalCost(proportional_term::Float64, is_time_variant::Bool) =
+    MockProportionalCost(proportional_term, is_time_variant, 0.0)
+
+# FIXME mildly awkward that we need both fixed and fuel_cost here, but otherwise
+# can't define get_fuel_cost for MockThermalGen.
+struct MockOperationalCost <: AbstractMockCost
+    variable::IS.CostCurve
+    fixed::Float64
+    fuel_cost::Float64
+end
+
+get_variable(cost::MockOperationalCost) = cost.variable
+get_fixed(cost::MockOperationalCost) = cost.fixed
+get_fuel_cost(cost::MockOperationalCost) = cost.fuel_cost
 
 # Abstract mock device type for testing rejection of abstract types in DeviceModel
 # Subtypes IS.InfrastructureSystemsComponent so they work with DeviceModel and container keys
@@ -51,14 +65,23 @@ struct MockThermalGen <: AbstractMockGenerator
     bus::MockBus
     active_power_limits::NamedTuple{(:min, :max), Tuple{Float64, Float64}}
     base_power::Float64
-    operation_cost::MockOperationCost
+    operation_cost::AbstractMockCost
 end
 
 # Constructor with default base_power and no operation cost for backward compatibility
 MockThermalGen(name, available, bus, limits) =
-    MockThermalGen(name, available, bus, limits, 100.0, MockOperationCost(0.0))
+    MockThermalGen(name, available, bus, limits, 100.0, MockProportionalCost(0.0))
 MockThermalGen(name, available, bus, limits, base_power) =
-    MockThermalGen(name, available, bus, limits, base_power, MockOperationCost(0.0))
+    MockThermalGen(name, available, bus, limits, base_power, MockProportionalCost(0.0))
+MockThermalGen(name, available, bus, limits, base_power, operation_cost::IS.CostCurve) =
+    MockThermalGen(
+        name,
+        available,
+        bus,
+        limits,
+        base_power,
+        MockOperationalCost(operation_cost, 0.0, 0.0),
+    )
 
 get_name(g::MockThermalGen) = g.name
 get_available(g::MockThermalGen) = g.available
@@ -101,13 +124,18 @@ struct MockBranch <: AbstractMockDevice
     from_bus::MockBus
     to_bus::MockBus
     rating::Float64
+    r::Float64
 end
+
+MockBranch(name, available, from_bus, to_bus, rating) =
+    MockBranch(name, available, from_bus, to_bus, rating, 0.0)
 
 get_name(b::MockBranch) = b.name
 get_available(b::MockBranch) = b.available
 get_from_bus(b::MockBranch) = b.from_bus
 get_to_bus(b::MockBranch) = b.to_bus
 get_rate(b::MockBranch) = b.rating
+get_r(b::MockBranch) = b.r
 
 # Mock component type for use as type parameter in container keys
 # This replaces PSY.ThermalStandard etc. in tests that don't need real PSY types

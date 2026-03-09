@@ -18,9 +18,9 @@ InfrastructureOptimizationModels.objective_function_multiplier(
 
 # Interface implementations for mock types
 
-# Non-time-varying proportional_cost: return the proportional_term from MockOperationCost
+# Non-time-varying proportional_cost: return the proportional_term from MockProportionalCost
 InfrastructureOptimizationModels.proportional_cost(
-    op_cost::MockOperationCost,
+    op_cost::MockProportionalCost,
     ::TestProportionalVariable,
     d::MockThermalGen,
     ::TestProportionalFormulation,
@@ -29,17 +29,17 @@ InfrastructureOptimizationModels.proportional_cost(
 # Time-varying proportional_cost: same value for all time steps (could vary if needed)
 InfrastructureOptimizationModels.proportional_cost(
     ::InfrastructureOptimizationModels.OptimizationContainer,
-    op_cost::MockOperationCost,
+    op_cost::MockProportionalCost,
     ::TestProportionalVariable,
     d::MockThermalGen,
     ::TestProportionalFormulation,
     ::Int,
 ) = op_cost.proportional_term
 
-# is_time_variant_term: return the is_time_variant flag from MockOperationCost
+# is_time_variant_term: return the is_time_variant flag from MockProportionalCost
 InfrastructureOptimizationModels.is_time_variant_term(
     ::InfrastructureOptimizationModels.OptimizationContainer,
-    op_cost::MockOperationCost,
+    op_cost::MockProportionalCost,
     ::TestProportionalVariable,
     ::Type{MockThermalGen},
     ::TestProportionalFormulation,
@@ -99,7 +99,7 @@ end
         cost_value = 15.0
         device = make_mock_thermal(
             "gen1";
-            operation_cost = MockOperationCost(cost_value, false),
+            operation_cost = MockProportionalCost(cost_value, false),
         )
         devices = [device]
         container = setup_proportional_test_container(time_steps, devices)
@@ -138,7 +138,7 @@ end
         time_steps = 1:2
         device = make_mock_thermal(
             "gen1";
-            operation_cost = MockOperationCost(0.0, false),
+            operation_cost = MockProportionalCost(0.0, false),
         )
         devices = [device]
         container = setup_proportional_test_container(time_steps, devices)
@@ -170,11 +170,11 @@ end
         cost2 = 20.0
         device1 = make_mock_thermal(
             "gen1";
-            operation_cost = MockOperationCost(cost1, false),
+            operation_cost = MockProportionalCost(cost1, false),
         )
         device2 = make_mock_thermal(
             "gen2";
-            operation_cost = MockOperationCost(cost2, false),
+            operation_cost = MockProportionalCost(cost2, false),
         )
         devices = [device1, device2]
         container = setup_proportional_test_container(time_steps, devices)
@@ -213,7 +213,7 @@ end
         # is_time_variant = false
         device = make_mock_thermal(
             "gen1";
-            operation_cost = MockOperationCost(cost_value, false),
+            operation_cost = MockProportionalCost(cost_value, false),
         )
         devices = [device]
         container = setup_proportional_test_container(time_steps, devices)
@@ -254,7 +254,7 @@ end
         # is_time_variant = true
         device = make_mock_thermal(
             "gen1";
-            operation_cost = MockOperationCost(cost_value, true),
+            operation_cost = MockProportionalCost(cost_value, true),
         )
         devices = [device]
         container = setup_proportional_test_container(time_steps, devices)
@@ -296,11 +296,11 @@ end
 
         device_invariant = make_mock_thermal(
             "gen_inv";
-            operation_cost = MockOperationCost(cost_invariant, false),
+            operation_cost = MockProportionalCost(cost_invariant, false),
         )
         device_variant = make_mock_thermal(
             "gen_var";
-            operation_cost = MockOperationCost(cost_variant, true),
+            operation_cost = MockProportionalCost(cost_variant, true),
         )
         devices = [device_invariant, device_variant]
         container = setup_proportional_test_container(time_steps, devices)
@@ -356,7 +356,7 @@ end
         # Zero cost, even if marked as time variant
         device = make_mock_thermal(
             "gen1";
-            operation_cost = MockOperationCost(0.0, true),
+            operation_cost = MockProportionalCost(0.0, true),
         )
         devices = [device]
         container = setup_proportional_test_container(time_steps, devices)

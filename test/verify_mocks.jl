@@ -22,15 +22,22 @@ get_name(bus)
 get_number(bus)
 get_bustype(bus)
 
-# MockOperationCost
-MockOperationCost(10.0)
-MockOperationCost(10.0, true)
-MockOperationCost(10.0, false, 5.0)
+# MockProportionalCost
+MockProportionalCost(10.0)
+MockProportionalCost(10.0, true)
+MockProportionalCost(10.0, false, 5.0)
 
 # MockThermalGen
 gen = MockThermalGen("gen1", true, bus, (min = 0.0, max = 100.0))
 MockThermalGen("gen2", true, bus, (min = 0.0, max = 100.0), 200.0)
-MockThermalGen("gen3", true, bus, (min = 0.0, max = 100.0), 200.0, MockOperationCost(5.0))
+MockThermalGen(
+    "gen3",
+    true,
+    bus,
+    (min = 0.0, max = 100.0),
+    200.0,
+    MockProportionalCost(5.0),
+)
 get_name(gen)
 get_available(gen)
 get_bus(gen)

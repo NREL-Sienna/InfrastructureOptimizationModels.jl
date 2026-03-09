@@ -447,7 +447,10 @@ end
 Execute the optimizer on the container's JuMP model, compute aux/dual variables,
 and return the run status. Called `solve_impl!(container, system)` in PSI.
 """
-function execute_optimizer!(container::OptimizationContainer, system::IS.InfrastructureSystemsContainer)
+function execute_optimizer!(
+    container::OptimizationContainer,
+    system::IS.InfrastructureSystemsContainer,
+)
     optimizer_stats = get_optimizer_stats(container)
 
     jump_model = get_jump_model(container)

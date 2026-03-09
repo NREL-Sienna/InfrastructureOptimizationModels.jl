@@ -41,7 +41,7 @@ function make_mock_thermal_pwl(
     fuel_cost = 0.0,
 )
     bus = MockBus("bus1", 1, :PV)
-    op_cost = MockOperationCost(0.0, false, fuel_cost)
+    op_cost = MockProportionalCost(0.0, false, fuel_cost)
     return MockThermalGen(
         name,
         true,
