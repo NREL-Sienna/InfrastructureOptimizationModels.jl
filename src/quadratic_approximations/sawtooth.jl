@@ -101,6 +101,9 @@ function _add_sawtooth_quadratic_approx!(
         meta,
     )
 
+    # Precompute sawtooth coefficients (invariant across names and time steps)
+    saw_coeffs = [delta * delta * (2.0^(-2 * j)) for j in alpha_levels]
+
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
 
@@ -156,8 +159,7 @@ function _add_sawtooth_quadratic_approx!(
             g_container[name, 0, t],
         )
         for j in alpha_levels
-            coeff = delta * delta * (2.0^(-2 * j))
-            JuMP.add_to_expression!(x_sq_approx, -coeff, g_container[name, j, t])
+            JuMP.add_to_expression!(x_sq_approx, -saw_coeffs[j], g_container[name, j, t])
         end
 
         expr_container[name, t] = x_sq_approx
