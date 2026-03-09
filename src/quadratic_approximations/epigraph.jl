@@ -111,6 +111,9 @@ function _add_epigraph_quadratic_approx!(
         meta,
     )
 
+    # Upper bound for epigraph variable z ≈ x²
+    z_ub = max(x_min^2, x_max^2)
+
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
 
@@ -148,6 +151,7 @@ function _add_epigraph_quadratic_approx!(
             jump_model,
             base_name = "EpigraphVar_$(C)_{$(name), $(t)}",
             lower_bound = 0.0,
+            upper_bound = z_ub,
         )
         z_container[name, t] = z_var
 
