@@ -97,7 +97,7 @@ end
 
 function _get_timestamps(outputs::OutputsByTime, timestamp::Dates.DateTime, len::Int)
     if outputs.resolution == Dates.Period(Dates.Millisecond(0))
-        return nothing
+        return
     end
     return range(timestamp; length = len, step = outputs.resolution)
 end

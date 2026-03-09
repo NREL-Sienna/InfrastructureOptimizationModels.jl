@@ -111,7 +111,7 @@ function _add_sos2_quadratic_approx!(
         expr_container[name, t] = x_hat_sq
     end
 
-    return nothing
+    return
 end
 
 _square(x::Float64) = x * x

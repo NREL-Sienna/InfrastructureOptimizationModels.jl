@@ -89,5 +89,5 @@ function _add_mccormick_envelope!(
         )
     end
 
-    return nothing
+    return
 end
