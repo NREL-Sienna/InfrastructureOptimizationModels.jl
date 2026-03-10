@@ -82,27 +82,21 @@ end
 struct MockDeviceFormulation <: IOM.AbstractDeviceFormulation end
 struct MockPowerModel <: IS.Optimization.AbstractPowerModel end
 
-abstract type MockNetworkNodeType end
-struct MockNetworkGenerator <: MockNetworkNodeType end
-struct MockNetworkDemand <: MockNetworkNodeType end
 struct MockNetworkNode <: IS.InfrastructureSystemsComponent
-    type::MockNetworkNodeType
     id::Integer
     adj::Vector{Tuple{Int, Float64}}
     pmax::Float64
     current_bounds::NTuple{2, Float64}
 end
-MockNetworkNode(id, adj, pmax) =
+MockNetworkNode(id, adj, pmax) = # generators
     MockNetworkNode(
-        MockNetworkGenerator(),
         id,
         adj,
         pmax,
         (0.0, 1.0),
     )
-MockNetworkNode(id, adj) =
+MockNetworkNode(id, adj) = # demands
     MockNetworkNode(
-        MockNetworkDemand(),
         id,
         adj,
         0.0,
@@ -119,12 +113,12 @@ struct MockSystem <: IS.InfrastructureSystemsContainer
 end
 IOM.get_base_power(::MockSystem) = 1.0
 IOM.stores_time_series_in_memory(::MockSystem) = false
-IOM.get_available_components(::NetworkModel, ::Type, sys::MockSystem) = length(sys.nodes)
-IOM.calculate_aux_variables!(::OptimizationContainer, ::MockSystem) =
+IOM.get_available_components(_, _, sys::MockSystem) = length(sys.nodes)
+IOM.calculate_aux_variables!(_, ::MockSystem) =
     IOM.RunStatus.SUCCESSFULLY_FINALIZED
-IOM.calculate_dual_variables!(::OptimizationContainer, ::MockSystem, ::Bool) =
+IOM.calculate_dual_variables!(_, ::MockSystem, _) =
     IOM.RunStatus.SUCCESSFULLY_FINALIZED
-get_components(::Type, sys::MockSystem) = sys.nodes
+get_components(_, sys::MockSystem) = sys.nodes
 
 # ----------------- Container types
 
@@ -144,9 +138,6 @@ function _build_adj(problem, i)
     for edge in problem.edges
         if i in edge
             j = i == edge[1] ? edge[2] : edge[1]
-            # @show edge
-            # @show i j
-            # @show problem.conductances problem.conductances[e]
             push!(adj, (j, problem.conductances[edge]))
         end
     end
@@ -154,11 +145,10 @@ function _build_adj(problem, i)
 end
 
 function build_system(problem)
-    n_gen = div(problem.size, 2)
     gen_nodes =
-        [MockNetworkNode(i, _build_adj(problem, i), problem.pmaxes[i]) for i in 1:n_gen]
+        [MockNetworkNode(i, _build_adj(problem, i), problem.pmaxes[i]) for i in problem.gens]
     dem_nodes =
-        [MockNetworkNode(i, _build_adj(problem, i)) for i in (n_gen + 1):(problem.size)]
+        [MockNetworkNode(i, _build_adj(problem, i)) for i in problem.dems]
     return MockSystem([gen_nodes; dem_nodes])
 end
 
@@ -200,7 +190,7 @@ function add_constraints!(container, sys)
         container,
         MockKCLConstraint(),
         MockNetworkNode,
-        [string(i) for i=1:length(nodes)],
+        get_name.(nodes),
         1:1,
     )
     for node in nodes
@@ -212,11 +202,7 @@ function add_constraints!(container, sys)
             JuMP.add_to_expression!(v_diff, conductance, Vi)
             JuMP.add_to_expression!(v_diff, -conductance, Vj)
         end
-        kcl_container[i, 1] = 
-            JuMP.@constraint(
-                jump_model,
-                I == v_diff
-            )
+        kcl_container[i, 1] = JuMP.@constraint(jump_model, I == v_diff)
     end
 
     for i in problem.gens
