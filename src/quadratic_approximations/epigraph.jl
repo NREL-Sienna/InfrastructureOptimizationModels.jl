@@ -51,12 +51,30 @@ function _add_epigraph_quadratic_approx!(
     IS.@assert_op depth >= 1
     jump_model = get_jump_model(container)
     delta = x_max - x_min
-    n_breakpoints = (1 << depth) + 1  # 2^depth + 1
 
     # Create z variable container
     z_container = add_variable_container!(
         container,
         EpigraphVariable(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+
+    g_levels = 0:depth
+    g_container = add_variable_container!(
+        container,
+        SawtoothAuxVariable(),
+        C,
+        names,
+        g_levels,
+        time_steps;
+        meta,
+    )
+    link_container = add_constraints_container!(
+        container,
+        SawtoothLinkingConstraint(),
         C,
         names,
         time_steps;
@@ -69,7 +87,7 @@ function _add_epigraph_quadratic_approx!(
         EpigraphTangentConstraint(),
         C,
         names,
-        1:n_breakpoints,
+        1:depth,
         time_steps;
         meta,
         sparse = true,
@@ -84,12 +102,36 @@ function _add_epigraph_quadratic_approx!(
         meta,
     )
 
-    # Precompute breakpoint values (invariant across names and time steps)
-    step = delta / (n_breakpoints - 1)
-    breakpoints = [(x_min + (k - 1) * step) for k in 1:n_breakpoints]
-
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
+
+        # Auxiliary variables g_0,...,g_L ∈ [0, 1]
+        for j in g_levels
+            g_container[name, j, t] = JuMP.@variable(
+                jump_model,
+                base_name = "SawtoothAux_$(C)_{$(name), $(j), $(t)}",
+                lower_bound = 0.0,
+                upper_bound = 1.0,
+            )
+        end
+        g0 = g_container[name, 0, t]
+
+        # Linking constraint: g_0 = (x - x_min) / Δ
+        link_container[name, t] = JuMP.@constraint(
+            jump_model,
+            g0 == (x_var - x_min) / delta,
+        )
+
+        # T^L consstraints for j = 1,...,L
+        for j in 1:depth
+            g_prev = g_container[name, j - 1, t]
+            g_curr = g_container[name, j, t]
+
+            # g_j ≤ 2 g_{j-1}
+            JuMP.@constraint(jump_model, g_curr <= 2.0 * g_prev)
+            # g_j ≤ 2(1 - g_{j-1})
+            JuMP.@constraint(jump_model, g_curr <= 2.0 * (1.0 - g_prev))
+        end
 
         # Create the epigraph variable (bounded from below by tangent cuts)
         z_var = JuMP.@variable(
@@ -99,15 +141,21 @@ function _add_epigraph_quadratic_approx!(
         )
         z_container[name, t] = z_var
 
-        # Add tangent-line lower-bound constraints:
-        # z ≥ 2·aₖ·x − aₖ² for each breakpoint aₖ
-        for k in 1:n_breakpoints
-            a_k = breakpoints[k]
-            tangent_container[(name, k, t)] = JuMP.@constraint(
+        fL = JuMP.AffExpr(0.0)
+        for j in 1:depth
+            JuMP.add_to_expression!(fL, delta * delta * 2.0^(-2j), g_container[name, j, t])
+            tangent_container[(name, j, t)] = JuMP.@constraint(
                 jump_model,
-                z_var >= 2.0 * a_k * x_var - a_k * a_k,
+                z_var >=
+                x_min * (2 * delta * g0 + x_min) - fL + delta^2 * (g0 - 2.0^(-2j - 2))
             )
         end
+        last_segment = JuMP.AffExpr(2.0 * x_min - 1.0)
+        JuMP.add_to_expression!(last_segment, 2.0 * delta, g_container[name, 0, t])
+        JuMP.@constraints(jump_model, begin
+            z_var >= 0
+            z_var >= last_segment
+        end)
 
         expr_container[name, t] = JuMP.AffExpr(0.0, z_var => 1.0)
     end
