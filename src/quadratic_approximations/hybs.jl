@@ -134,7 +134,7 @@ function _add_hybs_bilinear_approx!(
             JuMP.@constraint(jump_model, p2_container[name, t] == x - y)
     end
 
-    # --- Step 3: Sawtooth S^L upper bound for x² and y² (binary variables here) ---
+    # --- Step 3: Sawtooth S^L for x² and y² (binary variables here) ---
     _add_sawtooth_quadratic_approx!(
         container, C, names, time_steps,
         x_var_container, x_min, x_max, depth, meta_x,
