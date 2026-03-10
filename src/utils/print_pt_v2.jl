@@ -98,6 +98,7 @@ function _show_method(
         table = Matrix{String}(undef, length(model.feedforwards), length(header))
         for (ix, v) in enumerate(model.feedforwards)
             table[ix, 1] = string(typeof(v))
+            # FIXME this 1-arg version is defined in POM. move it?
             table[ix, 2] = encode_key_as_string(get_optimization_container_key(v))
             table[ix, 3] = first(encode_key_as_string.(get_affected_values(v)))
         end

@@ -9,7 +9,7 @@ function set_expression!(
     time_period::Int,
 ) where {S <: CostExpressions, T <: PSY.Component}
     if has_container_key(container, S, T)
-        device_cost_expression = get_expression(container, S(), T)
+        device_cost_expression = get_expression(container, S, T)
         component_name = PSY.get_name(component)
         device_cost_expression[component_name, time_period] = cost_expression
     end

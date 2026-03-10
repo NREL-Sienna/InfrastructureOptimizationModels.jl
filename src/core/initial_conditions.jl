@@ -75,66 +75,46 @@ function InitialConditionsData()
     )
 end
 
-function get_initial_condition_value(
+@generated function get_initial_condition_value(
     ic_data::InitialConditionsData,
-    ::T,
+    ::Type{T},
     ::Type{U},
-) where {T <: VariableType, U <: Union{PSY.Component, PSY.System}}
-    return ic_data.variables[VariableKey(T, U)]
+) where {
+    T <: Union{VariableType, AuxVariableType, ConstraintType, ParameterType},
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
+    field = QuoteNode(store_field_for_type(T))
+    K = key_for_type(T)
+    return :(return getfield(ic_data, $field)[$K(T, U)])
 end
 
-function get_initial_condition_value(
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_initial_condition_value(
+    ic_data::InitialConditionsData, ::T, ::Type{U},
+) where {
+    T <: Union{VariableType, AuxVariableType, ConstraintType, ParameterType},
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+} =
+    get_initial_condition_value(ic_data, T, U)
+
+@generated function has_initial_condition_value(
     ic_data::InitialConditionsData,
-    ::T,
+    ::Type{T},
     ::Type{U},
-) where {T <: AuxVariableType, U <: Union{PSY.Component, PSY.System}}
-    return ic_data.aux_variables[AuxVarKey(T, U)]
+) where {
+    T <: Union{VariableType, AuxVariableType, ConstraintType, ParameterType},
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
+    field = QuoteNode(store_field_for_type(T))
+    K = key_for_type(T)
+    return :(return haskey(getfield(ic_data, $field), $K(T, U)))
 end
 
-function get_initial_condition_value(
-    ic_data::InitialConditionsData,
-    ::T,
-    ::Type{U},
-) where {T <: ConstraintType, U <: Union{PSY.Component, PSY.System}}
-    return ic_data.duals[ConstraintKey(T, U)]
-end
-
-function get_initial_condition_value(
-    ic_data::InitialConditionsData,
-    ::T,
-    ::Type{U},
-) where {T <: ParameterType, U <: Union{PSY.Component, PSY.System}}
-    return ic_data.parameters[ParameterKey(T, U)]
-end
-
-function has_initial_condition_value(
-    ic_data::InitialConditionsData,
-    ::T,
-    ::Type{U},
-) where {T <: VariableType, U <: Union{PSY.Component, PSY.System}}
-    return haskey(ic_data.variables, VariableKey(T, U))
-end
-
-function has_initial_condition_value(
-    ic_data::InitialConditionsData,
-    ::T,
-    ::Type{U},
-) where {T <: AuxVariableType, U <: Union{PSY.Component, PSY.System}}
-    return haskey(ic_data.aux_variables, AuxVarKey(T, U))
-end
-
-function has_initial_condition_value(
-    ic_data::InitialConditionsData,
-    ::T,
-    ::Type{U},
-) where {T <: ConstraintType, U <: Union{PSY.Component, PSY.System}}
-    return haskey(ic_data.duals, ConstraintKey(T, U))
-end
-
-function has_initial_condition_value(
-    ic_data::InitialConditionsData,
-    ::T,
-    ::Type{U},
-) where {T <: ParameterType, U <: Union{PSY.Component, PSY.System}}
-    return haskey(ic_data.parameters, ParameterKey(T, U))
-end
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+has_initial_condition_value(
+    ic_data::InitialConditionsData, ::T, ::Type{U},
+) where {
+    T <: Union{VariableType, AuxVariableType, ConstraintType, ParameterType},
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+} =
+    has_initial_condition_value(ic_data, T, U)

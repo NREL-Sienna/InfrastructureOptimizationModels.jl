@@ -14,7 +14,7 @@ function add_cost_to_expression!(
     T <: IS.InfrastructureSystemsComponent,
 }
     if has_container_key(container, S, T)
-        device_cost_expression = get_expression(container, S(), T)
+        device_cost_expression = get_expression(container, S, T)
         JuMP.add_to_expression!(
             device_cost_expression[component_name, time_period],
             cost_expression,
@@ -106,7 +106,7 @@ function _add_time_varying_fuel_variable_cost!(
     component::V,
     fuel_cost::IS.TimeSeriesKey,
 ) where {T <: VariableType, V <: PSY.Component}
-    expression = get_expression(container, FuelConsumptionExpression(), V)
+    expression = get_expression(container, FuelConsumptionExpression, V)
     name = PSY.get_name(component)
     for t in get_time_steps(container)
         add_cost_term_variant!(

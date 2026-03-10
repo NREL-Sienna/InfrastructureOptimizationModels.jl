@@ -95,13 +95,11 @@ function _determine_bin_lhs(
         @debug "Using Piecewise Linear cost function but no variable/parameter ref for ON status is passed. Default status will be set to online (1.0)" _group =
             LOG_GROUP_COST_FUNCTIONS
     elseif sos_status == SOSStatusVariable.PARAMETER
-        param = OnStatusParameter()
-        return get_parameter(container, param, T).parameter_array[name, period]
+        return get_parameter(container, OnStatusParameter, T).parameter_array[name, period]
         @debug "Using Piecewise Linear cost function with parameter OnStatusParameter, $T" _group =
             LOG_GROUP_COST_FUNCTIONS
     elseif sos_status == SOSStatusVariable.VARIABLE
-        var = OnVariable()
-        return get_variable(container, var, T)[name, period]
+        return get_variable(container, OnVariable, T)[name, period]
         @debug "Using Piecewise Linear cost function with variable OnVariable $T" _group =
             LOG_GROUP_COST_FUNCTIONS
     else
@@ -112,10 +110,10 @@ end
 # Migration note for POM:
 # Old call: _add_pwl_constraint!(container, component, U(), break_points, sos_val, t)
 # New call for standard form:
-#   power_var = get_variable(container, U(), T)[name, t]
+#   power_var = get_variable(container, U, T)[name, t]
 #   _add_pwl_constraint_standard!(container, component, break_points, sos_val, t, power_var)
 # New call for compact form (PowerAboveMinimumVariable):
-#   power_var = get_variable(container, U(), T)[name, t]
+#   power_var = get_variable(container, U, T)[name, t]
 #   P_min = get_active_power_limits(component).min
 #   _add_pwl_constraint_compact!(container, component, break_points, sos_val, t, power_var, P_min)
 
@@ -142,7 +140,7 @@ function _add_pwl_constraint_standard!(
     n_points = length(break_points)
 
     # Get PWL delta variables
-    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable(), T)
+    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable, T)
     pwl_vars = [pwl_var_container[name, i, period] for i in 1:n_points]
 
     # Linking constraint: power_var == sum(pwl_vars * breakpoints)
@@ -206,7 +204,7 @@ function _add_pwl_constraint_compact!(
     end
 
     # Get PWL delta variables
-    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable(), T)
+    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable, T)
     pwl_vars = [pwl_var_container[name, i, period] for i in 1:n_points]
 
     # Create constraint container if needed
@@ -219,7 +217,7 @@ function _add_pwl_constraint_compact!(
             JuMP.Containers.SparseAxisArray(contents),
         )
     end
-    con_container = get_constraint(container, PiecewiseLinearCostConstraint(), T)
+    con_container = get_constraint(container, PiecewiseLinearCostConstraint, T)
     jump_model = get_jump_model(container)
 
     # Compact form linking constraint includes P_min offset
@@ -255,7 +253,7 @@ function _get_pwl_cost_expression(
     cost_data::IS.PiecewiseLinearData,
     multiplier::Float64,
 ) where {T <: IS.InfrastructureSystemsComponent}
-    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable(), T)
+    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable, T)
     gen_cost = JuMP.AffExpr(0.0)
     y_coords_cost_data = IS.get_y_coords(cost_data)
     for (i, cost) in enumerate(y_coords_cost_data)
@@ -379,7 +377,7 @@ function _add_pwl_term!(
     sos_val = _get_sos_value(container, V, component)
     for t in time_steps
         _add_pwl_variables!(container, T, name, t, data)
-        power_var = get_variable(container, U(), T)[name, t]
+        power_var = get_variable(container, U, T)[name, t]
         _add_pwl_constraint_standard!(
             container,
             component,
@@ -389,7 +387,7 @@ function _add_pwl_term!(
             power_var,
         )
         if !cost_is_convex
-            pwl_var_container = get_variable(container, PiecewiseLinearCostVariable(), T)
+            pwl_var_container = get_variable(container, PiecewiseLinearCostVariable, T)
             n_points = length(break_points)
             pwl_vars = [pwl_var_container[name, i, t] for i in 1:n_points]
             add_pwl_sos2_constraint!(container, T, name, t, pwl_vars)
@@ -486,8 +484,8 @@ function add_variable_cost_to_objective!(
     is_time_variant_ = is_time_variant(IS.get_fuel_cost(cost_function))
     for t in get_time_steps(container)
         fuel_cost_value = if is_time_variant_
-            param = get_parameter_array(container, FuelCostParameter(), V)
-            mult = get_parameter_multiplier_array(container, FuelCostParameter(), V)
+            param = get_parameter_array(container, FuelCostParameter, V)
+            mult = get_parameter_multiplier_array(container, FuelCostParameter, V)
             param[component_name, t] * mult[component_name, t]
         else
             get_fuel_cost(component)

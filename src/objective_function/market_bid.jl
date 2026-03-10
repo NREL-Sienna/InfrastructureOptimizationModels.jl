@@ -508,7 +508,7 @@ function _add_pwl_constraint!(
 ) where {T <: PSY.Component, U <: VariableType,
     D <: AbstractDeviceFormulation,
     W <: AbstractPiecewiseLinearBlockOfferConstraint}
-    variables = get_variable(container, U(), T)
+    variables = get_variable(container, U, T)
     const_container = lazy_container_addition!(
         container,
         W(),
@@ -521,7 +521,7 @@ function _add_pwl_constraint!(
         jump_fixed_value(first(break_points))::Float64
     elseif _include_min_gen_power_in_constraint(T, U(), D())
         p1::Float64 = jump_fixed_value(first(break_points))
-        on_vars = get_variable(container, OnVariable(), T)
+        on_vars = get_variable(container, OnVariable, T)
         p1 * on_vars[name, period]
     else
         0.0
@@ -556,15 +556,15 @@ function _get_pwl_data(
         name = PSY.get_name(component)
 
         SlopeParam = _slope_param(dir)
-        slope_param_arr = get_parameter_array(container, SlopeParam(), T)
-        slope_param_mult = get_parameter_multiplier_array(container, SlopeParam(), T)
+        slope_param_arr = get_parameter_array(container, SlopeParam, T)
+        slope_param_mult = get_parameter_multiplier_array(container, SlopeParam, T)
         @assert size(slope_param_arr) == size(slope_param_mult)
         slope_cost_component =
             slope_param_arr[name, :, time] .* slope_param_mult[name, :, time]
         slope_cost_component = slope_cost_component.data
 
         BreakpointParam = _breakpoint_param(dir)
-        breakpoint_param_container = get_parameter(container, BreakpointParam(), T)
+        breakpoint_param_container = get_parameter(container, BreakpointParam, T)
         breakpoint_param_arr = get_parameter_column_refs(breakpoint_param_container, name)
         breakpoint_param_mult = get_multiplier_array(breakpoint_param_container)
         @assert size(breakpoint_param_arr) == size(breakpoint_param_mult[name, :, :])

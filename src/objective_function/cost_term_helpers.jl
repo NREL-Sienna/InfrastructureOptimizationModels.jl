@@ -37,7 +37,7 @@ function add_cost_term_invariant!(
 ) where {E <: ExpressionType, C <: IS.InfrastructureSystemsComponent}
     cost = quantity * rate
     if has_container_key(container, E, C)
-        expr = get_expression(container, E(), C)
+        expr = get_expression(container, E, C)
         JuMP.add_to_expression!(expr[name, t], cost)
     end
     add_to_objective_invariant_expression!(container, cost)
@@ -68,12 +68,12 @@ function add_cost_term_variant!(
     name::String,
     t::Int,
 ) where {P <: ParameterType, E <: ExpressionType, C <: IS.InfrastructureSystemsComponent}
-    param = get_parameter_array(container, P(), C)
-    mult = get_parameter_multiplier_array(container, P(), C)
+    param = get_parameter_array(container, P, C)
+    mult = get_parameter_multiplier_array(container, P, C)
     rate = param[name, t] * mult[name, t]
     cost = quantity * rate
     if has_container_key(container, E, C)
-        expr = get_expression(container, E(), C)
+        expr = get_expression(container, E, C)
         JuMP.add_to_expression!(expr[name, t], cost)
     end
     add_to_objective_variant_expression!(container, cost)
@@ -110,7 +110,7 @@ function add_cost_term_variant!(
 ) where {E <: ExpressionType, C <: IS.InfrastructureSystemsComponent}
     cost = quantity * rate
     if has_container_key(container, E, C)
-        expr = get_expression(container, E(), C)
+        expr = get_expression(container, E, C)
         JuMP.add_to_expression!(expr[name, t], cost)
     end
     add_to_objective_variant_expression!(container, cost)
@@ -150,7 +150,7 @@ function add_proportional_cost_invariant!(
     name = get_name(component)
     rate = cost_per_unit * multiplier * dt
     for t in get_time_steps(container)
-        variable = get_variable(container, T(), C)[name, t]
+        variable = get_variable(container, T, C)[name, t]
         add_cost_term_invariant!(
             container, variable, rate, ProductionCostExpression, C, name, t)
     end
@@ -250,7 +250,7 @@ function add_pwl_linking_constraint!(
             JuMP.Containers.SparseAxisArray(contents),
         )
     end
-    con_container = get_constraint(container, K(), C)
+    con_container = get_constraint(container, K, C)
     jump_model = get_jump_model(container)
     con_container[name, t] = JuMP.@constraint(
         jump_model,
@@ -292,7 +292,7 @@ function add_pwl_normalization_constraint!(
             JuMP.Containers.SparseAxisArray(contents),
         )
     end
-    con_container = get_constraint(container, K(), C)
+    con_container = get_constraint(container, K, C)
     jump_model = get_jump_model(container)
     con_container[name, t] = JuMP.@constraint(
         jump_model,
