@@ -1,4 +1,5 @@
 const DNMDT_META = "DNMDTTest"
+const DNMDT_HYBS_META = "HybSTest"
 
 @testset "D-NMDT Univariate Approximation" begin
     @testset "Binary expansion correctness" begin
@@ -445,11 +446,11 @@ end
             IOM._add_hybs_bilinear_approx!(
                 setup_h.container, MockThermalGen, ["dev1"], 1:1,
                 setup_h.x_var_container, setup_h.y_var_container,
-                0.0, 1.0, 0.0, 1.0, depth, HYBS_META,
+                0.0, 1.0, 0.0, 1.0, depth, DNMDT_HYBS_META,
             )
             expr_h = IOM.get_expression(
-                setup_h.container, IOM.HybSProductExpression(),
-                MockThermalGen, HYBS_META,
+                setup_h.container, IOM.BilinearProductExpression(),
+                MockThermalGen, DNMDT_HYBS_META,
             )
 
             JuMP.@objective(setup_h.jump_model, Max, expr_h["dev1", 1])
