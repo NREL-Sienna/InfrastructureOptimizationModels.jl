@@ -5,6 +5,8 @@
 struct ManualSOS2BinaryVariable <: SparseVariableType end
 "Ensures exactly one segment is active (∑zⱼ = 1) in manual SOS2 quadratic approximation."
 struct ManualSOS2SegmentSelectionConstraint <: ConstraintType end
+"Links active segment to lambda variables."
+struct ManualSOS2AdjacencyConstraint <: ConstraintType end
 
 """
     _add_manual_sos2_quadratic_approx!(container, C, names, time_steps, x_var_container, x_min, x_max, num_segments, meta)
@@ -72,6 +74,15 @@ function _add_manual_sos2_quadratic_approx!(
         time_steps;
         meta,
     )
+    adj_container = add_constraints_container!(
+        container,
+        ManualSOS2AdjacencyConstraint(),
+        C,
+        names,
+        1:n_points,
+        time_steps;
+        meta,
+    )
 
     expr_container = add_expression_container!(
         container,
@@ -122,13 +133,15 @@ function _add_manual_sos2_quadratic_approx!(
 
         # Adjacency constraints: λ_i ≤ z_{i-1} + z_i (with boundary cases)
         # λ_1 ≤ z_1
-        JuMP.@constraint(jump_model, lambda[1] <= z_vars[1])
+        adj_container[name, 1, t] = JuMP.@constraint(jump_model, lambda[1] <= z_vars[1])
         # λ_i ≤ z_{i-1} + z_i for i = 2..n-1
         for i in 2:(n_points - 1)
-            JuMP.@constraint(jump_model, lambda[i] <= z_vars[i - 1] + z_vars[i])
+            adj_container[name, i + 1, t] =
+                JuMP.@constraint(jump_model, lambda[i] <= z_vars[i - 1] + z_vars[i])
         end
         # λ_n ≤ z_{n-1}
-        JuMP.@constraint(jump_model, lambda[n_points] <= z_vars[n_bins])
+        adj_container[name, n_points, t] =
+            JuMP.@constraint(jump_model, lambda[n_points] <= z_vars[n_bins])
 
         # Build x̂² = Σ λ_i * x_i² as an affine expression
         x_hat_sq = JuMP.AffExpr(0.0)

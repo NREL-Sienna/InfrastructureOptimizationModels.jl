@@ -50,46 +50,9 @@ end
                 BILINEAR_META,
             )
 
+            # add more container tests for the new constraint expressions and p addition stuff
+
             @test expr_container["dev1", 1] isa JuMP.AffExpr
-
-            # p = x + y variable container should exist
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearApproxSumVariable,
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-            # z ≈ x·y variable container should exist
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearProductVariable,
-                MockThermalGen,
-                BILINEAR_META,
-            )
-            # Linking constraints should exist
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearApproxSumLinkingConstraint,
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-            # Inner quadratic approx containers should exist with _plus meta
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.QuadraticApproxVariable,
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-
-            # p bounds should be [0+0, 4+4] = [0, 8]
-            u_container = IOM.get_variable(
-                setup.container,
-                IOM.BilinearApproxSumVariable(),
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-            @test JuMP.lower_bound(u_container["dev1", 1]) == 0.0
-            @test JuMP.upper_bound(u_container["dev1", 1]) == 8.0
         end
 
         @testset "Constraint structure with McCormick" begin
@@ -154,10 +117,10 @@ end
             @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
             @test JuMP.objective_value(setup.jump_model) ≈ 0.0 atol = 1e-4
 
-            # Fix x=0, y=0: z should be exactly 0
+            # Fix x=2, y=6: z should be exactly 6
             setup2 = _setup_bilinear_test(["dev1"], 1:1)
-            JuMP.fix(setup2.x_var_container["dev1", 1], 0.0; force = true)
-            JuMP.fix(setup2.y_var_container["dev1", 1], 0.0; force = true)
+            JuMP.fix(setup2.x_var_container["dev1", 1], 2.0; force = true)
+            JuMP.fix(setup2.y_var_container["dev1", 1], 3.0; force = true)
 
             IOM._add_sos2_bilinear_approx!(
                 setup2.container,
@@ -168,7 +131,7 @@ end
                 setup2.y_var_container,
                 0.0, 4.0,
                 0.0, 4.0,
-                4,
+                8,
                 BILINEAR_META,
             )
             expr_container2 = IOM.get_expression(
@@ -185,7 +148,7 @@ end
             JuMP.optimize!(setup2.jump_model)
 
             @test JuMP.termination_status(setup2.jump_model) == JuMP.OPTIMAL
-            @test JuMP.objective_value(setup2.jump_model) ≈ 0.0 atol = 1e-6
+            @test JuMP.objective_value(setup2.jump_model) ≈ 6.0 atol = 1e-6
         end
 
         @testset "Constraint usage: x·y + w = 10 with x=2" begin

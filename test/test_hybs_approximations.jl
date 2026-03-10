@@ -185,7 +185,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.HybSProductExpression(),
+            IOM.BilinearProductExpression(),
             MockThermalGen,
             HYBS_META,
         )
@@ -195,16 +195,6 @@ end
         # Binary count: 2L (L for x², L for y²), zero from epigraphs
         n_bin = count(JuMP.is_binary, JuMP.all_variables(setup.jump_model))
         @test n_bin == 2 * depth
-
-        # Verify p2 bounds: p2_min = x_min − y_max, p2_max = x_max − y_min
-        p2_container = IOM.get_variable(
-            setup.container,
-            IOM.HybSApproxDiffVariable(),
-            MockThermalGen,
-            HYBS_META * "_diff",
-        )
-        @test JuMP.lower_bound(p2_container["dev1", 1]) == 0.0 - 4.0
-        @test JuMP.upper_bound(p2_container["dev1", 1]) == 4.0 - 0.0
     end
 
     @testset "Constraint structure without McCormick" begin
@@ -259,7 +249,7 @@ end
                 )
                 expr_container = IOM.get_expression(
                     setup.container,
-                    IOM.HybSProductExpression(),
+                    IOM.BilinearProductExpression(),
                     MockThermalGen,
                     HYBS_META,
                 )
@@ -302,7 +292,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.HybSProductExpression(),
+            IOM.BilinearProductExpression(),
             MockThermalGen,
             HYBS_META,
         )
@@ -342,7 +332,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.HybSProductExpression(),
+            IOM.BilinearProductExpression(),
             MockThermalGen,
             HYBS_META,
         )
@@ -382,7 +372,7 @@ end
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.HybSProductExpression(),
+                IOM.BilinearProductExpression(),
                 MockThermalGen,
                 HYBS_META,
             )
@@ -425,7 +415,7 @@ end
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.HybSProductExpression(),
+                IOM.BilinearProductExpression(),
                 MockThermalGen,
                 HYBS_META,
             )
@@ -461,7 +451,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.HybSProductExpression(),
+            IOM.BilinearProductExpression(),
             MockThermalGen,
             HYBS_META,
         )
@@ -496,7 +486,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.HybSProductExpression(),
+            IOM.BilinearProductExpression(),
             MockThermalGen,
             HYBS_META,
         )

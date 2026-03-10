@@ -4,10 +4,14 @@
 
 "Expression container for bilinear product (x·y) approximation results."
 struct BilinearProductExpression <: ExpressionType end
-
-struct BilinearApproxSumVariable <: VariableType end              # p = x + y
-struct BilinearApproxSumLinkingConstraint <: ConstraintType end   # p == x + y
-struct BilinearProductVariable <: VariableType end                # z ≈ x·y
+"Variable container for bilinear product (x ̇y) approximation results."
+struct BilinearProductVariable <: VariableType end
+"Expression container for adding variables."
+struct VariableSumExpression <: ExpressionType end
+"Expression container for subtracting variables."
+struct VariableDifferenceExpression <: ExpressionType end
+"Constraint container for linking product expressions and variables."
+struct BilinearProductLinkingConstraint <: ConstraintType end
 
 """
     _add_bilinear_approx_impl!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, quad_approx_fn, meta; add_mccormick)
@@ -58,40 +62,21 @@ function _add_bilinear_approx_impl!(
     meta_x = meta * "_x"
     meta_y = meta * "_y"
 
-    # Create p variable container
-    p_container = add_variable_container!(
+    # Create p expression container
+    p_container = add_expression_container!(
         container,
-        BilinearApproxSumVariable(),
+        VariableSumExpression(),
         C,
         names,
         time_steps;
         meta = meta_plus,
     )
 
-    # Create linking constraint containers
-    p_link_container = add_constraints_container!(
-        container,
-        BilinearApproxSumLinkingConstraint(),
-        C,
-        names,
-        time_steps;
-        meta = meta_plus,
-    )
-
-    # Create p variable and linking constraint
     for name in names, t in time_steps
-        x = x_var_container[name, t]
-        y = y_var_container[name, t]
-
-        p_container[name, t] = JuMP.@variable(
-            jump_model,
-            base_name = "BilinearSum_$(C)_{$(name), $(t)}",
-            lower_bound = p_min,
-            upper_bound = p_max,
-        )
-
-        p_link_container[name, t] =
-            JuMP.@constraint(jump_model, p_container[name, t] == x + y)
+        p_expr = JuMP.AffExpr(0.0)
+        JuMP.add_to_expression!(p_expr, x_var_container[name, t])
+        JuMP.add_to_expression!(p_expr, y_var_container[name, t])
+        p_container[name, t] = p_expr
     end
 
     # Approximate p², x², y² using the provided quadratic approximation function
@@ -116,7 +101,6 @@ function _add_bilinear_approx_impl!(
         container, QuadraticApproximationExpression(), C, meta_y,
     )
 
-    # Create z variable container for the bilinear product
     z_container = add_variable_container!(
         container,
         BilinearProductVariable(),
@@ -126,6 +110,14 @@ function _add_bilinear_approx_impl!(
         meta,
     )
 
+    link_container = add_constraints_container!(
+        container,
+        BilinearProductLinkingConstraint(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
     expr_container = add_expression_container!(
         container,
         BilinearProductExpression(),
@@ -140,6 +132,8 @@ function _add_bilinear_approx_impl!(
     z_hi = max(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
 
     for name in names, t in time_steps
+        # It's not necessary to create a variable container here, but it is
+        # necessary in HybS, so this is here for symmetry.
         z_var = JuMP.@variable(
             jump_model,
             base_name = "BilinearProduct_$(C)_{$(name), $(t)}",
@@ -153,8 +147,7 @@ function _add_bilinear_approx_impl!(
         JuMP.add_to_expression!(z_expr, 0.5, zp_container[name, t])
         JuMP.add_to_expression!(z_expr, -0.5, zx_container[name, t])
         JuMP.add_to_expression!(z_expr, -0.5, zy_container[name, t])
-
-        JuMP.@constraint(jump_model, z_var == z_expr)
+        link_container[name, t] = JuMP.@constraint(jump_model, z_var == z_expr)
 
         expr_container[name, t] = JuMP.AffExpr(0.0, z_var => 1.0)
     end
