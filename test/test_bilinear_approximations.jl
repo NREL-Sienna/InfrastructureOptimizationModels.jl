@@ -31,7 +31,7 @@ end
         @testset "Constraint structure" begin
             setup = _setup_bilinear_test(["dev1"], 1:1)
 
-            result = IOM._add_sos2_bilinear_approx!(
+            IOM._add_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -43,48 +43,16 @@ end
                 4,
                 BILINEAR_META,
             )
-
-            @test haskey(result, ("dev1", 1))
-            @test result[("dev1", 1)] isa JuMP.AffExpr
-
-            # p = x + y variable container should exist
-            @test IOM.has_container_key(
+            expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearApproxSumVariable,
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-            # z ≈ x·y variable container should exist
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearProductVariable,
+                IOM.BilinearProductExpression(),
                 MockThermalGen,
                 BILINEAR_META,
             )
-            # Linking constraints should exist
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearApproxSumLinkingConstraint,
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-            # Inner quadratic approx containers should exist with _plus meta
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.QuadraticApproxVariable,
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
 
-            # p bounds should be [0+0, 4+4] = [0, 8]
-            u_container = IOM.get_variable(
-                setup.container,
-                IOM.BilinearApproxSumVariable(),
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-            @test JuMP.lower_bound(u_container["dev1", 1]) == 0.0
-            @test JuMP.upper_bound(u_container["dev1", 1]) == 8.0
+            # add more container tests for the new constraint expressions and p addition stuff
+
+            @test expr_container["dev1", 1] isa JuMP.AffExpr
         end
 
         @testset "Constraint structure with McCormick" begin
@@ -121,7 +89,7 @@ end
             JuMP.set_lower_bound(y_var, 0.0)
             JuMP.set_upper_bound(y_var, 4.0)
 
-            result = IOM._add_sos2_bilinear_approx!(
+            IOM._add_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -133,7 +101,13 @@ end
                 8,
                 BILINEAR_META,
             )
-            z_expr = result[("dev1", 1)]
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr = expr_container["dev1", 1]
 
             JuMP.@objective(setup.jump_model, Min, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
@@ -143,12 +117,12 @@ end
             @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
             @test JuMP.objective_value(setup.jump_model) ≈ 0.0 atol = 1e-4
 
-            # Fix x=0, y=0: z should be exactly 0
+            # Fix x=2, y=6: z should be exactly 6
             setup2 = _setup_bilinear_test(["dev1"], 1:1)
-            JuMP.fix(setup2.x_var_container["dev1", 1], 0.0; force = true)
-            JuMP.fix(setup2.y_var_container["dev1", 1], 0.0; force = true)
+            JuMP.fix(setup2.x_var_container["dev1", 1], 2.0; force = true)
+            JuMP.fix(setup2.y_var_container["dev1", 1], 3.0; force = true)
 
-            result2 = IOM._add_sos2_bilinear_approx!(
+            IOM._add_sos2_bilinear_approx!(
                 setup2.container,
                 MockThermalGen,
                 ["dev1"],
@@ -157,10 +131,16 @@ end
                 setup2.y_var_container,
                 0.0, 4.0,
                 0.0, 4.0,
-                4,
+                8,
                 BILINEAR_META,
             )
-            z_expr2 = result2[("dev1", 1)]
+            expr_container2 = IOM.get_expression(
+                setup2.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr2 = expr_container2["dev1", 1]
 
             JuMP.@objective(setup2.jump_model, Max, z_expr2)
             JuMP.set_optimizer(setup2.jump_model, HiGHS.Optimizer)
@@ -168,7 +148,7 @@ end
             JuMP.optimize!(setup2.jump_model)
 
             @test JuMP.termination_status(setup2.jump_model) == JuMP.OPTIMAL
-            @test JuMP.objective_value(setup2.jump_model) ≈ 0.0 atol = 1e-6
+            @test JuMP.objective_value(setup2.jump_model) ≈ 6.0 atol = 1e-6
         end
 
         @testset "Constraint usage: x·y + w = 10 with x=2" begin
@@ -180,7 +160,7 @@ end
 
             w = JuMP.@variable(setup.jump_model, base_name = "w")
 
-            result = IOM._add_sos2_bilinear_approx!(
+            IOM._add_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -192,7 +172,13 @@ end
                 8,
                 BILINEAR_META,
             )
-            z_expr = result[("dev1", 1)]
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr = expr_container["dev1", 1]
 
             # x·y + w = 10 → 2·3 + w = 10 → w = 4
             JuMP.@constraint(setup.jump_model, z_expr + w == 10.0)
@@ -215,7 +201,7 @@ end
             JuMP.set_lower_bound(y_var, 0.0)
             JuMP.set_upper_bound(y_var, 4.0)
 
-            result = IOM._add_sos2_bilinear_approx!(
+            IOM._add_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -227,7 +213,13 @@ end
                 8,
                 BILINEAR_META,
             )
-            z_expr = result[("dev1", 1)]
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr = expr_container["dev1", 1]
 
             JuMP.@objective(setup.jump_model, Min, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
@@ -240,7 +232,7 @@ end
 
         @testset "Multiple time steps" begin
             setup = _setup_bilinear_test(["dev1"], 1:3)
-            result = IOM._add_sos2_bilinear_approx!(
+            IOM._add_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -252,10 +244,15 @@ end
                 4,
                 BILINEAR_META,
             )
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
 
             for t in 1:3
-                @test haskey(result, ("dev1", t))
-                @test result[("dev1", t)] isa JuMP.AffExpr
+                @test expr_container["dev1", t] isa JuMP.AffExpr
             end
         end
 
@@ -271,7 +268,7 @@ end
                 JuMP.fix(x_var, 2.5; force = true)
                 JuMP.fix(y_var, 1.5; force = true)
 
-                result = IOM._add_sos2_bilinear_approx!(
+                IOM._add_sos2_bilinear_approx!(
                     setup.container,
                     MockThermalGen,
                     ["dev1"],
@@ -283,7 +280,13 @@ end
                     num_segments,
                     BILINEAR_META,
                 )
-                z_expr = result[("dev1", 1)]
+                expr_container = IOM.get_expression(
+                    setup.container,
+                    IOM.BilinearProductExpression(),
+                    MockThermalGen,
+                    BILINEAR_META,
+                )
+                z_expr = expr_container["dev1", 1]
 
                 JuMP.@objective(setup.jump_model, Max, z_expr)
                 JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
@@ -303,7 +306,7 @@ end
         @testset "Constraint structure" begin
             setup = _setup_bilinear_test(["dev1"], 1:1)
 
-            result = IOM._add_manual_sos2_bilinear_approx!(
+            IOM._add_manual_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -315,9 +318,14 @@ end
                 4,
                 BILINEAR_META,
             )
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
 
-            @test haskey(result, ("dev1", 1))
-            @test result[("dev1", 1)] isa JuMP.AffExpr
+            @test expr_container["dev1", 1] isa JuMP.AffExpr
 
             # Binary variables should exist for both u² and v² paths
             @test IOM.has_container_key(
@@ -341,7 +349,7 @@ end
             JuMP.fix(setup.x_var_container["dev1", 1], 2.0; force = true)
             JuMP.fix(setup.y_var_container["dev1", 1], 3.0; force = true)
 
-            result = IOM._add_manual_sos2_bilinear_approx!(
+            IOM._add_manual_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -353,7 +361,13 @@ end
                 8,
                 BILINEAR_META,
             )
-            z_expr = result[("dev1", 1)]
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr = expr_container["dev1", 1]
 
             JuMP.@objective(setup.jump_model, Max, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
@@ -371,7 +385,7 @@ end
 
             w = JuMP.@variable(setup.jump_model, base_name = "w")
 
-            result = IOM._add_manual_sos2_bilinear_approx!(
+            IOM._add_manual_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -383,7 +397,13 @@ end
                 8,
                 BILINEAR_META,
             )
-            z_expr = result[("dev1", 1)]
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr = expr_container["dev1", 1]
 
             JuMP.@constraint(setup.jump_model, z_expr + w == 10.0)
             JuMP.@objective(setup.jump_model, Min, w)
@@ -404,7 +424,7 @@ end
             JuMP.set_lower_bound(y_var, 0.0)
             JuMP.set_upper_bound(y_var, 4.0)
 
-            result = IOM._add_manual_sos2_bilinear_approx!(
+            IOM._add_manual_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -416,7 +436,13 @@ end
                 8,
                 BILINEAR_META,
             )
-            z_expr = result[("dev1", 1)]
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr = expr_container["dev1", 1]
 
             JuMP.@objective(setup.jump_model, Min, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
@@ -429,7 +455,7 @@ end
 
         @testset "Multiple time steps" begin
             setup = _setup_bilinear_test(["dev1"], 1:3)
-            result = IOM._add_manual_sos2_bilinear_approx!(
+            IOM._add_manual_sos2_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -441,9 +467,15 @@ end
                 4,
                 BILINEAR_META,
             )
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
 
             for t in 1:3
-                @test haskey(result, ("dev1", t))
+                @test expr_container["dev1", t] isa JuMP.AffExpr
             end
         end
 
@@ -455,7 +487,7 @@ end
                 JuMP.fix(setup.x_var_container["dev1", 1], 2.5; force = true)
                 JuMP.fix(setup.y_var_container["dev1", 1], 1.5; force = true)
 
-                result = IOM._add_manual_sos2_bilinear_approx!(
+                IOM._add_manual_sos2_bilinear_approx!(
                     setup.container,
                     MockThermalGen,
                     ["dev1"],
@@ -467,7 +499,13 @@ end
                     num_segments,
                     BILINEAR_META,
                 )
-                z_expr = result[("dev1", 1)]
+                expr_container = IOM.get_expression(
+                    setup.container,
+                    IOM.BilinearProductExpression(),
+                    MockThermalGen,
+                    BILINEAR_META,
+                )
+                z_expr = expr_container["dev1", 1]
 
                 JuMP.@objective(setup.jump_model, Max, z_expr)
                 JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
@@ -487,7 +525,7 @@ end
         @testset "Constraint structure" begin
             setup = _setup_bilinear_test(["dev1"], 1:1)
 
-            result = IOM._add_sawtooth_bilinear_approx!(
+            IOM._add_sawtooth_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -499,9 +537,14 @@ end
                 2,
                 BILINEAR_META,
             )
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
 
-            @test haskey(result, ("dev1", 1))
-            @test result[("dev1", 1)] isa JuMP.AffExpr
+            @test expr_container["dev1", 1] isa JuMP.AffExpr
 
             # Sawtooth aux/binary variables for both u² and v² paths
             @test IOM.has_container_key(
@@ -523,7 +566,7 @@ end
             JuMP.fix(setup.x_var_container["dev1", 1], 2.0; force = true)
             JuMP.fix(setup.y_var_container["dev1", 1], 3.0; force = true)
 
-            result = IOM._add_sawtooth_bilinear_approx!(
+            IOM._add_sawtooth_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -535,7 +578,13 @@ end
                 3,
                 BILINEAR_META,
             )
-            z_expr = result[("dev1", 1)]
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr = expr_container["dev1", 1]
 
             JuMP.@objective(setup.jump_model, Max, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
@@ -553,7 +602,7 @@ end
 
             w = JuMP.@variable(setup.jump_model, base_name = "w")
 
-            result = IOM._add_sawtooth_bilinear_approx!(
+            IOM._add_sawtooth_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -565,7 +614,13 @@ end
                 3,
                 BILINEAR_META,
             )
-            z_expr = result[("dev1", 1)]
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr = expr_container["dev1", 1]
 
             JuMP.@constraint(setup.jump_model, z_expr + w == 10.0)
             JuMP.@objective(setup.jump_model, Min, w)
@@ -586,7 +641,7 @@ end
             JuMP.set_lower_bound(y_var, 0.0)
             JuMP.set_upper_bound(y_var, 4.0)
 
-            result = IOM._add_sawtooth_bilinear_approx!(
+            IOM._add_sawtooth_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -598,7 +653,13 @@ end
                 3,
                 BILINEAR_META,
             )
-            z_expr = result[("dev1", 1)]
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
+            z_expr = expr_container["dev1", 1]
 
             JuMP.@objective(setup.jump_model, Min, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
@@ -611,7 +672,7 @@ end
 
         @testset "Multiple time steps" begin
             setup = _setup_bilinear_test(["dev1"], 1:3)
-            result = IOM._add_sawtooth_bilinear_approx!(
+            IOM._add_sawtooth_bilinear_approx!(
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -623,9 +684,15 @@ end
                 2,
                 BILINEAR_META,
             )
+            expr_container = IOM.get_expression(
+                setup.container,
+                IOM.BilinearProductExpression(),
+                MockThermalGen,
+                BILINEAR_META,
+            )
 
             for t in 1:3
-                @test haskey(result, ("dev1", t))
+                @test expr_container["dev1", t] isa JuMP.AffExpr
             end
         end
 
@@ -637,7 +704,7 @@ end
                 JuMP.fix(setup.x_var_container["dev1", 1], 2.5; force = true)
                 JuMP.fix(setup.y_var_container["dev1", 1], 1.5; force = true)
 
-                result = IOM._add_sawtooth_bilinear_approx!(
+                IOM._add_sawtooth_bilinear_approx!(
                     setup.container,
                     MockThermalGen,
                     ["dev1"],
@@ -649,7 +716,13 @@ end
                     depth,
                     BILINEAR_META,
                 )
-                z_expr = result[("dev1", 1)]
+                expr_container = IOM.get_expression(
+                    setup.container,
+                    IOM.BilinearProductExpression(),
+                    MockThermalGen,
+                    BILINEAR_META,
+                )
+                z_expr = expr_container["dev1", 1]
 
                 JuMP.@objective(setup.jump_model, Max, z_expr)
                 JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)

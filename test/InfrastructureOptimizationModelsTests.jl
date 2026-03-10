@@ -143,6 +143,7 @@ function run_tests()
                     # --- quadratic_approximations/ subfolder ---
                     include(joinpath(TEST_DIR, "test_quadratic_approximations.jl"))
                     include(joinpath(TEST_DIR, "test_bilinear_approximations.jl"))
+                    include(joinpath(TEST_DIR, "test_hybs_approximations.jl"))
                 end
 
                 #=

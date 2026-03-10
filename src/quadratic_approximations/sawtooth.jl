@@ -8,6 +8,9 @@ struct SawtoothAuxVariable <: VariableType end
 struct SawtoothBinaryVariable <: VariableType end
 "Links g₀ to the normalized x value in sawtooth quadratic approximation."
 struct SawtoothLinkingConstraint <: ConstraintType end
+"Constrains g_j based on g_{j-1}."
+struct SawtoothMIPConstraint <: ConstraintType end
+struct SawtoothLPConstraint <: ConstraintType end
 
 """
     _add_sawtooth_quadratic_approx!(container, C, names, time_steps, x_var_container, x_min, x_max, depth, meta)
@@ -16,7 +19,8 @@ Approximate x² using the sawtooth MIP formulation.
 
 Creates auxiliary continuous variables g_0,...,g_L and binary variables α_1,...,α_L,
 adds S^L constraints (4 per level) and a linking constraint for each component and
-time step, and returns a dictionary of JuMP affine expressions approximating x².
+time step, and stores affine expressions approximating x² in a
+`QuadraticApproximationExpression` expression container.
 
 For depth L, the approximation interpolates x² at 2^L + 1 uniformly spaced breakpoints
 with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
@@ -31,9 +35,6 @@ with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
 - `x_max::Float64`: upper bound of x domain
 - `depth::Int`: sawtooth depth L (number of binary variables per component per time step)
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
-
-# Returns
-- `Dict{Tuple{String, Int}, JuMP.AffExpr}`: maps (name, t) to affine expression approximating x²
 """
 function _add_sawtooth_quadratic_approx!(
     container::OptimizationContainer,
@@ -72,6 +73,16 @@ function _add_sawtooth_quadratic_approx!(
         time_steps;
         meta,
     )
+    mip_container = add_constraints_container!(
+        container,
+        SawtoothMIPConstraint(),
+        C,
+        names,
+        1:4,
+        time_steps;
+        meta,
+        sparse = true,
+    )
     link_container = add_constraints_container!(
         container,
         SawtoothLinkingConstraint(),
@@ -81,7 +92,14 @@ function _add_sawtooth_quadratic_approx!(
         meta,
     )
 
-    result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
+    expr_container = add_expression_container!(
+        container,
+        QuadraticApproximationExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
 
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
@@ -118,13 +136,16 @@ function _add_sawtooth_quadratic_approx!(
             alpha_j = alpha_container[name, j, t]
 
             # g_j ≤ 2 g_{j-1}
-            JuMP.@constraint(jump_model, g_curr <= 2.0 * g_prev)
+            mip_container[name, 1, t] = JuMP.@constraint(jump_model, g_curr <= 2.0 * g_prev)
             # g_j ≤ 2(1 - g_{j-1})
-            JuMP.@constraint(jump_model, g_curr <= 2.0 * (1.0 - g_prev))
+            mip_container[name, 2, t] =
+                JuMP.@constraint(jump_model, g_curr <= 2.0 * (1.0 - g_prev))
             # g_j ≥ 2(g_{j-1} - α_j)
-            JuMP.@constraint(jump_model, g_curr >= 2.0 * (g_prev - alpha_j))
+            mip_container[name, 3, t] =
+                JuMP.@constraint(jump_model, g_curr >= 2.0 * (g_prev - alpha_j))
             # g_j ≥ 2(α_j - g_{j-1})
-            JuMP.@constraint(jump_model, g_curr >= 2.0 * (alpha_j - g_prev))
+            mip_container[name, 4, t] =
+                JuMP.@constraint(jump_model, g_curr >= 2.0 * (alpha_j - g_prev))
         end
 
         # Build x² ≈ x_min² + (2 x_min Δ + Δ²) g_0 - Σ_{j=1}^L Δ² 2^{-2j} g_j
@@ -139,8 +160,8 @@ function _add_sawtooth_quadratic_approx!(
             JuMP.add_to_expression!(x_sq_approx, -coeff, g_container[name, j, t])
         end
 
-        result[(name, t)] = x_sq_approx
+        expr_container[name, t] = x_sq_approx
     end
 
-    return result
+    return
 end

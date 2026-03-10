@@ -1,6 +1,9 @@
 # SOS2-based piecewise linear approximation of x² for use in constraints.
 # Uses solver-native MOI.SOS2 constraints for adjacency enforcement.
 
+"Expression container for quadratic (x²) approximation results."
+struct QuadraticApproximationExpression <: ExpressionType end
+
 "Lambda (λ) convex combination weight variables for SOS2 quadratic approximation."
 struct QuadraticApproxVariable <: SparseVariableType end
 "Links x to the weighted sum of breakpoints in SOS2 quadratic approximation."
@@ -8,14 +11,16 @@ struct QuadraticApproxLinkingConstraint <: ConstraintType end
 "Ensures the sum of λ weights equals 1 in SOS2 quadratic approximation."
 struct QuadraticApproxNormalizationConstraint <: ConstraintType end
 
+struct SolverSOS2Constraint <: ConstraintType end
+
 """
     _add_sos2_quadratic_approx!(container, C, names, time_steps, x_var_container, x_min, x_max, num_segments, meta)
 
 Approximate x² using a piecewise linear function with solver-native SOS2 constraints.
 
 Creates lambda (λ) variables representing convex combination weights over breakpoints,
-adds linking, normalization, and MOI.SOS2 constraints, and returns a dictionary of JuMP
-affine expressions approximating x².
+adds linking, normalization, and MOI.SOS2 constraints, and stores affine expressions
+approximating x² in a `QuadraticApproximationExpression` expression container.
 
 # Arguments
 - `container::OptimizationContainer`: the optimization container
@@ -27,9 +32,6 @@ affine expressions approximating x².
 - `x_max::Float64`: upper bound of x domain
 - `num_segments::Int`: number of PWL segments
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
-
-# Returns
-- `Dict{Tuple{String, Int}, JuMP.AffExpr}`: maps (name, t) to affine expression approximating x²
 """
 function _add_sos2_quadratic_approx!(
     container::OptimizationContainer,
@@ -66,8 +68,23 @@ function _add_sos2_quadratic_approx!(
         time_steps;
         meta,
     )
+    sos_container = add_constraints_container!(
+        container,
+        SolverSOS2Constraint(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
 
-    result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
+    expr_container = add_expression_container!(
+        container,
+        QuadraticApproximationExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
 
     for name in names, t in time_steps
         x_var = x_var_container[name, t]
@@ -94,17 +111,18 @@ function _add_sos2_quadratic_approx!(
         norm_container[name, t] = JuMP.@constraint(jump_model, sum(lambda) == 1.0)
 
         # λ ∈ SOS2 (solver-native)
-        JuMP.@constraint(jump_model, lambda in MOI.SOS2(collect(1:n_points)))
+        sos_container[name, t] =
+            JuMP.@constraint(jump_model, lambda in MOI.SOS2(collect(1:n_points)))
 
         # Build x̂² = Σ λ_i * x_i² as an affine expression
         x_hat_sq = JuMP.AffExpr(0.0)
         for i in 1:n_points
             JuMP.add_to_expression!(x_hat_sq, x_sq_bkpts[i], lambda[i])
         end
-        result[(name, t)] = x_hat_sq
+        expr_container[name, t] = x_hat_sq
     end
 
-    return result
+    return
 end
 
 _square(x::Float64) = x * x

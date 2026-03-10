@@ -98,6 +98,21 @@ API docs:
 - Validate invariants explicitly in subtle cases
 - Avoid over-adherence to backwards compatibility for internal helpers
 
+## Optimization Model Construction Conventions
+
+### `add_*!()` methods must not return collections
+
+Methods that create variables, constraints, or expressions (`add_variables!`, `add_constraints!`,
+`add_expressions!`, etc.) must always end with a bare `return` (i.e., return `nothing`). They must
+never return dicts or collections of JuMP objects. Instead, instantiate the appropriate container
+via `add_*_container!` and store all created objects there.
+
+### Inline expressions when possible
+
+Expression construction should be inlined at the point of use. Only store an expression in a
+container when it is intended to be reused across multiple constraints or objective terms. Avoid
+creating expression containers solely as intermediate computation steps.
+
 ## Contribution Workflow
 
 Branch naming: `feature/description` or `fix/description`
