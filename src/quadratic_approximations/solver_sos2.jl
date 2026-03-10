@@ -111,7 +111,8 @@ function _add_sos2_quadratic_approx!(
         norm_container[name, t] = JuMP.@constraint(jump_model, sum(lambda) == 1.0)
 
         # λ ∈ SOS2 (solver-native)
-        sos_container[name, t] = JuMP.@constraint(jump_model, lambda in MOI.SOS2(collect(1:n_points)))
+        sos_container[name, t] =
+            JuMP.@constraint(jump_model, lambda in MOI.SOS2(collect(1:n_points)))
 
         # Build x̂² = Σ λ_i * x_i² as an affine expression
         x_hat_sq = JuMP.AffExpr(0.0)
