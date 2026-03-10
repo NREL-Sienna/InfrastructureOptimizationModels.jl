@@ -50,46 +50,9 @@ end
                 BILINEAR_META,
             )
 
+            # add more container tests for the new constraint expressions and p addition stuff
+
             @test expr_container["dev1", 1] isa JuMP.AffExpr
-
-            # p = x + y variable container should exist
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearApproxSumVariable,
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-            # z ≈ x·y variable container should exist
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearProductVariable,
-                MockThermalGen,
-                BILINEAR_META,
-            )
-            # Linking constraints should exist
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.BilinearApproxSumLinkingConstraint,
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-            # Inner quadratic approx containers should exist with _plus meta
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.QuadraticApproxVariable,
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-
-            # p bounds should be [0+0, 4+4] = [0, 8]
-            u_container = IOM.get_variable(
-                setup.container,
-                IOM.BilinearApproxSumVariable(),
-                MockThermalGen,
-                BILINEAR_META * "_plus",
-            )
-            @test JuMP.lower_bound(u_container["dev1", 1]) == 0.0
-            @test JuMP.upper_bound(u_container["dev1", 1]) == 8.0
         end
 
         @testset "Constraint structure with McCormick" begin

@@ -8,7 +8,7 @@ struct EpigraphExpression <: ExpressionType end
 
 "Variable representing a lower-bounded approximation of x² in epigraph relaxation."
 struct EpigraphVariable <: VariableType end
-"Tangent-line lower-bound constraints z ≥ 2·a·x − a² in epigraph relaxation."
+"Tangent-line lower-bound constraints in epigraph relaxation."
 struct EpigraphTangentConstraint <: ConstraintType end
 
 """
@@ -72,6 +72,15 @@ function _add_epigraph_quadratic_approx!(
         time_steps;
         meta,
     )
+    lp_container = add_constraints_container!(
+        container,
+        SawtoothLPConstraint(),
+        C,
+        names,
+        1:2,
+        time_steps;
+        meta,
+    )
     link_container = add_constraints_container!(
         container,
         SawtoothLinkingConstraint(),
@@ -87,7 +96,7 @@ function _add_epigraph_quadratic_approx!(
         EpigraphTangentConstraint(),
         C,
         names,
-        1:depth,
+        1:(depth + 2),
         time_steps;
         meta,
         sparse = true,
@@ -122,15 +131,16 @@ function _add_epigraph_quadratic_approx!(
             g0 == (x_var - x_min) / delta,
         )
 
-        # T^L consstraints for j = 1,...,L
+        # T^L constraints for j = 1,...,L
         for j in 1:depth
             g_prev = g_container[name, j - 1, t]
             g_curr = g_container[name, j, t]
 
             # g_j ≤ 2 g_{j-1}
-            JuMP.@constraint(jump_model, g_curr <= 2.0 * g_prev)
+            lp_container[name, 1, t] = JuMP.@constraint(jump_model, g_curr <= 2.0 * g_prev)
             # g_j ≤ 2(1 - g_{j-1})
-            JuMP.@constraint(jump_model, g_curr <= 2.0 * (1.0 - g_prev))
+            lp_container[name, 2, t] =
+                JuMP.@constraint(jump_model, g_curr <= 2.0 * (1.0 - g_prev))
         end
 
         # Create the epigraph variable (bounded from below by tangent cuts)
@@ -144,18 +154,17 @@ function _add_epigraph_quadratic_approx!(
         fL = JuMP.AffExpr(0.0)
         for j in 1:depth
             JuMP.add_to_expression!(fL, delta * delta * 2.0^(-2j), g_container[name, j, t])
-            tangent_container[(name, j, t)] = JuMP.@constraint(
+            tangent_container[(name, j + 1, t)] = JuMP.@constraint(
                 jump_model,
                 z_var >=
                 x_min * (2 * delta * g0 + x_min) - fL + delta^2 * (g0 - 2.0^(-2j - 2))
             )
         end
-        last_segment = JuMP.AffExpr(2.0 * x_min - 1.0)
-        JuMP.add_to_expression!(last_segment, 2.0 * delta, g_container[name, 0, t])
-        JuMP.@constraints(jump_model, begin
-            z_var >= 0
-            z_var >= last_segment
-        end)
+        tangent_container[name, 1, t] = JuMP.@constraint(jump_model, z_var >= 0)
+        tangent_container[name, depth + 1, t] = JuMP.@constraint(
+            jump_model,
+            z_var >= 2.0 * x_min - 1.0 + 2.0 * delta * g_container[name, 0, t]
+        )
 
         expr_container[name, t] = JuMP.AffExpr(0.0, z_var => 1.0)
     end
