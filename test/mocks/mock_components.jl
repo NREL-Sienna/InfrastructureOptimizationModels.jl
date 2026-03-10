@@ -62,22 +62,20 @@ get_bustype(b::MockBus) = b.bustype
 struct MockThermalGen <: AbstractMockGenerator
     name::String
     available::Bool
-    bus::MockBus
     active_power_limits::NamedTuple{(:min, :max), Tuple{Float64, Float64}}
     base_power::Float64
     operation_cost::AbstractMockCost
 end
 
 # Constructor with default base_power and no operation cost for backward compatibility
-MockThermalGen(name, available, bus, limits) =
-    MockThermalGen(name, available, bus, limits, 100.0, MockProportionalCost(0.0))
-MockThermalGen(name, available, bus, limits, base_power) =
-    MockThermalGen(name, available, bus, limits, base_power, MockProportionalCost(0.0))
-MockThermalGen(name, available, bus, limits, base_power, operation_cost::IS.CostCurve) =
+MockThermalGen(name, available, limits) =
+    MockThermalGen(name, available, limits, 100.0, MockProportionalCost(0.0))
+MockThermalGen(name, available, limits, base_power) =
+    MockThermalGen(name, available, limits, base_power, MockProportionalCost(0.0))
+MockThermalGen(name, available, limits, base_power, operation_cost::IS.CostCurve) =
     MockThermalGen(
         name,
         available,
-        bus,
         limits,
         base_power,
         MockOperationalCost(operation_cost, 0.0, 0.0),
@@ -85,7 +83,6 @@ MockThermalGen(name, available, bus, limits, base_power, operation_cost::IS.Cost
 
 get_name(g::MockThermalGen) = g.name
 get_available(g::MockThermalGen) = g.available
-get_bus(g::MockThermalGen) = g.bus
 IOM.get_active_power_limits(g::MockThermalGen) = g.active_power_limits
 IOM.get_base_power(g::MockThermalGen) = g.base_power
 IOM.get_operation_cost(g::MockThermalGen) = g.operation_cost
@@ -108,13 +105,11 @@ get_rating(r::MockRenewableGen) = r.rating
 struct MockLoad <: AbstractMockDevice
     name::String
     available::Bool
-    bus::MockBus
     max_active_power::Float64
 end
 
 get_name(l::MockLoad) = l.name
 get_available(l::MockLoad) = l.available
-get_bus(l::MockLoad) = l.bus
 get_max_active_power(l::MockLoad) = l.max_active_power
 
 # Mock Branch
