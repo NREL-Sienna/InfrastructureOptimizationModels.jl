@@ -9,111 +9,24 @@ const IS = InfrastructureSystems
 const ISOPT = InfrastructureSystems.Optimization
 const IOM = InfrastructureOptimizationModels
 
-const TEST_DIR = @__DIR__
-include(joinpath(TEST_DIR, "mocks/mock_optimizer.jl"))
-include(joinpath(TEST_DIR, "mocks/mock_system.jl"))
-include(joinpath(TEST_DIR, "mocks/mock_components.jl"))
-include(joinpath(TEST_DIR, "mocks/mock_time_series.jl"))
-include(joinpath(TEST_DIR, "mocks/mock_services.jl"))
-include(joinpath(TEST_DIR, "mocks/mock_container.jl"))
-include(joinpath(TEST_DIR, "mocks/constructors.jl"))
-include(joinpath(TEST_DIR, "test_utils/test_types.jl"))
-include(joinpath(TEST_DIR, "test_utils/objective_function_helpers.jl"))
-
-# ----------------- Mock infrastructure
-
-struct MockCost end
-
-abstract type MockNetworkNodeType end
-struct MockNetworkGenerator <: MockNetworkNodeType end
-struct MockNetworkDemand <: MockNetworkNodeType end
-struct MockNetworkNode <: IS.InfrastructureSystemsComponent
-    type::MockNetworkNodeType
-    id::Integer
-    active_power_limits::NamedTuple{(:min, :max), Tuple{Float64, Float64}}
-    current_limits::NamedTuple{(:min, :max), Tuple{Float64, Float64}}
-end
-MockNetworkNode(id, pmax) = 
-    MockNetworkNode(
-        MockNetworkGenerator(),
-        id,
-        (min = 0.0, max = pmax),
-        (min = 0.0, max = 1.0),
-    )
-MockNetworkNode(id) =
-    MockNetworkNode(
-        MockNetworkDemand(),
-        id,
-        (min = 0.0, max = 0.0),
-        (min = -1.0, max = 0.0),
-    )
-IOM.get_name(n::MockNetworkNode) = string(n.id)
-IOM.get_base_power(::MockNetworkNode) = 1.0
-
-struct MockPowerModel <: IS.Optimization.AbstractPowerModel end
-
-# ----------------- ContainerTypes
-
-struct KCLConstraint <: ConstraintType end
-struct VoltageVariable <: VariableType end
-struct CurrentVariable <: VariableType end
-IOM.get_variable_binary(
-    ::Union{ActivePowerVariable, VoltageVariable, CurrentVariable},
-    ::Type{MockNetworkNode},
-    ::TestDeviceFormulation,
-) = false
-IOM.get_variable_lower_bound(
-    ::Type{ActivePowerVariable},
-    n::MockNetworkNode,
-    ::TestDeviceFormulation,
-) = n.active_power_limits.min
-IOM.get_variable_upper_bound(
-    ::Type{ActivePowerVariable},
-    g::MockThermalGen,
-    ::TestDeviceFormulation,
-) = n.active_power_limits.max
-IOM.get_variable_lower_bound(
-    ::Type{VoltageVariable},
-    ::Type{MockNetworkNode},
-    ::TestDeviceFormulation,
-) = 0.8
-IOM.get_variable_upper_bound(
-    ::Type{VoltageVariable},
-    ::Type{MockNetworkNode},
-    ::TestDeviceFormulation,
-) = 1.2
-IOM.get_variable_lower_bound(
-    ::Type{CurrentVariable},
-    n::Type{MockNetworkNode},
-    ::TestDeviceFormulation,
-) = n.current_limits.min
-IOM.get_variable_upper_bound(
-    ::Type{CurrentVariable},
-    n::Type{MockNetworkNode},
-    ::TestDeviceFormulation,
-) = n.current_limits.max
-
-# ----------------- IOM interface
-
-function IOM.intermediate_set_units_base_system!(::MockSystem, base) end
-function IOM.intermediate_get_forecast_initial_timestamp(::MockSystem)
-    return DateTime(1970)
-end
-function IOM.get_available_components(
-    ::NetworkModel{MockPowerModel},
-    ::Type{T},
-    ::MockSystem,
-) where {T <: IS.InfrastructureSystemsComponent}
-    return 0
-end
-function IOM.calculate_aux_variables!(::OptimizationContainer, ::MockSystem)
-    return IOM.RunStatus.SUCCESSFULLY_FINALIZED
-end
-function IOM.calculate_dual_variables!(::OptimizationContainer, ::MockSystem, ::Bool)
-    return IOM.RunStatus.SUCCESSFULLY_FINALIZED
-end
-
 # ----------------- Problem generation
+
+function _random_convex_pwl_points(n_tranches::Int, pmax::Float64, rng)
+    xs = sort(rand(rng, n_tranches - 1)) .* pmax
+    points = [(0.0, 0.0)]
+    cumulative_cost = 0.0
+    prev_x = 0.0
+    slope = 5.0 + 20.0 * rand(rng)
+    for x in xs
+        cumulative_cost += slope * (x - prev_x)
+        push!(points, (x, cumulative_cost))
+        prev_x = x
+        slope += 5.0 + 10.0 * rand(rng)
+    end
+    cumulative_cost += slope * (pmax - prev_x)
+    push!(points, (pmax, cumulative_cost))
+    return points
+end
 
 struct NetworkProblem
     size::Integer
@@ -131,7 +44,7 @@ function NetworkProblem(; size, n_cost_segments, seed)
     edges = Set{Tuple{Integer, Integer}}()
     conductances = Dict{Tuple{Integer, Integer}, Float64}()
     permutation = shuffle(rng, 1:size)
-    for i in 1:size - 1
+    for i in 1:(size - 1)
         i, j = permutation[i], permutation[i + 1]
         e = i < j ? (i, j) : (j, i)
         push!(edges, e)
@@ -146,7 +59,7 @@ function NetworkProblem(; size, n_cost_segments, seed)
 
     pmaxes = rand(rng, half)
     cost_functions = Vector{IS.CostCurve{IS.PiecewisePointCurve}}()
-    for i=1:half
+    for i in 1:half
         points = _random_convex_pwl_points(n_cost_segments, pmaxes[i], rng)
         pwl = IS.PiecewiseLinearData(points)
         cost_curve = IS.CostCurve(IS.InputOutputCurve(pwl))
@@ -156,63 +69,154 @@ function NetworkProblem(; size, n_cost_segments, seed)
     return NetworkProblem(
         size,
         1:half,
-        half+1:size,
+        (half + 1):size,
         edges,
         rand(rng, half),
         conductances,
-        cost_functions
+        cost_functions,
     )
 end
 
-# ----------------- Container solving
+# ----------------- Mock infrastructure
 
-function build_system!(container, sys, problem)
-    nodes = Vector{MockNetworkNode}()
-    n_gen = div(problem.size, 2)
-    for i in 1:n_gen
-        node = MockNetworkNode(i, problem.pmaxes[i])
-        add_component!(sys, node)
-        push!(nodes, node)
+struct MockDeviceFormulation <: IOM.AbstractDeviceFormulation end
+struct MockPowerModel <: IS.Optimization.AbstractPowerModel end
+
+abstract type MockNetworkNodeType end
+struct MockNetworkGenerator <: MockNetworkNodeType end
+struct MockNetworkDemand <: MockNetworkNodeType end
+struct MockNetworkNode <: IS.InfrastructureSystemsComponent
+    type::MockNetworkNodeType
+    id::Integer
+    adj::Vector{Tuple{Int, Float64}}
+    pmax::Float64
+    current_bounds::NTuple{2, Float64}
+end
+MockNetworkNode(id, adj, pmax) =
+    MockNetworkNode(
+        MockNetworkGenerator(),
+        id,
+        adj,
+        pmax,
+        (0.0, 1.0),
+    )
+MockNetworkNode(id, adj) =
+    MockNetworkNode(
+        MockNetworkDemand(),
+        id,
+        adj,
+        0.0,
+        (-1.0, 0.0),
+    )
+IOM.get_name(n::MockNetworkNode) = string(n.id)
+IOM.get_base_power(::MockNetworkNode) = 1.0
+get_power_bounds(n::MockNetworkNode) = (0.0, n.pmax)
+get_voltage_bounds(::MockNetworkNode) = (0.8, 1.2)
+get_current_bounds(n::MockNetworkNode) = n.current_bounds
+
+struct MockSystem <: IS.InfrastructureSystemsContainer
+    nodes::Vector{MockNetworkNode}
+end
+IOM.get_base_power(::MockSystem) = 1.0
+IOM.stores_time_series_in_memory(::MockSystem) = false
+IOM.get_available_components(::NetworkModel, ::Type, sys::MockSystem) = length(sys.nodes)
+IOM.calculate_aux_variables!(::OptimizationContainer, ::MockSystem) =
+    IOM.RunStatus.SUCCESSFULLY_FINALIZED
+IOM.calculate_dual_variables!(::OptimizationContainer, ::MockSystem, ::Bool) =
+    IOM.RunStatus.SUCCESSFULLY_FINALIZED
+get_components(::Type, sys::MockSystem) = sys.nodes
+
+# ----------------- Container types
+
+struct MockKCLConstraint <: ConstraintType end
+struct MockVoltageVariable <: VariableType end
+struct MockCurrentVariable <: VariableType end
+
+# ----------------- IOM patches
+
+IOM.intermediate_set_units_base_system!(::MockSystem, base) = nothing
+IOM.intermediate_get_forecast_initial_timestamp(::MockSystem) = DateTime(1970)
+
+# ----------------- System / container building
+
+function _build_adj(problem, i)
+    adj = Vector{Tuple{Int, Float64}}()
+    for edge in problem.edges
+        if i in edge
+            j = i == edge[1] ? edge[2] : edge[1]
+            # @show edge
+            # @show i j
+            # @show problem.conductances problem.conductances[e]
+            push!(adj, (j, problem.conductances[edge]))
+        end
     end
-    for i in (n_gen + 1):(problem.size)
-        node = MockNetworkNode(i)
-        add_component!(sys, node)
-        push!(nodes, node)
-    end
-    vars = [ActivePowerVariable, VoltageVariable, CurrentVariable]
-    for var in vars
-        add_variables!(container, var, nodes, TestDeviceFormulation())
-    end
-    return nodes
+    return adj
 end
 
-function add_problem_constraints!(container, nodes, problem)
-    voltages = IOM.get_variable(container, VoltageVariable(), MockNetworkNode)
-    currents = IOM.get_variable(container, CurrentVariable(), MockNetworkNode)
+function build_system(problem)
+    n_gen = div(problem.size, 2)
+    gen_nodes =
+        [MockNetworkNode(i, _build_adj(problem, i), problem.pmaxes[i]) for i in 1:n_gen]
+    dem_nodes =
+        [MockNetworkNode(i, _build_adj(problem, i)) for i in (n_gen + 1):(problem.size)]
+    return MockSystem([gen_nodes; dem_nodes])
+end
+
+function add_variables!(container, sys)
+    jump_model = get_jump_model(container)
+    nodes = get_components(MockNetworkNode, sys)
+    variable_types = [ActivePowerVariable, MockVoltageVariable, MockCurrentVariable]
+    bounds_fns = [get_power_bounds, get_voltage_bounds, get_current_bounds]
+
+    for (variable_type, bounds_fn) in zip(variable_types, bounds_fns)
+        variable = add_variable_container!(
+            container,
+            variable_type(),
+            MockNetworkNode,
+            get_name.(nodes),
+            1:1,
+        )
+
+        for node in nodes
+            name = get_name(node)
+            lower_bound, upper_bound = bounds_fn(node)
+            variable[name, 1] = JuMP.@variable(
+                jump_model,
+                base_name = "$(variable_type)_MockNetworkNode_{$(name), 1}",
+                lower_bound = lower_bound, upper_bound = upper_bound
+            )
+        end
+    end
+    return
+end
+
+function add_constraints!(container, sys)
+    jump_model = get_jump_model(container)
+    nodes = get_components(MockNetworkNode, sys)
+    voltages = IOM.get_variable(container, MockVoltageVariable(), MockNetworkNode)
+    currents = IOM.get_variable(container, MockCurrentVariable(), MockNetworkNode)
 
     kcl_container = add_constraints_container!(
         container,
-        KCLConstraint(),
+        MockKCLConstraint(),
         MockNetworkNode,
-        [string(i) for i=1:problem.size],
-        1:2,
-        1:1, # time steps
+        [string(i) for i=1:length(nodes)],
+        1:1,
     )
-
-    jump_model = get_jump_model(container)
-    for (i, j) in problem.edges
-        e = problem.conductances[i, j]
-        i, j = string(i), string(j)
-        Ii, Ij = currents[i, 1], currents[j, 1]
-        Vi, Vj = voltages[i, 1], voltages[j, 1]
-        kcl_container[i, 1, 1] = JuMP.@constraint(
-            jump_model,
-            Ii == e * (Vi - Vj)
-        )
-        kcl_container[i, 2, 1] = JuMP.@constraint(
-            jump_model,
-            Ij == e * (Vj - Vi)
-        )
+    for node in nodes
+        i = string(node.id)
+        I, Vi = currents[i, 1], voltages[i, 1]
+        v_diff = JuMP.AffExpr(0.0)
+        for (j, conductance) in node.adj
+            Vj = voltages[string(j), 1]
+            JuMP.add_to_expression!(v_diff, conductance, Vi)
+            JuMP.add_to_expression!(v_diff, -conductance, Vj)
+        end
+        kcl_container[i, 1] = 
+            JuMP.@constraint(
+                jump_model,
+                I == v_diff
+            )
     end
 
     for i in problem.gens
@@ -221,14 +225,13 @@ function add_problem_constraints!(container, nodes, problem)
             ActivePowerVariable(),
             nodes[i],
             problem.cost_functions[i],
-            TestDeviceFormulation(),
+            MockDeviceFormulation(),
         )
     end
     return
 end
 
-function make_container(problem; optimizer = HiGHS.Optimizer)
-    sys = MockSystem(1.0)
+function make_container(sys; optimizer = HiGHS.Optimizer)
     container = IOM.OptimizationContainer(
         sys,
         IOM.Settings(
@@ -241,18 +244,7 @@ function make_container(problem; optimizer = HiGHS.Optimizer)
         IS.Deterministic,
     )
     IOM.set_time_steps!(container, 1:1)
-
-    nodes = build_system!(container, sys, problem)
-    add_problem_constraints!(container, nodes, problem)
-    return container, sys
-end
-
-function generate_network()
-    network = NetworkModel(MockPowerModel)
-    init_optimization_container!(container, network, sys)
-    status = IOM.execute_optimizer!(container, sys)
-
-    return container, status
+    return container
 end
 
 # ----------------- Profiling and comparison
@@ -260,7 +252,11 @@ end
 # -----------------
 
 problem = NetworkProblem(; size = 10, n_cost_segments = 3, seed = 0)
-container, sys = make_container(problem)
+sys = build_system(problem)
+container = make_container(sys)
+add_variables!(container, sys)
+add_constraints!(container, sys)
 network = NetworkModel(MockPowerModel)
 init_optimization_container!(container, network, sys)
-IOM.execute_optimizer!(container, sys)
+status = IOM.execute_optimizer!(container, sys)
+@show status
