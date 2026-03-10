@@ -111,9 +111,7 @@ function _add_epigraph_quadratic_approx!(
         meta,
     )
 
-    # Precompute breakpoint values and upper bound (invariant across names and time steps)
-    step = delta / (n_breakpoints - 1)
-    breakpoints = [(x_min + (k - 1) * step) for k in 1:n_breakpoints]
+    # Precompute upper bound (invariant across names and time steps)
     z_ub = max(x_min^2, x_max^2)
 
     for name in names, t in time_steps
