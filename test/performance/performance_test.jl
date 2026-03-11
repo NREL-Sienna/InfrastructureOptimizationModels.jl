@@ -109,7 +109,7 @@ try
                     system_to_file = false,
                     initialize_model = true,
                     optimizer_solve_log_print = false,
-                    direct_mode_optimizer = true,
+                    direct_model_optimizer = true,
                     check_numerical_bounds = false,
                 ),
                 DecisionModel(

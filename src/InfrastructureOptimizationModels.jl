@@ -481,7 +481,7 @@ export get_system_to_file, get_initialize_model, get_initialization_file
 export get_deserialize_initial_conditions, get_export_pwl_vars
 export get_check_numerical_bounds, get_allow_fails
 export get_optimizer_solve_log_print, get_calculate_conflict
-export get_detailed_optimizer_stats, get_direct_mode_optimizer
+export get_detailed_optimizer_stats, get_direct_model_optimizer
 export get_store_variable_names, get_export_optimization_model
 export use_time_series_cache
 export set_horizon!, set_initial_time!, set_warm_start!

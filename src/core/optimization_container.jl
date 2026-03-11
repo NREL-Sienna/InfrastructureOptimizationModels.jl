@@ -95,7 +95,7 @@ function OptimizationContainer(
         error("Default Time Series Type $T can't be abstract")
     end
 
-    if jump_model !== nothing && get_direct_mode_optimizer(settings)
+    if jump_model !== nothing && get_direct_model_optimizer(settings)
         throw(
             IS.ConflictingInputsError(
                 "Externally provided JuMP models are not compatible with the direct model keyword argument. Use JuMP.direct_model before passing the custom model",
@@ -302,7 +302,7 @@ function _finalize_jump_model!(container::OptimizationContainer, settings::Setti
         )
     end
 
-    if get_direct_mode_optimizer(settings)
+    if get_direct_model_optimizer(settings)
         optimizer = () -> MOI.instantiate(get_optimizer(settings))
         container.JuMPmodel = JuMP.direct_model(optimizer())
     elseif get_optimizer(settings) === nothing
@@ -332,18 +332,28 @@ function _finalize_jump_model!(container::OptimizationContainer, settings::Setti
     return
 end
 
+function intermediate_set_units_base_system!(sys::PSY.System, base)
+    PSY.set_units_base_system(sys, "SYSTEM_BASE")
+end
+
+function intermediate_get_forecast_initial_timestamp(sys::PSY.System)
+    return PSY.get_forecast_initial_timestamp(sys)
+end
+
 function init_optimization_container!(
     container::OptimizationContainer,
     network_model::NetworkModel{T},
-    sys::PSY.System,
+    sys::IS.InfrastructureSystemsContainer,
 ) where {T <: AbstractPowerModel}
-    PSY.set_units_base_system!(sys, "SYSTEM_BASE")
+    # PSY.set_units_base_system!(sys, "SYSTEM_BASE")
+    intermediate_set_units_base_system!(sys, "SYSTEM_BASE")
     # The order of operations matter
     settings = get_settings(container)
 
     if get_initial_time(settings) == UNSET_INI_TIME
         if get_default_time_series_type(container) <: PSY.AbstractDeterministic
-            set_initial_time!(settings, PSY.get_forecast_initial_timestamp(sys))
+            # set_initial_time!(settings, PSY.get_forecast_initial_timestamp(sys))
+            set_initial_time!(settings, intermediate_get_forecast_initial_timestamp(sys))
         elseif get_default_time_series_type(container) <: PSY.SingleTimeSeries
             ini_time, _ = PSY.check_time_series_consistency(sys, PSY.SingleTimeSeries)
             set_initial_time!(settings, ini_time)
@@ -437,7 +447,10 @@ end
 Execute the optimizer on the container's JuMP model, compute aux/dual variables,
 and return the run status. Called `solve_impl!(container, system)` in PSI.
 """
-function execute_optimizer!(container::OptimizationContainer, system::PSY.System)
+function execute_optimizer!(
+    container::OptimizationContainer,
+    system::IS.InfrastructureSystemsContainer,
+)
     optimizer_stats = get_optimizer_stats(container)
 
     jump_model = get_jump_model(container)

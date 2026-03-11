@@ -5,7 +5,7 @@ struct Settings
     warm_start::Base.RefValue{Bool}
     initial_time::Base.RefValue{Dates.DateTime}
     optimizer::Any  # Union{Nothing, MOI.OptimizerWithAttributes} or duck-typed optimizer
-    direct_mode_optimizer::Bool
+    direct_model_optimizer::Bool
     optimizer_solve_log_print::Bool
     detailed_optimizer_stats::Bool
     calculate_conflict::Bool
@@ -30,7 +30,7 @@ function Settings(
     horizon::Dates.Period = UNSET_HORIZON,
     resolution::Dates.Period = UNSET_RESOLUTION,
     optimizer = nothing,
-    direct_mode_optimizer::Bool = false,
+    direct_model_optimizer::Bool = false,
     optimizer_solve_log_print::Bool = false,
     detailed_optimizer_stats::Bool = false,
     calculate_conflict::Bool = false,
@@ -65,7 +65,7 @@ function Settings(
         Ref(warm_start),
         Ref(initial_time),
         optimizer_,
-        direct_mode_optimizer,
+        direct_model_optimizer,
         optimizer_solve_log_print,
         detailed_optimizer_stats,
         calculate_conflict,
@@ -148,7 +148,7 @@ get_allow_fails(settings::Settings) = settings.allow_fails
 get_optimizer_solve_log_print(settings::Settings) = settings.optimizer_solve_log_print
 get_calculate_conflict(settings::Settings) = settings.calculate_conflict
 get_detailed_optimizer_stats(settings::Settings) = settings.detailed_optimizer_stats
-get_direct_mode_optimizer(settings::Settings) = settings.direct_mode_optimizer
+get_direct_model_optimizer(settings::Settings) = settings.direct_model_optimizer
 get_store_variable_names(settings::Settings) = settings.store_variable_names
 get_rebuild_model(settings::Settings) = settings.rebuild_model
 get_export_optimization_model(settings::Settings) = settings.export_optimization_model
