@@ -314,7 +314,6 @@ export ExpressionType
 export StartupCostParameter
 export ShutdownCostParameter
 export OnStatusParameter
-export _get_ramp_constraint_devices
 
 # core folder exports
 # optimization_container.jl refactor
@@ -337,14 +336,13 @@ export supports_milp, get_quadratic_cost_per_system_unit
 export check_hvdc_line_limits_unidirectional, check_hvdc_line_limits_consistency
 export add_sparse_pwl_interpolation_variables!
 export JuMPOrFloat
-export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
 # Constraint helpers
 export add_range_constraints!, add_parameterized_upper_bound_range_constraints
 export add_reserve_bound_range_constraints!
 export add_semicontinuous_range_constraints!, add_semicontinuous_ramp_constraints!
 # Cost helpers
 export add_shut_down_cost!, add_start_up_cost!
-export _add_pwl_term!, _get_sos_value, _onvar_cost, add_cost_to_expression!
+export add_cost_to_expression!
 # Duration constraint helpers
 export device_duration_compact_retrospective!
 export device_duration_parameters!, device_duration_retrospective!
@@ -404,7 +402,6 @@ export add_constraints_container!, add_variable_cost!
 export add_initial_condition_container!
 export has_initial_condition_value, set_ic_quantity!, get_last_recorded_value
 export set_initial_conditions_model_container!, get_initial_conditions_model_container
-export _validate_warm_start_support, _add_services_to_device_model!
 export get_component_type, get_component_name, add_jump_parameter
 # Template/model access
 export get_use_slacks, get_template, get_model
