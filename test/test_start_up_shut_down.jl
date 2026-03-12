@@ -1,20 +1,13 @@
 """
-Integration tests for start-up and shut-down cost objective function construction.
-Tests the functions in src/objective_function/start_up_shut_down.jl.
-Requires PowerSystems types (PSY.ThermalStandard, PSY.ThermalGenerationCost).
-Test types defined in test_utils/test_types.jl.
+Unit tests for start-up and shut-down cost objective function construction.
+Tests the functions in src/objective_function/start_up_shut_down.jl using mock components.
 """
 
 IOM._sos_status(::Type, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
 
-# Formulation already defined in mock_components.jl: TestDeviceFormulation
-
-# Interface implementations for PSY types with our test variable/formulation
-
 IOM.objective_function_multiplier(::TestShutDownVariable, ::TestDeviceFormulation) = 1.0
 IOM.objective_function_multiplier(::TestStartVariable, ::TestDeviceFormulation) = 1.0
 
-# With the new interface, start_up_cost must be implemented for each cost type.
 # Float64 startup costs just pass through.
 IOM.start_up_cost(
     cost::Float64,
@@ -23,61 +16,21 @@ IOM.start_up_cost(
     ::TestDeviceFormulation,
 ) = cost
 
-# Helper to create a PSY ThermalStandard with specified startup/shutdown costs
-function make_psy_thermal_with_costs(
+# Helper to create a MockThermalGen with specified startup/shutdown costs
+function make_thermal_with_costs(
     name::String;
     startup_cost::Float64 = 0.0,
     shutdown_cost::Float64 = 0.0,
     must_run::Bool = false,
 )
-    bus = PSY.ACBus(;
-        number = 1,
-        name = "bus1",
-        bustype = PSY.ACBusTypes.PV,
-        angle = 0.0,
-        magnitude = 1.0,
-        voltage_limits = (min = 0.9, max = 1.1),
-        base_voltage = 230.0,
-        available = true,
-    )
-
-    # Create a simple linear cost curve
-    cost_curve = PSY.CostCurve(;
-        value_curve = IS.LinearCurve(0.0),  # No variable cost for this test
-        power_units = PSY.UnitSystem.NATURAL_UNITS,
-    )
-
-    op_cost = PSY.ThermalGenerationCost(;
-        variable = cost_curve,
-        fixed = 0.0,
-        start_up = startup_cost,
-        shut_down = shutdown_cost,
-    )
-
-    return PSY.ThermalStandard(;
-        name = name,
-        available = true,
-        status = true,
-        bus = bus,
-        active_power = 50.0,
-        reactive_power = 10.0,
-        rating = 100.0,
-        active_power_limits = (min = 10.0, max = 100.0),
-        reactive_power_limits = (min = -50.0, max = 50.0),
-        ramp_limits = (up = 10.0, down = 10.0),
-        time_limits = (up = 2.0, down = 2.0),
-        operation_cost = op_cost,
-        base_power = 100.0,
-        prime_mover_type = PSY.PrimeMovers.ST,
-        fuel = PSY.ThermalFuels.COAL,
-        must_run = must_run,
-    )
+    op_cost = MockOperationCost(0.0, false, 0.0, startup_cost, shutdown_cost)
+    return make_mock_thermal(name; operation_cost = op_cost, must_run = must_run)
 end
 
-# Helper to set up container with variables for PSY devices
+# Helper to set up container with variables for mock devices
 function setup_startup_shutdown_test_container(
     time_steps::UnitRange{Int},
-    devices::Vector{PSY.ThermalStandard},
+    devices::Vector{MockThermalGen},
     var_type::IOM.VariableType;
     resolution = Dates.Hour(1),
 )
@@ -90,17 +43,15 @@ function setup_startup_shutdown_test_container(
     container = IOM.OptimizationContainer(sys, settings, JuMP.Model(), MockDeterministic)
     IOM.set_time_steps!(container, time_steps)
 
-    # Add variable container for all devices
-    device_names = [PSY.get_name(d) for d in devices]
+    device_names = [get_name(d) for d in devices]
     var_container = IOM.add_variable_container!(
         container,
         var_type,
-        PSY.ThermalStandard,
+        MockThermalGen,
         device_names,
         time_steps,
     )
 
-    # Populate with actual JuMP variables
     jump_model = IOM.get_jump_model(container)
     for name in device_names, t in time_steps
         var_container[name, t] = JuMP.@variable(
@@ -112,16 +63,16 @@ function setup_startup_shutdown_test_container(
     return container
 end
 
-# Create a FlattenIteratorWrapper from a vector of PSY devices
-function make_psy_device_iterator(devices::Vector{PSY.ThermalStandard})
-    return IS.FlattenIteratorWrapper(PSY.ThermalStandard, Vector[devices])
+# Create a FlattenIteratorWrapper from a vector of mock devices
+function make_mock_device_iterator(devices::Vector{MockThermalGen})
+    return IS.FlattenIteratorWrapper(MockThermalGen, Vector[devices])
 end
 
 @testset "Start-up and Shut-down Cost Objective Functions" begin
     @testset "add_shut_down_cost! adds shutdown cost to objective" begin
         time_steps = 1:3
         shutdown_cost = 50.0
-        device = make_psy_thermal_with_costs("gen1"; shutdown_cost = shutdown_cost)
+        device = make_thermal_with_costs("gen1"; shutdown_cost = shutdown_cost)
         devices = [device]
         container = setup_startup_shutdown_test_container(
             time_steps,
@@ -129,7 +80,7 @@ end
             TestShutDownVariable(),
         )
 
-        devices_iter = make_psy_device_iterator(devices)
+        devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_shut_down_cost!(
             container,
@@ -142,7 +93,7 @@ end
         @test verify_objective_coefficients(
             container,
             TestShutDownVariable(),
-            PSY.ThermalStandard,
+            MockThermalGen,
             "gen1",
             shutdown_cost;
             variant = false,
@@ -152,7 +103,7 @@ end
     @testset "add_shut_down_cost! skips must_run devices" begin
         time_steps = 1:2
         shutdown_cost = 50.0
-        device = make_psy_thermal_with_costs(
+        device = make_thermal_with_costs(
             "gen1";
             shutdown_cost = shutdown_cost,
             must_run = true,
@@ -164,7 +115,7 @@ end
             TestShutDownVariable(),
         )
 
-        devices_iter = make_psy_device_iterator(devices)
+        devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_shut_down_cost!(
             container,
@@ -179,7 +130,7 @@ end
 
     @testset "add_shut_down_cost! with zero cost skips device" begin
         time_steps = 1:2
-        device = make_psy_thermal_with_costs("gen1"; shutdown_cost = 0.0)
+        device = make_thermal_with_costs("gen1"; shutdown_cost = 0.0)
         devices = [device]
         container = setup_startup_shutdown_test_container(
             time_steps,
@@ -187,7 +138,7 @@ end
             TestShutDownVariable(),
         )
 
-        devices_iter = make_psy_device_iterator(devices)
+        devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_shut_down_cost!(
             container,
@@ -203,7 +154,7 @@ end
     @testset "add_start_up_cost! adds startup cost to objective" begin
         time_steps = 1:3
         startup_cost = 100.0
-        device = make_psy_thermal_with_costs("gen1"; startup_cost = startup_cost)
+        device = make_thermal_with_costs("gen1"; startup_cost = startup_cost)
         devices = [device]
         container = setup_startup_shutdown_test_container(
             time_steps,
@@ -211,7 +162,7 @@ end
             TestStartVariable(),
         )
 
-        devices_iter = make_psy_device_iterator(devices)
+        devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_start_up_cost!(
             container,
@@ -224,7 +175,7 @@ end
         @test verify_objective_coefficients(
             container,
             TestStartVariable(),
-            PSY.ThermalStandard,
+            MockThermalGen,
             "gen1",
             startup_cost;
             variant = false,
@@ -234,7 +185,7 @@ end
     @testset "add_start_up_cost! skips must_run devices" begin
         time_steps = 1:2
         startup_cost = 100.0
-        device = make_psy_thermal_with_costs(
+        device = make_thermal_with_costs(
             "gen1";
             startup_cost = startup_cost,
             must_run = true,
@@ -246,7 +197,7 @@ end
             TestStartVariable(),
         )
 
-        devices_iter = make_psy_device_iterator(devices)
+        devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_start_up_cost!(
             container,
@@ -261,7 +212,7 @@ end
 
     @testset "add_start_up_cost! with zero cost skips device" begin
         time_steps = 1:2
-        device = make_psy_thermal_with_costs("gen1"; startup_cost = 0.0)
+        device = make_thermal_with_costs("gen1"; startup_cost = 0.0)
         devices = [device]
         container = setup_startup_shutdown_test_container(
             time_steps,
@@ -269,7 +220,7 @@ end
             TestStartVariable(),
         )
 
-        devices_iter = make_psy_device_iterator(devices)
+        devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_start_up_cost!(
             container,
@@ -287,12 +238,12 @@ end
         startup1, shutdown1 = 100.0, 50.0
         startup2, shutdown2 = 200.0, 75.0
 
-        device1 = make_psy_thermal_with_costs(
+        device1 = make_thermal_with_costs(
             "gen1";
             startup_cost = startup1,
             shutdown_cost = shutdown1,
         )
-        device2 = make_psy_thermal_with_costs(
+        device2 = make_thermal_with_costs(
             "gen2";
             startup_cost = startup2,
             shutdown_cost = shutdown2,
@@ -305,7 +256,7 @@ end
             devices,
             TestShutDownVariable(),
         )
-        devices_iter = make_psy_device_iterator(devices)
+        devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_shut_down_cost!(
             container_sd,
@@ -317,7 +268,7 @@ end
         @test verify_objective_coefficients(
             container_sd,
             TestShutDownVariable(),
-            PSY.ThermalStandard,
+            MockThermalGen,
             "gen1",
             shutdown1;
             variant = false,
@@ -325,7 +276,7 @@ end
         @test verify_objective_coefficients(
             container_sd,
             TestShutDownVariable(),
-            PSY.ThermalStandard,
+            MockThermalGen,
             "gen2",
             shutdown2;
             variant = false,
@@ -337,7 +288,7 @@ end
             devices,
             TestStartVariable(),
         )
-        devices_iter = make_psy_device_iterator(devices)
+        devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_start_up_cost!(
             container_su,
@@ -349,7 +300,7 @@ end
         @test verify_objective_coefficients(
             container_su,
             TestStartVariable(),
-            PSY.ThermalStandard,
+            MockThermalGen,
             "gen1",
             startup1;
             variant = false,
@@ -357,7 +308,7 @@ end
         @test verify_objective_coefficients(
             container_su,
             TestStartVariable(),
-            PSY.ThermalStandard,
+            MockThermalGen,
             "gen2",
             startup2;
             variant = false,

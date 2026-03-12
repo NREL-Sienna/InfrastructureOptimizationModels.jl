@@ -1,6 +1,13 @@
 using Test
 using InfrastructureOptimizationModels
 using Logging
+using CoverageTools
+using Coverage
+
+const BASE_DIR = joinpath(@__DIR__, "..")
+if Base.JLOptions().code_coverage != 0
+    CoverageTools.clean_folder("$BASE_DIR/src")
+end
 
 # Import InfrastructureSystems for logging utilities
 using InfrastructureSystems
@@ -28,5 +35,8 @@ try
 finally
     # Guarantee that the global logger is reset
     global_logger(logger)
-    nothing
+    if Base.JLOptions().code_coverage != 0
+        coverage = CoverageTools.process_folder("$BASE_DIR/src")
+        LCOV.writefile("$BASE_DIR/lcov.info", coverage)
+    end
 end

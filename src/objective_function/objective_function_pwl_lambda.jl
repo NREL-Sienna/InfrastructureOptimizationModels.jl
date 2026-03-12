@@ -37,12 +37,25 @@ Normalization constraint for PWL cost: sum of delta variables equals on-status.
 """
 struct PiecewiseLinearCostNormalizationConstraint <: ConstraintType end
 
-# mildly device-specific, but a single line of code. (Really dispatching on formulation here:
-# device is just for safety. Shouldn't have non-thermal with thermal formulation.)
 _sos_status(::Type{<:IS.InfrastructureSystemsComponent}, ::AbstractDeviceFormulation) =
     SOSStatusVariable.NO_VARIABLE
-_sos_status(::Type{<:PSY.ThermalGen}, ::AbstractThermalUnitCommitment) =
-    SOSStatusVariable.VARIABLE
+
+"""
+Trait function: does device type `T` use commitment (on/off) variables?
+Defaults to `false`; specialized for `PSY.ThermalGen`.
+"""
+uses_commitment_variables(::Type{<:IS.InfrastructureSystemsComponent}) = false
+uses_commitment_variables(::Type{<:PSY.ThermalGen}) = true
+
+function _sos_status(
+    ::Type{T}, ::AbstractThermalUnitCommitment,
+) where {T <: IS.InfrastructureSystemsComponent}
+    return if uses_commitment_variables(T)
+        SOSStatusVariable.VARIABLE
+    else
+        SOSStatusVariable.NO_VARIABLE
+    end
+end
 
 function _get_sos_value(
     container::OptimizationContainer,
