@@ -61,21 +61,21 @@ include a ``P_{\min}`` offset:
 
 ### Variables and Constraints
 
-| Container Type | Description |
-|:--- |:--- |
-| [`PiecewiseLinearCostVariable`](@ref) | Lambda weights ``\lambda_i \in [0, 1]`` |
-| [`PiecewiseLinearCostConstraint`](@ref) | Links power variable to weighted breakpoints |
-| [`PiecewiseLinearCostNormalizationConstraint`](@ref) | Ensures ``\sum \lambda_i = u`` |
+| Container Type                                       | Description                                  |
+|:---------------------------------------------------- |:-------------------------------------------- |
+| [`PiecewiseLinearCostVariable`](@ref)                | Lambda weights ``\lambda_i \in [0, 1]``      |
+| [`PiecewiseLinearCostConstraint`](@ref)              | Links power variable to weighted breakpoints |
+| [`PiecewiseLinearCostNormalizationConstraint`](@ref) | Ensures ``\sum \lambda_i = u``               |
 
 ### Implementation
 
-| Function | Role |
-|:--- |:--- |
-| `_add_pwl_variables!` | Creates ``n + 1`` lambda variables per time step |
-| `_add_pwl_constraint_standard!` | Adds linking and normalization constraints |
-| `_add_pwl_constraint_compact!` | Compact form with ``P_{\min}`` offset |
-| `_add_pwl_term!` | Orchestrates variables, constraints, SOS2, and cost expression |
-| `add_pwl_sos2_constraint!` | Adds SOS2 adjacency for non-convex curves |
+| Function                        | Role                                                           |
+|:------------------------------- |:-------------------------------------------------------------- |
+| `_add_pwl_variables!`           | Creates ``n + 1`` lambda variables per time step               |
+| `_add_pwl_constraint_standard!` | Adds linking and normalization constraints                     |
+| `_add_pwl_constraint_compact!`  | Compact form with ``P_{\min}`` offset                          |
+| `_add_pwl_term!`                | Orchestrates variables, constraints, SOS2, and cost expression |
+| `add_pwl_sos2_constraint!`      | Adds SOS2 adjacency for non-convex curves                      |
 
 ## Delta Formulation (Incremental / Block Offers)
 
@@ -116,34 +116,34 @@ increasing.
 
 ### Variables and Constraints
 
-| Container Type | Description |
-|:--- |:--- |
-| [`PiecewiseLinearBlockIncrementalOffer`](@ref) | Delta variables for incremental offers |
-| [`PiecewiseLinearBlockDecrementalOffer`](@ref) | Delta variables for decremental offers |
-| [`PiecewiseLinearBlockIncrementalOfferConstraint`](@ref) | Linking + capacity for incremental |
-| [`PiecewiseLinearBlockDecrementalOfferConstraint`](@ref) | Linking + capacity for decremental |
+| Container Type                                           | Description                            |
+|:-------------------------------------------------------- |:-------------------------------------- |
+| [`PiecewiseLinearBlockIncrementalOffer`](@ref)           | Delta variables for incremental offers |
+| [`PiecewiseLinearBlockDecrementalOffer`](@ref)           | Delta variables for decremental offers |
+| [`PiecewiseLinearBlockIncrementalOfferConstraint`](@ref) | Linking + capacity for incremental     |
+| [`PiecewiseLinearBlockDecrementalOfferConstraint`](@ref) | Linking + capacity for decremental     |
 
 ### Implementation
 
-| Function | Role |
-|:--- |:--- |
-| `add_pwl_variables!` | Creates ``n`` delta variables per time step |
-| `_add_pwl_constraint!` | Adds linking and segment capacity constraints |
-| `add_pwl_term!` | Orchestrates variables, constraints, and cost expression |
-| `get_pwl_cost_expression` | Builds ``\sum m_k \, \delta_k`` cost expression |
-| `add_pwl_block_offer_constraints!` | Low-level block-offer constraint builder |
+| Function                           | Role                                                     |
+|:---------------------------------- |:-------------------------------------------------------- |
+| `add_pwl_variables!`               | Creates ``n`` delta variables per time step              |
+| `_add_pwl_constraint!`             | Adds linking and segment capacity constraints            |
+| `add_pwl_term!`                    | Orchestrates variables, constraints, and cost expression |
+| `get_pwl_cost_expression`          | Builds ``\sum m_k \, \delta_k`` cost expression          |
+| `add_pwl_block_offer_constraints!` | Low-level block-offer constraint builder                 |
 
 ## Comparison
 
-| | Lambda (``\lambda``) | Delta (``\delta``) |
-|:--- |:--- |:--- |
-| **Thinks about** | Breakpoints (the dots) | Segments (the lines) |
-| **Variables** | ``n + 1`` (one per breakpoint) | ``n`` (one per segment) |
-| **Output equation** | ``p = \sum \lambda_i \, P_i`` | ``p = \sum \delta_k + P_{\min}`` |
-| **Cost equation** | ``C = \sum \lambda_i \, C(P_i)`` | ``C = \sum m_k \, \delta_k`` |
-| **Adjacency rule** | Must be enforced explicitly (SOS2) | Often automatic (convex case) |
-| **Binary variables** | Usually needed (non-convex) | Often not needed (convex case) |
-| **Used by** | `CostCurve`, `FuelCurve` | `MarketBidCost`, `ImportExportCost` |
+|                      | Lambda (``\lambda``)               | Delta (``\delta``)                  |
+|:-------------------- |:---------------------------------- |:----------------------------------- |
+| **Thinks about**     | Breakpoints (the dots)             | Segments (the lines)                |
+| **Variables**        | ``n + 1`` (one per breakpoint)     | ``n`` (one per segment)             |
+| **Output equation**  | ``p = \sum \lambda_i \, P_i``      | ``p = \sum \delta_k + P_{\min}``    |
+| **Cost equation**    | ``C = \sum \lambda_i \, C(P_i)``   | ``C = \sum m_k \, \delta_k``        |
+| **Adjacency rule**   | Must be enforced explicitly (SOS2) | Often automatic (convex case)       |
+| **Binary variables** | Usually needed (non-convex)        | Often not needed (convex case)      |
+| **Used by**          | `CostCurve`, `FuelCurve`           | `MarketBidCost`, `ImportExportCost` |
 
 ## When Does the Choice Matter?
 
@@ -181,8 +181,8 @@ filled before ``\delta_2`` can begin.
 
 ### Implementation
 
-| Function | Role |
-|:--- |:--- |
-| `_get_breakpoints_for_pwl_function` | Generates equally-spaced breakpoints |
-| `add_sparse_pwl_interpolation_variables!` | Creates ``\delta`` and ``z`` variables |
+| Function                                             | Role                                        |
+|:---------------------------------------------------- |:------------------------------------------- |
+| `_get_breakpoints_for_pwl_function`                  | Generates equally-spaced breakpoints        |
+| `add_sparse_pwl_interpolation_variables!`            | Creates ``\delta`` and ``z`` variables      |
 | `_add_generic_incremental_interpolation_constraint!` | Adds interpolation and ordering constraints |

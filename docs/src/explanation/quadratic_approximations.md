@@ -99,7 +99,7 @@ linear constraints per component per time step. Same approximation quality as So
 ## Sawtooth
 
 Approximates ``x^2`` using the recursive sawtooth MIP formulation from
-Beach, Burlacu, Hager, and Hildebrand (2024). This method requires only ``O(\log(1/\varepsilon))``
+Beach, Burlacu, Hager, and Hildebrand (2023). This method requires only ``O(\log(1/\varepsilon))``
 binary variables to achieve error ``\varepsilon``, compared to ``O(1/\sqrt{\varepsilon})``
 for the SOS2 methods.
 
@@ -182,16 +182,16 @@ lies entirely in how efficiently the segments are encoded.
 If we budget ``L`` binary/integer variables for each method, SOS2 gets ``L`` segments
 while sawtooth gets ``2^L`` segments. The error gap grows exponentially:
 
-| ``L`` | SOS2 segments | SOS2 error                    | Sawtooth segments | Sawtooth error                | Ratio |
-|:----- |:------------- |:----------------------------- |:----------------- |:----------------------------- |:----- |
-| 1     | 1             | ``2.50\times10^{-1}``         | 2                 | ``6.25\times10^{-2}``         | 4x    |
-| 2     | 2             | ``6.25\times10^{-2}``         | 4                 | ``1.56\times10^{-2}``         | 4x    |
-| 3     | 3             | ``2.78\times10^{-2}``         | 8                 | ``3.91\times10^{-3}``         | 7x    |
-| 4     | 4             | ``1.56\times10^{-2}``         | 16                | ``9.77\times10^{-4}``         | 16x   |
-| 5     | 5             | ``1.00\times10^{-2}``         | 32                | ``2.44\times10^{-4}``         | 41x   |
-| 6     | 6             | ``6.94\times10^{-3}``         | 64                | ``6.10\times10^{-5}``         | 114x  |
-| 7     | 7             | ``5.10\times10^{-3}``         | 128               | ``1.53\times10^{-5}``         | 334x  |
-| 8     | 8             | ``3.91\times10^{-3}``         | 256               | ``3.81\times10^{-6}``         | 1024x |
+| ``L`` | SOS2 segments | SOS2 error            | Sawtooth segments | Sawtooth error        | Ratio |
+|:----- |:------------- |:--------------------- |:----------------- |:--------------------- |:----- |
+| 1     | 1             | ``2.50\times10^{-1}`` | 2                 | ``6.25\times10^{-2}`` | 4x    |
+| 2     | 2             | ``6.25\times10^{-2}`` | 4                 | ``1.56\times10^{-2}`` | 4x    |
+| 3     | 3             | ``2.78\times10^{-2}`` | 8                 | ``3.91\times10^{-3}`` | 7x    |
+| 4     | 4             | ``1.56\times10^{-2}`` | 16                | ``9.77\times10^{-4}`` | 16x   |
+| 5     | 5             | ``1.00\times10^{-2}`` | 32                | ``2.44\times10^{-4}`` | 41x   |
+| 6     | 6             | ``6.94\times10^{-3}`` | 64                | ``6.10\times10^{-5}`` | 114x  |
+| 7     | 7             | ``5.10\times10^{-3}`` | 128               | ``1.53\times10^{-5}`` | 334x  |
+| 8     | 8             | ``3.91\times10^{-3}`` | 256               | ``3.81\times10^{-6}`` | 1024x |
 
 SOS2 error decays **polynomially** as ``O(1/L^2)``; sawtooth error decays
 **exponentially** as ``O(4^{-L})``.
@@ -203,16 +203,16 @@ PWL interpolations, so the approximation error is the same. The difference is in
 formulation size: SOS2 needs ``O(n)`` binary variables, sawtooth needs only
 ``\log_2(n)``.
 
-| Segments ``n`` | Error                         | SOS2 vars | Sawtooth vars | Var ratio |
-|:-------------- |:----------------------------- |:--------- |:------------- |:--------- |
-| 2              | ``6.25\times10^{-2}``         | 1         | 1             | 1.0x      |
-| 4              | ``1.56\times10^{-2}``         | 3         | 2             | 1.5x      |
-| 8              | ``3.91\times10^{-3}``         | 7         | 3             | 2.3x      |
-| 16             | ``9.77\times10^{-4}``         | 15        | 4             | 3.8x      |
-| 32             | ``2.44\times10^{-4}``         | 31        | 5             | 6.2x      |
-| 64             | ``6.10\times10^{-5}``         | 63        | 6             | 10.5x     |
-| 128            | ``1.53\times10^{-5}``         | 127       | 7             | 18.1x     |
-| 256            | ``3.81\times10^{-6}``         | 255       | 8             | 31.9x     |
+| Segments ``n`` | Error                 | SOS2 vars | Sawtooth vars | Var ratio |
+|:-------------- |:--------------------- |:--------- |:------------- |:--------- |
+| 2              | ``6.25\times10^{-2}`` | 1         | 1             | 1.0x      |
+| 4              | ``1.56\times10^{-2}`` | 3         | 2             | 1.5x      |
+| 8              | ``3.91\times10^{-3}`` | 7         | 3             | 2.3x      |
+| 16             | ``9.77\times10^{-4}`` | 15        | 4             | 3.8x      |
+| 32             | ``2.44\times10^{-4}`` | 31        | 5             | 6.2x      |
+| 64             | ``6.10\times10^{-5}`` | 63        | 6             | 10.5x     |
+| 128            | ``1.53\times10^{-5}`` | 127       | 7             | 18.1x     |
+| 256            | ``3.81\times10^{-6}`` | 255       | 8             | 31.9x     |
 
 ## Extension to Bilinear Terms
 
@@ -252,7 +252,7 @@ advantages of SOS2 depends on the specific problem and solver.
 
 ## References
 
-- Beach, B., Burlacu, R., Barmann, A., Hager, L., Kleinert, T. (2023). *Enhancements of discretization approaches for non-convex MIQCQPs*. Journal of Global Optimization.
-- Barmann, A., Burlacu, R., Hager, L., Kleinert, T. (2023). *On piecewise linear approximations of bilinear terms: structural comparison of univariate and bivariate MIP formulations*. Journal of Global Optimization, 85, 789-819.
-- Yarotsky, D. (2017). *Error bounds for approximations with deep ReLU networks*. Neural Networks, 94, 103-114.
-- Huchette, J.A. (2018). *Advanced mixed-integer programming formulations: methodology, computation, and application*. PhD thesis, MIT.
+  - Beach, B., Burlacu, R., Barmann, A., Hager, L., Kleinert, T. (2023). *Enhancements of discretization approaches for non-convex MIQCQPs*. Journal of Global Optimization.
+  - Barmann, A., Burlacu, R., Hager, L., Kleinert, T. (2023). *On piecewise linear approximations of bilinear terms: structural comparison of univariate and bivariate MIP formulations*. Journal of Global Optimization, 85, 789-819.
+  - Yarotsky, D. (2017). *Error bounds for approximations with deep ReLU networks*. Neural Networks, 94, 103-114.
+  - Huchette, J.A. (2018). *Advanced mixed-integer programming formulations: methodology, computation, and application*. PhD thesis, MIT.

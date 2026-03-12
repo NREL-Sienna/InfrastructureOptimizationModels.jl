@@ -156,4 +156,3 @@ function add_proportional_cost_invariant!(
     end
     return
 end
-

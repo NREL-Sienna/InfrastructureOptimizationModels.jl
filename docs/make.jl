@@ -21,7 +21,7 @@ pages = OrderedDict(
         "Internals" => "reference/internal.md"],
         "Public API" => "reference/public.md",
         "Piecewise Linear Cost Functions" => "explanation/piecewise_linear_cost_functions.md",
-        "Quadratic Approximations" => "reference/quadratic_approximations.md",
+        "Quadratic Approximations" => "explanation/quadratic_approximations.md",
     ],
 )
 

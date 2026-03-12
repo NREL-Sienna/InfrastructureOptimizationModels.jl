@@ -190,7 +190,7 @@ end
 Implement the constraints for PWL variables for Compact form. That is:
 
 ```math
-\\sum_{k\\in\\mathcal{K}} P_k^{max} \\delta_{k,t} = p_t + P_min * u_t \\\\
+\\sum_{k\\in\\mathcal{K}} P_k^{max} \\delta_{k,t} = p_t + P_{\\min} \\cdot u_t \\\\
 \\sum_{k\\in\\mathcal{K}} \\delta_{k,t} = on_t
 ```
 
