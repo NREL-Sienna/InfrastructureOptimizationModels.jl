@@ -46,6 +46,7 @@ function _add_mccormick_envelope!(
     y_min::Float64,
     y_max::Float64,
     meta::String;
+    lower_bounds = true
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op y_max > y_min
@@ -57,7 +58,8 @@ function _add_mccormick_envelope!(
         _add_mccormick_envelope!(
             jump_model, mc_cons, (name, t),
             x_var[name, t], y_var[name, t], z_var[name, t],
-            x_min, x_max, y_min, y_max,
+            x_min, x_max, y_min, y_max;
+            lower_bounds
         )
     end
 
@@ -74,12 +76,13 @@ function _add_mccormick_envelope!(
     x_min::Float64,
     x_max::Float64,
     meta::String;
+    lower_bounds = true
 ) where {C <: IS.InfrastructureSystemsComponent}
     _add_mccormick_envelope!(
         container, C, names, time_steps,
         x_var, x_var, z_var,
         x_min, x_max, x_min, x_max,
-        meta
+        meta; lower_bounds
     )
     return
 end
@@ -94,16 +97,19 @@ function _add_mccormick_envelope!(
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
-    y_max::Float64,
+    y_max::Float64;
+    lower_bounds = true
 )
-    cons[index[1:end-1]..., 1, index[end]] = JuMP.@constraint(
-        jump_model,
-        z >= x_min * y + x * y_min - x_min * y_min,
-    )
-    cons[index[1:end-1]..., 2, index[end]] = JuMP.@constraint(
-        jump_model,
-        z >= x_max * y + x * y_max - x_max * y_max,
-    )
+    if lower_bounds
+        cons[index[1:end-1]..., 1, index[end]] = JuMP.@constraint(
+            jump_model,
+            z >= x_min * y + x * y_min - x_min * y_min,
+        )
+        cons[index[1:end-1]..., 2, index[end]] = JuMP.@constraint(
+            jump_model,
+            z >= x_max * y + x * y_max - x_max * y_max,
+        )
+    end
     cons[index[1:end-1]..., 3, index[end]] = JuMP.@constraint(
         jump_model,
         z <= x_max * y + x * y_min - x_max * y_min,
@@ -121,11 +127,13 @@ function _add_mccormick_envelope!(
     x,
     z,
     x_min::Float64,
-    x_max::Float64,
+    x_max::Float64;
+    lower_bounds = true
 )
     _add_mccormick_envelope!(
         jump_model, cons, index,
         x, x, z,
-        x_min, x_max, x_min, x_max
+        x_min, x_max, x_min, x_max;
+        lower_bounds
     )
 end

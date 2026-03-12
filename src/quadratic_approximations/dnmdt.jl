@@ -160,7 +160,8 @@ function _add_dnmdt_univariate_approx!(
             _add_mccormick_envelope!(
                 jump_model, bmc_cons, (name, j, t),
                 w_sum, beta_var[name, j, t], u_j,
-                0.0, ws_hi, 0.0, 1.0,
+                0.0, ws_hi, 0.0, 1.0;
+                lower_bounds = !tighten
             )
         end
 
@@ -185,8 +186,16 @@ function _add_dnmdt_univariate_approx!(
         JuMP.add_to_expression!(result, x_min^2)
     end
 
+    # ── Residual McCormick ──
+    _add_mccormick_envelope!(
+        container, C, names, time_steps,
+        dx_var, dz_var,
+        0.0, eps_L, meta * "_residual";
+        lower_bounds = !tighten
+    )
+
     # ── Epigraph tightening (T-D-NMDT only) ──
-    if tigthen
+    if tighten
         epi_expr = _add_epigraph_quadratic_approx!(
             container, C, names, time_steps,
             x_var, x_min, x_max, epigraph_depth, meta * "_epi",
@@ -199,14 +208,6 @@ function _add_dnmdt_univariate_approx!(
                 result_expr[name, t] >= epi_expr[name, t],
             )
         end
-
-    # ── Residual McCormick (D-NMDT only) ──
-    else
-        _add_mccormick_envelope!(
-            container, C, names, time_steps,
-            dx_var, dz_var,
-            0.0, eps_L, meta * "_residual",
-        )
     end
 
     return result_expr
