@@ -57,7 +57,22 @@ _get_sos_value(
 ################# PWL Variables ##################
 ##################################################
 
-# This cases bounds the data by 1 - 0
+"""
+Create lambda (``\\lambda``) variables for the convex-combination (lambda) PWL formulation.
+
+This is the **lambda formulation**: each breakpoint gets a weight ``\\lambda_i \\in [0, 1]``,
+and the operating point is expressed as a convex combination of the breakpoints:
+
+```math
+p = \\sum_{i} \\lambda_i \\, P_i^{\\max}, \\qquad
+C(p) = \\sum_{i} \\lambda_i \\, C(P_i^{\\max}), \\qquad
+\\sum_{i} \\lambda_i = 1
+```
+
+Creates `length(cost_data) + 1` variables (one per breakpoint) with bounds ``[0, 1]``.
+
+See also: [`_add_pwl_constraint_standard!`](@ref), [`_add_pwl_constraint_compact!`](@ref)
+"""
 function _add_pwl_variables!(
     container::OptimizationContainer,
     ::Type{T},
@@ -120,14 +135,32 @@ end
 #   _add_pwl_constraint_compact!(container, component, break_points, sos_val, t, power_var, P_min)
 
 """
-Implement the standard constraints for PWL variables. That is:
+Add the standard lambda-formulation constraints for PWL cost variables.
+
+In the **lambda formulation**, the operating point is a convex combination of breakpoints.
+This function adds two constraints per component per time step:
+
+  - **Linking**: the power variable equals the weighted sum of breakpoints.
 
 ```math
-\\sum_{k\\in\\mathcal{K}} P_k^{max} \\delta_{k,t} = p_t \\\\
-\\sum_{k\\in\\mathcal{K}} \\delta_{k,t} = on_t
+\\sum_{k\\in\\mathcal{K}} P_k^{\\max} \\, \\lambda_{k,t} = p_t
 ```
 
-For compact form (PowerAboveMinimumVariable), use `_add_pwl_constraint_compact!` instead.
+  - **Normalization**: the weights sum to the on-status indicator.
+
+```math
+\\sum_{k\\in\\mathcal{K}} \\lambda_{k,t} = u_t
+```
+
+When the cost curve is non-convex, an SOS2 constraint must also be added (see
+[`add_pwl_sos2_constraint!`](@ref)) to enforce the adjacency condition — at most two
+neighboring ``\\lambda`` values may be nonzero. For convex curves, the adjacency condition
+is automatically satisfied by the optimizer.
+
+For the compact form that accounts for minimum generation (PowerAboveMinimumVariable),
+use [`_add_pwl_constraint_compact!`](@ref) instead.
+
+See also: [`_add_pwl_variables!`](@ref), [`_add_pwl_term!`](@ref)
 """
 function _add_pwl_constraint_standard!(
     container::OptimizationContainer,
@@ -176,14 +209,21 @@ function _add_pwl_constraint_standard!(
 end
 
 """
-Implement the constraints for PWL variables for Compact form. That is:
+Add the compact lambda-formulation constraints for PWL cost variables.
+
+Variant of [`_add_pwl_constraint_standard!`](@ref) used when the power variable represents
+output *above* minimum generation (PowerAboveMinimumVariable). The linking constraint
+includes a ``P_{\\min}`` offset so the convex combination maps to total output:
 
 ```math
-\\sum_{k\\in\\mathcal{K}} P_k^{max} \\delta_{k,t} = p_t + P_min * u_t \\\\
-\\sum_{k\\in\\mathcal{K}} \\delta_{k,t} = on_t
+\\sum_{k\\in\\mathcal{K}} P_k^{\\max} \\, \\lambda_{k,t} = p_t + P_{\\min} \\, u_t
 ```
 
-For standard form, use `_add_pwl_constraint_standard!` instead.
+```math
+\\sum_{k\\in\\mathcal{K}} \\lambda_{k,t} = u_t
+```
+
+See also: [`_add_pwl_constraint_standard!`](@ref), [`_add_pwl_variables!`](@ref)
 """
 function _add_pwl_constraint_compact!(
     container::OptimizationContainer,
@@ -326,7 +366,21 @@ end
 ##################################################
 
 """
-Add PWL cost terms for data coming from a PiecewisePointCurve
+Add PWL cost terms using the **lambda (convex combination) formulation**.
+
+Given a `PiecewisePointCurve` with breakpoints ``(P_i, C_i)``, this function:
+
+1. Creates lambda variables ``\\lambda_i \\in [0, 1]`` at each breakpoint via [`_add_pwl_variables!`](@ref).
+2. Adds linking and normalization constraints via [`_add_pwl_constraint_standard!`](@ref).
+3. If the cost curve is **non-convex**, adds an SOS2 adjacency constraint so that at most
+   two neighboring ``\\lambda`` values are nonzero.
+4. Builds the cost expression ``C = \\sum_i \\lambda_i \\, C(P_i)``.
+
+Returns a vector of cost expressions, one per time step, which the caller adds to the
+objective function.
+
+See also: [`add_pwl_term!`](@ref) for the delta (block-offer) formulation used by
+`MarketBidCost`.
 """
 function _add_pwl_term!(
     container::OptimizationContainer,

@@ -489,12 +489,27 @@ _include_constant_min_gen_power_in_constraint(
 #################################################################################
 
 """
-Implement the constraints for PWL Block Offer variables. That is:
+Add the **delta (incremental) formulation** constraints for block-offer PWL variables.
+
+In the delta formulation, each variable ``\\delta_k`` represents how much of segment ``k``
+has been used. The operating point is the sum of segment contributions from the first
+breakpoint:
 
 ```math
-\\sum_{k\\in\\mathcal{K}} \\delta_{k,t} = p_t \\\\
-\\sum_{k\\in\\mathcal{K}} \\delta_{k,t} <= P_{k+1,t}^{max} - P_{k,t}^{max}
+p_t = \\sum_{k\\in\\mathcal{K}} \\delta_{k,t} + P_{\\min,\\text{offset}}
 ```
+
+Each ``\\delta_k`` is bounded by the segment length:
+
+```math
+0 \\leq \\delta_{k,t} \\leq P_{k+1,t}^{\\max} - P_{k,t}^{\\max}
+```
+
+For convex offer curves (increasing marginal costs), the fill-order condition is
+automatically satisfied by the optimizer — cheap segments are filled before expensive
+ones. This avoids the SOS2 or binary variable requirements of the lambda formulation.
+
+See also: [`add_pwl_term!`](@ref), [`add_pwl_block_offer_constraints!`](@ref)
 """
 function _add_pwl_constraint!(
     container::OptimizationContainer,
@@ -598,8 +613,25 @@ end
 #################################################################################
 
 """
-Add PWL cost terms for data coming from a MarketBidCost / ImportExportCost
-with offer curves, dispatched on OfferDirection.
+Add PWL cost terms using the **delta (incremental/block-offer) formulation**.
+
+Given an offer curve with breakpoints ``P_0, P_1, \\ldots, P_n`` and slopes
+``m_1, m_2, \\ldots, m_n``, this function:
+
+1. Creates delta variables ``\\delta_k \\geq 0`` for each segment via [`add_pwl_variables!`](@ref),
+   with no upper bound (block sizes are enforced by constraints).
+2. Adds linking and block-size constraints via [`_add_pwl_constraint!`](@ref):
+   ``p = \\sum_k \\delta_k`` and ``\\delta_k \\leq P_{k+1} - P_k``.
+3. Builds the cost expression ``C = \\sum_k m_k \\, \\delta_k`` via [`get_pwl_cost_expression`](@ref).
+
+For convex offer curves (``m_1 \\leq m_2 \\leq \\cdots \\leq m_n``), no SOS2 or binary
+variables are needed — the optimizer fills cheap segments first automatically.
+
+Dispatches on `OfferDirection` (incremental or decremental) to select the appropriate
+variable and constraint types.
+
+See also: [`_add_pwl_term!`](@ref) for the lambda (convex combination) formulation used by
+`CostCurve{PiecewisePointCurve}`.
 """
 function add_pwl_term!(
     dir::OfferDirection,
