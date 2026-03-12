@@ -22,8 +22,8 @@ const DNMDT_HYBS_META = "HybSTest"
 
         @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
 
-        xh = IOM.get_variable(
-            setup.container, IOM.DNMDTScaledVariable(), MockThermalGen, DNMDT_META,
+        xh = IOM.get_expression(
+            setup.container, IOM.DNMDTScaledVariableExpression(), MockThermalGen, DNMDT_META,
         )
         beta = IOM.get_variable(
             setup.container, IOM.DNMDTBinaryVariable(), MockThermalGen, DNMDT_META,
@@ -119,9 +119,6 @@ const DNMDT_HYBS_META = "HybSTest"
         @test n_bin == depth
 
         # Container keys exist
-        @test IOM.has_container_key(
-            setup.container, IOM.DNMDTScaledVariable, MockThermalGen, DNMDT_META,
-        )
         @test IOM.has_container_key(
             setup.container, IOM.DNMDTBinaryVariable, MockThermalGen, DNMDT_META,
         )
@@ -340,14 +337,6 @@ end
         @test n_bin == 2 * depth
 
         # Container keys exist
-        @test IOM.has_container_key(
-            setup.container, IOM.DNMDTScaledVariable, MockThermalGen,
-            DNMDT_META * "_x",
-        )
-        @test IOM.has_container_key(
-            setup.container, IOM.DNMDTScaledVariable, MockThermalGen,
-            DNMDT_META * "_y",
-        )
         @test IOM.has_container_key(
             setup.container, IOM.BilinearProductExpression, MockThermalGen,
             DNMDT_META,
