@@ -75,20 +75,12 @@ function _add_mccormick_envelope!(
     x_max::Float64,
     meta::String;
 ) where {C <: IS.InfrastructureSystemsComponent}
-    IS.@assert_op x_max > x_min
-    IS.@assert_op y_max > y_min
-    jump_model = get_jump_model(container)
-
-    mc_cons = @_add_container!(constraints, McCormickConstraint, 1:4, sparse)
-
-    for name in names, t in time_steps
-        _add_mccormick_envelope!(
-            jump_model, mc_cons, (name, t),
-            x_var[name, t], x_var[name, t], z_var[name, t],
-            x_min, x_max, y_min, y_max,
-        )
-    end
-
+    _add_mccormick_envelope!(
+        container, C, names, time_steps,
+        x_var, x_var, z_var,
+        x_min, x_max, x_min, x_max,
+        meta
+    )
     return
 end
 
@@ -121,6 +113,7 @@ function _add_mccormick_envelope!(
         z <= x_min * y + x * y_max - x_min * y_max,
     )
 end
+
 function _add_mccormick_envelope!(
     jump_model,
     cons,

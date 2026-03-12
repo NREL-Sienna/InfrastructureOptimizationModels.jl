@@ -16,7 +16,7 @@ Approximate x² using a piecewise linear function with manually-implemented SOS2
 
 Creates lambda (λ) variables representing convex combination weights over breakpoints,
 adds linking, normalization, and manual adjacency constraints using binary variables,
-and stores affine expressions approximating x² in a `QuadraticApproxExpression`
+and stores affine expressions approximating x² in a `QuadraticExpression`
 expression container.
 
 # Arguments
@@ -49,7 +49,7 @@ function _add_manual_sos2_quadratic_approx!(
 
     # Create all containers upfront
     lambda_container =
-        add_variable_container!(container, QuadraticApproxVariable(), C; meta)
+        add_variable_container!(container, QuadraticVariable(), C; meta)
     z_container = add_variable_container!(container, ManualSOS2BinaryVariable(), C; meta)
     link_cons = @_add_container!(constraints, SOS2LinkingConstraint)
     link_expr = @_add_container!(expression, SOS2LinkingExpression)
@@ -58,7 +58,7 @@ function _add_manual_sos2_quadratic_approx!(
     seg_cons = @_add_container!(constraints, ManualSOS2SegmentSelectionConstraint)
     seg_expr = @_add_container!(expression, ManualSOS2SegmentSelectionExpression)
     adj_cons = @_add_container!(constraints, ManualSOS2AdjacencyConstraint, 1:n_points)
-    result_expr = @_add_container!(expression, QuadraticApproxExpression)
+    result_expr = @_add_container!(expression, QuadraticExpression)
 
     for name in names, t in time_steps
         x = x_var[name, t]
@@ -69,7 +69,7 @@ function _add_manual_sos2_quadratic_approx!(
             lambda[i] =
                 lambda_container[(name, i, t)] = JuMP.@variable(
                     jump_model,
-                    base_name = "QuadraticApproxVariable_$(C)_{$(name), pwl_$(i), $(t)}",
+                    base_name = "QuadraticVariable_$(C)_{$(name), pwl_$(i), $(t)}",
                     lower_bound = 0.0,
                     upper_bound = 1.0,
                 )

@@ -214,7 +214,7 @@ function _get_expression_type(method::Symbol)
     elseif method === :hybs
         return IOM.HybSProductExpression()
     elseif method === :dnmdt
-        return IOM.DNMDTBilinearExpression()
+        return IOM.BilinearProductExpression()
     else
         error("Unknown method: $method")
     end

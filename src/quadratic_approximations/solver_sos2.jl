@@ -2,10 +2,10 @@
 # Uses solver-native MOI.SOS2 constraints for adjacency enforcement.
 
 "Expression container for quadratic (x²) approximation results."
-struct QuadraticApproxExpression <: ExpressionType end
+struct QuadraticExpression <: ExpressionType end
 
 "lambda_var (λ) convex combination weight variables for SOS2 quadratic approximation."
-struct QuadraticApproxVariable <: SparseVariableType end
+struct QuadraticVariable <: SparseVariableType end
 "Links x to the weighted sum of breakpoints in SOS2 quadratic approximation."
 struct SOS2LinkingConstraint <: ConstraintType end
 struct SOS2LinkingExpression <: ExpressionType end
@@ -22,7 +22,7 @@ Approximate x² using a piecewise linear function with solver-native SOS2 constr
 
 Creates lambda_var (λ) variables representing convex combination weights over breakpoints,
 adds linking, normalization, and MOI.SOS2 constraints, and stores affine expressions
-approximating x² in a `QuadraticApproxExpression` expression container.
+approximating x² in a `QuadraticExpression` expression container.
 
 # Arguments
 - `container::OptimizationContainer`: the optimization container
@@ -53,13 +53,13 @@ function _add_sos2_quadratic_approx!(
 
     # Create all containers upfront
     lambda_var = # how is this working with no axes?
-        add_variable_container!(container, QuadraticApproxVariable(), C; meta)
+        add_variable_container!(container, QuadraticVariable(), C; meta)
     link_expr = @_add_container!(expression, SOS2LinkingExpression)
     link_cons = @_add_container!(constraints, SOS2LinkingConstraint)
     norm_expr = @_add_container!(expression, SOS2NormExpression)
     norm_cons = @_add_container!(constraints, SOS2NormConstraint)
     sos_cons = @_add_container!(constraints, SolverSOS2Constraint)
-    result_expr = @_add_container!(expression, QuadraticApproxExpression)
+    result_expr = @_add_container!(expression, QuadraticExpression)
 
     for name in names, t in time_steps
         x = x_var[name, t]
@@ -70,7 +70,7 @@ function _add_sos2_quadratic_approx!(
             lambda[i] =
                 lambda_var[(name, i, t)] = JuMP.@variable(
                     jump_model,
-                    base_name = "QuadraticApproxVariable_$(C)_{$(name), pwl_$(i), $(t)}",
+                    base_name = "QuadraticVariable_$(C)_{$(name), pwl_$(i), $(t)}",
                     lower_bound = 0.0,
                     upper_bound = 1.0,
                 )

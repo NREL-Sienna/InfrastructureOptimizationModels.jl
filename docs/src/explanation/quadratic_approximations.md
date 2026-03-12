@@ -54,11 +54,11 @@ decreases as ``O(1/S^2)``.
 
 ### Variables and Constraints
 
-| Container Type                                   | Description                                     |
-|:------------------------------------------------ |:----------------------------------------------- |
-| [`QuadraticApproxVariable`](@ref)                | Lambda (``\lambda``) convex combination weights |
-| [`SOS2LinkingConstraint`](@ref)       | Links ``x`` to weighted breakpoints             |
-| [`SOS2NormConstraint`](@ref) | Ensures ``\sum \lambda_i = 1``                  |
+| Container Type                    | Description                                     |
+|:--------------------------------- |:----------------------------------------------- |
+| [`QuadraticVariable`](@ref) | Lambda (``\lambda``) convex combination weights |
+| [`SOS2LinkingConstraint`](@ref)   | Links ``x`` to weighted breakpoints             |
+| [`SOS2NormConstraint`](@ref)      | Ensures ``\sum \lambda_i = 1``                  |
 
 ## Manual SOS2
 
@@ -88,13 +88,13 @@ linear constraints per component per time step. Same approximation quality as So
 
 ### Variables and Constraints
 
-| Container Type                                   | Description                                     |
-|:------------------------------------------------ |:----------------------------------------------- |
-| [`QuadraticApproxVariable`](@ref)                | Lambda (``\lambda``) convex combination weights |
-| [`ManualSOS2BinaryVariable`](@ref)               | Binary segment-selection variables (``z``)      |
-| [`SOS2LinkingConstraint`](@ref)       | Links ``x`` to weighted breakpoints             |
-| [`SOS2NormConstraint`](@ref) | Ensures ``\sum \lambda_i = 1``                  |
-| [`ManualSOS2SegmentSelectionConstraint`](@ref)   | Ensures ``\sum z_j = 1``                        |
+| Container Type                                 | Description                                     |
+|:---------------------------------------------- |:----------------------------------------------- |
+| [`QuadraticVariable`](@ref)              | Lambda (``\lambda``) convex combination weights |
+| [`ManualSOS2BinaryVariable`](@ref)             | Binary segment-selection variables (``z``)      |
+| [`SOS2LinkingConstraint`](@ref)                | Links ``x`` to weighted breakpoints             |
+| [`SOS2NormConstraint`](@ref)                   | Ensures ``\sum \lambda_i = 1``                  |
+| [`ManualSOS2SegmentSelectionConstraint`](@ref) | Ensures ``\sum z_j = 1``                        |
 
 ## Sawtooth
 

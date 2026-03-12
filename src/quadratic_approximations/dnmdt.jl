@@ -30,12 +30,6 @@ struct DNMDTResidualUpperBoundConstraint <: ConstraintType end
 "McCormick bounds on x^2 (global convex/concave envelope)."
 struct DNMDTSquareBoundConstraint <: ConstraintType end
 
-# ── Expression types ──────────────────────────────────────────────────────────
-"Final bivariate result expression z ~ x*y."
-struct DNMDTBilinearExpression <: ExpressionType end
-"Final univariate result expression z ~ x^2."
-struct DNMDTQuadraticExpression <: ExpressionType end
-
 # ── Helper: populate binary expansion ─────────────────────────────────────────
 
 """
@@ -121,7 +115,7 @@ Approximate z = x^2 using univariate D-NMDT (Definition 9) or T-D-NMDT (Definiti
 When `tighten=false`: D-NMDT with full residual McCormick.
 When `tighten=true`: T-D-NMDT replaces residual lower bounds with epigraph Q^{L1} cuts.
 
-Stores result in a `DNMDTQuadraticExpression` expression container.
+Stores result in a `QuadraticExpression` expression container.
 """
 function _add_dnmdt_univariate_approx!(
     container::OptimizationContainer,
@@ -160,7 +154,7 @@ function _add_dnmdt_univariate_approx!(
     z_var = @_add_container!(variable, BilinearProductVariable)
     bt_cons = @_add_container!(constraints, DNMDTBackTransformConstraint)
     sq_cons = @_add_container!(constraints, DNMDTSquareBoundConstraint, 1:3, sparse)
-    result_expr = @_add_container!(expression, DNMDTQuadraticExpression)
+    result_expr = @_add_container!(expression, QuadraticExpression)
     if tighten
         ub_cons = @_add_container!(constraints, DNMDTResidualUpperBoundConstraint)
     end
@@ -245,8 +239,8 @@ function _add_dnmdt_univariate_approx!(
     if !tighten
         _add_mccormick_envelope!(
             container, C, names, time_steps,
-            dx_var, dx_var, dz_var,
-            0.0, eps_L, 0.0, eps_L, meta * "_residual",
+            dx_var, dz_var,
+            0.0, eps_L, meta * "_residual",
         )
 
         # ── Epigraph tightening (T-D-NMDT only) ──
@@ -279,7 +273,7 @@ Discretizes both x and y with base-2 binary expansion, applies McCormick envelop
 to all binary x continuous products, and handles the residual product via McCormick.
 Uses lambda = DNMDT_LAMBDA (0.5) per Remark 1.
 
-Stores result in a `DNMDTBilinearExpression` expression container.
+Stores result in a `BilinearProductExpression` expression container.
 """
 function _add_dnmdt_bilinear_approx!(
     container::OptimizationContainer,
@@ -336,9 +330,9 @@ function _add_dnmdt_bilinear_approx!(
         sparse
     )
     dz_var = @_add_container!(variable, DNMDTResidualProductVariable)
-    z_var = @_add_container!(expression, BilinearProductExpression)
+    z_var = @_add_container!(variable, BilinearProductVariable)
     bt_cons = @_add_container!(constraints, DNMDTBackTransformConstraint)
-    result_expr = @_add_container!(expression, DNMDTBilinearExpression)
+    result_expr = @_add_container!(expression, BilinearProductExpression)
 
     # ── Populate: binary expansions ──────────────────────────────────────
 
