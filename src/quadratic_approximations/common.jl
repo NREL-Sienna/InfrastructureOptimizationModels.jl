@@ -5,7 +5,7 @@ Specify sparse by putting :sparse in the last two args
 Specify custom meta by putting meta_-prefixed variable in the last two args
 """
 
-macro _add_container(type, key, args...)
+macro _add_container!(type, key, args...)
     fname = Symbol("add_", type, "_container!")
 
     offset = 0

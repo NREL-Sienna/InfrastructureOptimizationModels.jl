@@ -109,6 +109,8 @@ end
 
 # ── Univariate D-NMDT / T-D-NMDT for z = x^2 ────────────────────────────────
 
+struct WSumExpression <: ExpressionType end
+
 """
     _add_dnmdt_univariate_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta; tighten, epigraph_depth)
 
@@ -169,11 +171,13 @@ function _add_dnmdt_univariate_approx!(
 
     # ── Populate: sum term, product aux, assembly, back-transform ────────
 
+    wsum_expr = @_add_container!(expression, WSumExpression)
+
     for name in names, t in time_steps
         x = x_var[name, t]
 
         # Sum term: w_sum = Delta_x + x_hat (used locally in McCormick below)
-        w_sum = JuMP.AffExpr(0.0)
+        w_sum = wsum_expr[name, t] = JuMP.AffExpr(0.0)
         JuMP.add_to_expression!(w_sum, dx_var[name, t])
         JuMP.add_to_expression!(w_sum, xh_var[name, t])
 
