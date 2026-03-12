@@ -114,12 +114,13 @@ function _add_hybs_bilinear_approx!(
     z_hi = max(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
 
     for name in names, t in time_steps
-        z = z_var[name, t] = JuMP.@variable(
-            jump_model,
-            base_name = "HybSProduct_$(C)_{$(name), $(t)}",
-            lower_bound = z_lo,
-            upper_bound = z_hi,
-        )
+        z =
+            z_var[name, t] = JuMP.@variable(
+                jump_model,
+                base_name = "HybSProduct_$(C)_{$(name), $(t)}",
+                lower_bound = z_lo,
+                upper_bound = z_hi,
+            )
 
         zx = zx_expr[name, t]
         zy = zy_expr[name, t]

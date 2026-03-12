@@ -46,83 +46,93 @@ function _add_mccormick_envelope!(
     y_min::Float64,
     y_max::Float64,
     meta::String;
-    axes = (names, time_steps)
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op y_max > y_min
     jump_model = get_jump_model(container)
 
-    # mc_cons = @_add_container!(constraints, McCormickConstraint, 1:4, sparse)
-    # mc_cons = @_add_container!(constraints, McCormickConstraint, axes..., 1:4, sparse)
-    mc_cons = add_constraints_container!(
-        container,
-        McCormickConstraint(),
-        C,
-        axes..., 1:4;
-        sparse = true,
-        meta
-    )
+    mc_cons = @_add_container!(constraints, McCormickConstraint, 1:4, sparse)
 
-    @show x_var
-
-    # for name in names, t in time_steps
-    for idx in Iterators.product(axes...)
-        x = x_var[idx...]
-        y = y_var[idx...]
-        z = z_var[idx...]
-
-        # z ≥ x_min·y + x·y_min − x_min·y_min
-        mc_cons[idx..., 1] = JuMP.@constraint(
-            jump_model,
-            z >= x_min * y + x * y_min - x_min * y_min,
-        )
-        # z ≥ x_max·y + x·y_max − x_max·y_max
-        mc_cons[idx..., 2] = JuMP.@constraint(
-            jump_model,
-            z >= x_max * y + x * y_max - x_max * y_max,
-        )
-        # z ≤ x_max·y + x·y_min − x_max·y_min
-        mc_cons[idx..., 3] = JuMP.@constraint(
-            jump_model,
-            z <= x_max * y + x * y_min - x_max * y_min,
-        )
-        # z ≤ x_min·y + x·y_max − x_min·y_max
-        mc_cons[idx..., 4] = JuMP.@constraint(
-            jump_model,
-            z <= x_min * y + x * y_max - x_min * y_max,
+    for name in names, t in time_steps
+        _add_mccormick_envelope!(
+            jump_model, mc_cons, (name, t),
+            x_var[name, t], y_var[name, t], z_var[name, t],
+            x_min, x_max, y_min, y_max,
         )
     end
 
     return
 end
 
-# Assumes x is binary. Separate from above function to save on constraints
-# function _add_mccormick_envelope!(
-#     container::OptimizationContainer,
-#     ::Type{C},
-#     names::Vector{String},
-#     time_steps::UnitRange{Int},
-#     x_var,
-#     y_var,
-#     z_var,
-#     x_min::Float64,
-#     x_max::Float64,
-#     y_min::Float64,
-#     y_max::Float64,
-#     meta::String,
-# ) where {C <: IS.InfrastructureSystemsComponent}
-#     IS.@assert_op x_max > x_min
-#     IS.@assert_op y_max > y_min
-#     jump_model = get_jump_model(container)
+function _add_mccormick_envelope!(
+    container::OptimizationContainer,
+    ::Type{C},
+    names::Vector{String},
+    time_steps::UnitRange{Int},
+    x_var,
+    z_var,
+    x_min::Float64,
+    x_max::Float64,
+    meta::String;
+) where {C <: IS.InfrastructureSystemsComponent}
+    IS.@assert_op x_max > x_min
+    IS.@assert_op y_max > y_min
+    jump_model = get_jump_model(container)
 
-#     mc_cons = @_add_container!(constraints, McCormickConstraint, 1:3, sparse)
-#     bmc_cons[(name, 1, j, t)] =
-#     JuMP.@constraint(jump_model, u_j <= ws_hi * beta_j)
-#     bmc_cons[(name, 2, j, t)] =
-#         JuMP.@constraint(jump_model, u_j >= w_sum - ws_hi * (1 - beta_j))
-#     bmc_cons[(name, 3, j, t)] =
-#         JuMP.@constraint(jump_model, u_j <= w_sum)
-#     for name in names, t in time_steps
-#         mc_cons[name, 1, t] = JuMP.@constraint(jump_model, y_var <= x_max)
-#     end
-# end
+    mc_cons = @_add_container!(constraints, McCormickConstraint, 1:4, sparse)
+
+    for name in names, t in time_steps
+        _add_mccormick_envelope!(
+            jump_model, mc_cons, (name, t),
+            x_var[name, t], x_var[name, t], z_var[name, t],
+            x_min, x_max, y_min, y_max,
+        )
+    end
+
+    return
+end
+
+function _add_mccormick_envelope!(
+    jump_model,
+    cons,
+    index,
+    x,
+    y,
+    z,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
+)
+    cons[index[1:end-1]..., 1, index[end]] = JuMP.@constraint(
+        jump_model,
+        z >= x_min * y + x * y_min - x_min * y_min,
+    )
+    cons[index[1:end-1]..., 2, index[end]] = JuMP.@constraint(
+        jump_model,
+        z >= x_max * y + x * y_max - x_max * y_max,
+    )
+    cons[index[1:end-1]..., 3, index[end]] = JuMP.@constraint(
+        jump_model,
+        z <= x_max * y + x * y_min - x_max * y_min,
+    )
+    cons[index[1:end-1]..., 4, index[end]] = JuMP.@constraint(
+        jump_model,
+        z <= x_min * y + x * y_max - x_min * y_max,
+    )
+end
+function _add_mccormick_envelope!(
+    jump_model,
+    cons,
+    index,
+    x,
+    z,
+    x_min::Float64,
+    x_max::Float64,
+)
+    _add_mccormick_envelope!(
+        jump_model, cons, index,
+        x, x, z,
+        x_min, x_max, x_min, x_max
+    )
+end
