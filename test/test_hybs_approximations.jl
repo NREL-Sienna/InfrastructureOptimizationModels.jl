@@ -1,4 +1,5 @@
 const HYBS_META = "HybSTest"
+const HYBS_BILINEAR_META = "BilinearTest"
 
 @testset "Epigraph Quadratic Approximation" begin
     @testset "Constraint structure" begin
@@ -14,13 +15,13 @@ const HYBS_META = "HybSTest"
             0.0,
             4.0,
             depth,
-            TEST_META,
+            HYBS_META,
         )
         expr_container = IOM.get_expression(
             setup.container,
             IOM.EpigraphExpression(),
             MockThermalGen,
-            TEST_META,
+            HYBS_META,
         )
 
         @test expr_container["dev1", 1] isa JuMP.AffExpr
@@ -44,13 +45,13 @@ const HYBS_META = "HybSTest"
             0.0,
             1.0,
             4,
-            TEST_META,
+            HYBS_META,
         )
         expr_container = IOM.get_expression(
             setup.container,
             IOM.EpigraphExpression(),
             MockThermalGen,
-            TEST_META,
+            HYBS_META,
         )
         z_epi = expr_container["dev1", 1]
 
@@ -78,13 +79,13 @@ const HYBS_META = "HybSTest"
             0.0,
             2.0,
             4,
-            TEST_META,
+            HYBS_META,
         )
         expr_container = IOM.get_expression(
             setup.container,
             IOM.EpigraphExpression(),
             MockThermalGen,
-            TEST_META,
+            HYBS_META,
         )
         z_epi = expr_container["dev1", 1]
 
@@ -109,13 +110,13 @@ const HYBS_META = "HybSTest"
             0.0,
             4.0,
             2,
-            TEST_META,
+            HYBS_META,
         )
         expr_container = IOM.get_expression(
             setup.container,
             IOM.EpigraphExpression(),
             MockThermalGen,
-            TEST_META,
+            HYBS_META,
         )
 
         for t in 1:3
@@ -140,13 +141,13 @@ const HYBS_META = "HybSTest"
                 0.0,
                 1.0,
                 depth,
-                TEST_META,
+                HYBS_META,
             )
             expr_container = IOM.get_expression(
                 setup.container,
                 IOM.EpigraphExpression(),
                 MockThermalGen,
-                TEST_META,
+                HYBS_META,
             )
             z_epi = expr_container["dev1", 1]
 
@@ -537,7 +538,7 @@ end
                 0.0,
                 1.0,
                 depth,
-                BILINEAR_META,
+                HYBS_BILINEAR_META,
             )
             n_bin_bin2 =
                 count(JuMP.is_binary, JuMP.all_variables(setup_b.jump_model))
