@@ -124,5 +124,3 @@ function _add_sos2_quadratic_approx!(
 
     return
 end
-
-_square(x::Float64) = x * x
