@@ -128,9 +128,6 @@ const DNMDT_HYBS_META = "HybSTest"
         @test IOM.has_container_key(
             setup.container, IOM.DNMDTResidualVariable, MockThermalGen, DNMDT_META,
         )
-        @test IOM.has_container_key(
-            setup.container, IOM.DNMDTBackTransformConstraint, MockThermalGen, DNMDT_META,
-        )
     end
 
     @testset "Multiple time steps and names" begin

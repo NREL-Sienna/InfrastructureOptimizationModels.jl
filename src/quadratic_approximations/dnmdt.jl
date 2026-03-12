@@ -23,8 +23,6 @@ struct DNMDTBinaryExpansionExpression <: ExpressionType end
 struct DNMDTScalingConstraint <: ConstraintType end
 "McCormick constraints on beta[j] x continuous products."
 struct DNMDTBinaryMcCormickConstraint <: ConstraintType end
-"Back-transformation constraint: z = lx*ly*z_hat + offsets."
-struct DNMDTBackTransformConstraint <: ConstraintType end
 "Upper-bound McCormick on residual product (tightened univariate case)."
 struct DNMDTResidualUpperBoundConstraint <: ConstraintType end
 "McCormick bounds on x^2 (global convex/concave envelope)."
@@ -141,19 +139,12 @@ function _add_dnmdt_univariate_approx!(
     # Precompute power-of-two coefficients (invariant across names and time steps)
     pow2_neg = [2.0^(-j) for j in 1:depth]
 
-    # Valid bounds for z ≈ x²
-    z_ub = max(x_min^2, x_max^2)
-    z_lb = (x_min <= 0.0 <= x_max) ? 0.0 : min(x_min^2, x_max^2)
-
     # ── Allocate containers ──────────────────────────────────────────────
 
     u_var = @_add_container!(variable, DNMDTProductAuxVariable, 1:depth, meta_u)
     bmc_cons =
         @_add_container!(constraints, DNMDTBinaryMcCormickConstraint, 1:depth, 1:4, sparse)
     dz_var = @_add_container!(variable, DNMDTResidualProductVariable)
-    z_var = @_add_container!(variable, BilinearProductVariable)
-    bt_cons = @_add_container!(constraints, DNMDTBackTransformConstraint)
-    sq_cons = @_add_container!(constraints, DNMDTSquareBoundConstraint, 1:3, sparse)
     result_expr = @_add_container!(expression, QuadraticExpression)
     if tighten
         ub_cons = @_add_container!(constraints, DNMDTResidualUpperBoundConstraint)
@@ -169,8 +160,6 @@ function _add_dnmdt_univariate_approx!(
     # ── Populate: sum term, product aux, assembly, back-transform ────────
 
     for name in names, t in time_steps
-        x = x_var[name, t]
-
         # Sum term: w_sum = Delta_x + x_hat (used locally in McCormick below)
         w_sum = JuMP.AffExpr(0.0)
         JuMP.add_to_expression!(w_sum, dx_var[name, t])
@@ -211,29 +200,20 @@ function _add_dnmdt_univariate_approx!(
         for j in 1:depth
             JuMP.add_to_expression!(zh, pow2_neg[j], u_var[name, j, t])
         end
-        JuMP.add_to_expression!(zh, 1.0, dz_var[name, t])
+        JuMP.add_to_expression!(zh, dz_var[name, t])
 
-        # Back-transform: z = lx^2 * z_hat + 2 * x_min * lx * x_hat + x_min^2
-        z =
-            z_var[name, t] = JuMP.@variable(
-                jump_model,
-                base_name = "DNMDTz_$(C)_{$(name), $(t)}",
-                lower_bound = z_lb,
-                upper_bound = z_ub,
-            )
-        bt_cons[name, t] = JuMP.@constraint(
-            jump_model,
-            z == lx^2 * zh + 2 * x_min * lx * xh_var[name, t] + x_min^2,
-        )
-        result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
-
-        # McCormick on x^2
-        _add_mccormick_envelope!(
-            jump_model, sq_cons, (name, t),
-            x, z,
-            x_min, x_max
-        )
+        result = result_expr[name, t] = JuMP.AffExpr(0.0)
+        JuMP.add_to_expression!(result, lx^2, zh)
+        JuMP.add_to_expression!(result, 2 * x_min * lx, xh_var[name, t])
+        JuMP.add_to_expression!(result, x_min^2)
     end
+
+    # Global McCormick
+    _add_mccormick_envelope!(
+        container, C, names, time_steps,
+        x_var, result_expr,
+        x_min, x_max, meta
+    )
 
     # ── Residual McCormick (D-NMDT only) ──
     if !tighten
@@ -254,7 +234,7 @@ function _add_dnmdt_univariate_approx!(
         for name in names, t in time_steps
             epi_cons[name, t] = JuMP.@constraint(
                 jump_model,
-                z_var[name, t] >= epi_expr[name, t],
+                result_expr[name, t] >= epi_expr[name, t],
             )
         end
     end
@@ -305,15 +285,9 @@ function _add_dnmdt_bilinear_approx!(
     # Precompute power-of-two coefficients
     pow2_neg = [2.0^(-j) for j in 1:depth]
 
-    # Valid bounds for z ≈ x·y
-    z_lo = min(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
-    z_hi = max(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
-
     # Blended-term bounds
     lambda = DNMDT_LAMBDA
-    wu_lo = 0.0
     wu_hi = lambda * eps_L + (1 - lambda)
-    wv_lo = 0.0
     wv_hi = (1 - lambda) * eps_L + lambda
 
     # ── Allocate containers ──────────────────────────────────────────────
@@ -330,8 +304,6 @@ function _add_dnmdt_bilinear_approx!(
         sparse
     )
     dz_var = @_add_container!(variable, DNMDTResidualProductVariable)
-    z_var = @_add_container!(variable, BilinearProductVariable)
-    bt_cons = @_add_container!(constraints, DNMDTBackTransformConstraint)
     result_expr = @_add_container!(expression, BilinearProductExpression)
 
     # ── Populate: binary expansions ──────────────────────────────────────
@@ -405,25 +377,13 @@ function _add_dnmdt_bilinear_approx!(
             JuMP.add_to_expression!(zh, pow2_neg[j], u_var[name, j, t])
             JuMP.add_to_expression!(zh, pow2_neg[j], v_var[name, j, t])
         end
-        JuMP.add_to_expression!(zh, 1.0, dz_var[name, t])
+        JuMP.add_to_expression!(zh, dz_var[name, t])
 
-        # Back-transform: z = lx*ly*z_hat + x_min*ly*y_hat + y_min*lx*x_hat + x_min*y_min
-        z =
-            z_var[name, t] = JuMP.@variable(
-                jump_model,
-                base_name = "DNMDTz_$(C)_{$(name), $(t)}",
-                lower_bound = z_lo,
-                upper_bound = z_hi,
-            )
-        bt_cons[name, t] = JuMP.@constraint(
-            jump_model,
-            z ==
-            lx * ly * zh +
-            x_min * ly * yh_var[name, t] +
-            y_min * lx * xh_var[name, t] +
-            x_min * y_min,
-        )
-        result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
+        result = result_expr[name, t] = JuMP.AffExpr(0.0)
+        JuMP.add_to_expression!(result, lx * ly, zh)
+        JuMP.add_to_expression!(result, x_min * ly, yh_var[name, t])
+        JuMP.add_to_expression!(result, y_min * lx, xh_var[name, t])
+        JuMP.add_to_expression!(result, x_min * y_min)
     end
 
     # ── Residual McCormick (Delta_z ~ Delta_x * Delta_y) ──
@@ -437,7 +397,7 @@ function _add_dnmdt_bilinear_approx!(
     if add_mccormick
         _add_mccormick_envelope!(
             container, C, names, time_steps,
-            x_var, y_var, z_var,
+            x_var, y_var, result_expr,
             x_min, x_max, y_min, y_max, meta,
         )
     end
