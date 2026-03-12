@@ -102,37 +102,23 @@ function _add_hybs_bilinear_approx!(
     end
 
     # --- Sawtooth S^L for x² and y² (binary variables here) ---
-    _add_sawtooth_quadratic_approx!(
+    zx_container = _add_sawtooth_quadratic_approx!(
         container, C, names, time_steps,
         x_var_container, x_min, x_max, depth, meta_x,
     )
-    _add_sawtooth_quadratic_approx!(
+    zy_container = _add_sawtooth_quadratic_approx!(
         container, C, names, time_steps,
         y_var_container, y_min, y_max, depth, meta_y,
     )
 
     # --- Epigraph Q^{L1} lower bound for (x+y)² and (x−y)² (no binaries) ---
-    _add_epigraph_quadratic_approx!(
+    zp1_container = _add_epigraph_quadratic_approx!(
         container, C, names, time_steps,
         p1_container, p1_min, p1_max, depth, meta_p1,
     )
-    _add_epigraph_quadratic_approx!(
+    zp2_container = _add_epigraph_quadratic_approx!(
         container, C, names, time_steps,
         p2_container, p2_min, p2_max, depth, meta_p2,
-    )
-
-    # Retrieve expression containers
-    zx_container = get_expression(
-        container, QuadraticApproximationExpression(), C, meta_x,
-    )
-    zy_container = get_expression(
-        container, QuadraticApproximationExpression(), C, meta_y,
-    )
-    zp1_container = get_expression(
-        container, EpigraphExpression(), C, meta_p1,
-    )
-    zp2_container = get_expression(
-        container, EpigraphExpression(), C, meta_p2,
     )
 
     # --- Create z variable and two-sided HybS bounds ---
@@ -205,5 +191,5 @@ function _add_hybs_bilinear_approx!(
         )
     end
 
-    return
+    return expr_container
 end

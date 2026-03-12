@@ -151,5 +151,5 @@ function _add_manual_sos2_quadratic_approx!(
         expr_container[name, t] = x_hat_sq
     end
 
-    return
+    return expr_container
 end

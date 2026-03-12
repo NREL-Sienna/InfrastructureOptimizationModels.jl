@@ -165,5 +165,5 @@ function _add_sawtooth_quadratic_approx!(
         expr_container[name, t] = x_sq_approx
     end
 
-    return
+    return expr_container
 end

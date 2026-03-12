@@ -80,25 +80,14 @@ function _add_bilinear_approx_impl!(
     end
 
     # Approximate p², x², y² using the provided quadratic approximation function
-    quad_approx_fn(
+    zp_container = quad_approx_fn(
         container, C, names, time_steps, p_container, p_min, p_max, meta_plus,
     )
-    quad_approx_fn(
+    zx_container = quad_approx_fn(
         container, C, names, time_steps, x_var_container, x_min, x_max, meta_x,
     )
-    quad_approx_fn(
+    zy_container = quad_approx_fn(
         container, C, names, time_steps, y_var_container, y_min, y_max, meta_y,
-    )
-
-    # Retrieve quadratic approximation expression containers
-    zp_container = get_expression(
-        container, QuadraticApproximationExpression(), C, meta_plus,
-    )
-    zx_container = get_expression(
-        container, QuadraticApproximationExpression(), C, meta_x,
-    )
-    zy_container = get_expression(
-        container, QuadraticApproximationExpression(), C, meta_y,
     )
 
     z_container = add_variable_container!(
@@ -161,7 +150,7 @@ function _add_bilinear_approx_impl!(
         )
     end
 
-    return
+    return expr_container
 end
 
 """
@@ -191,13 +180,12 @@ function _add_sos2_bilinear_approx!(
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
             _add_sos2_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, num_segments, m)
-    _add_bilinear_approx_impl!(
+    return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
         add_mccormick,
     )
-    return
 end
 
 """
@@ -237,13 +225,12 @@ function _add_manual_sos2_bilinear_approx!(
                 num_segments,
                 m,
             )
-    _add_bilinear_approx_impl!(
+    return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
         add_mccormick,
     )
-    return
 end
 
 """
@@ -273,11 +260,10 @@ function _add_sawtooth_bilinear_approx!(
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
             _add_sawtooth_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, depth, m)
-    _add_bilinear_approx_impl!(
+    return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
         add_mccormick,
     )
-    return
 end

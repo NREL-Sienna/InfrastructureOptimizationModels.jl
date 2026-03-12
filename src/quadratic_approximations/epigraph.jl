@@ -173,5 +173,5 @@ function _add_epigraph_quadratic_approx!(
         expr_container[name, t] = JuMP.AffExpr(0.0, z_var => 1.0)
     end
 
-    return
+    return expr_container
 end
