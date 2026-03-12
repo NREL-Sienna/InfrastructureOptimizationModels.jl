@@ -20,7 +20,8 @@ pages = OrderedDict(
         "Developers" => ["Developer Guidelines" => "reference/developer_guidelines.md",
         "Internals" => "reference/internal.md"],
         "Public API" => "reference/public.md",
-        "Quadratic Approximations" => "reference/quadratic_approximations.md",
+        "Piecewise Linear Cost Functions" => "explanation/piecewise_linear_cost_functions.md",
+        "Quadratic Approximations" => "explanation/quadratic_approximations.md",
     ],
 )
 

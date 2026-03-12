@@ -99,7 +99,7 @@ linear constraints per component per time step. Same approximation quality as So
 ## Sawtooth
 
 Approximates ``x^2`` using the recursive sawtooth MIP formulation from
-Beach, Burlacu, Hager, and Hildebrand (2024). This method requires only ``O(\log(1/\varepsilon))``
+Beach, Burlacu, Hager, and Hildebrand (2023). This method requires only ``O(\log(1/\varepsilon))``
 binary variables to achieve error ``\varepsilon``, compared to ``O(1/\sqrt{\varepsilon})``
 for the SOS2 methods.
 
@@ -162,3 +162,97 @@ constraints per component per time step. The approximation interpolates ``x^2`` 
 To match the number of breakpoints between methods, set ``S = 2^L``. At equal breakpoint
 count the approximation quality is identical, but the sawtooth uses ``L = \log_2 S``
 binary variables instead of ``S``.
+
+## Error Scaling
+
+Both SOS2 and sawtooth produce the same PWL interpolation of ``x^2`` when they use the
+same number of uniform breakpoints. With ``n`` uniform segments on ``[0, 1]``, the
+interpolant ``F_n(x)`` satisfies the classical error bound (Barmann et al., 2023):
+
+```math
+0 \leq F_n(x) - x^2 \leq \frac{1}{4n^2} \quad \text{for all } x \in [0, 1]
+```
+
+The maximum error is attained at the midpoint of each segment. Since both methods
+interpolate at the same breakpoints, the pointwise error is identical — the difference
+lies entirely in how efficiently the segments are encoded.
+
+### Same number of binary variables
+
+If we budget ``L`` binary/integer variables for each method, SOS2 gets ``L`` segments
+while sawtooth gets ``2^L`` segments. The error gap grows exponentially:
+
+| ``L`` | SOS2 segments | SOS2 error            | Sawtooth segments | Sawtooth error        | Ratio |
+|:----- |:------------- |:--------------------- |:----------------- |:--------------------- |:----- |
+| 1     | 1             | ``2.50\times10^{-1}`` | 2                 | ``6.25\times10^{-2}`` | 4x    |
+| 2     | 2             | ``6.25\times10^{-2}`` | 4                 | ``1.56\times10^{-2}`` | 4x    |
+| 3     | 3             | ``2.78\times10^{-2}`` | 8                 | ``3.91\times10^{-3}`` | 7x    |
+| 4     | 4             | ``1.56\times10^{-2}`` | 16                | ``9.77\times10^{-4}`` | 16x   |
+| 5     | 5             | ``1.00\times10^{-2}`` | 32                | ``2.44\times10^{-4}`` | 41x   |
+| 6     | 6             | ``6.94\times10^{-3}`` | 64                | ``6.10\times10^{-5}`` | 114x  |
+| 7     | 7             | ``5.10\times10^{-3}`` | 128               | ``1.53\times10^{-5}`` | 334x  |
+| 8     | 8             | ``3.91\times10^{-3}`` | 256               | ``3.81\times10^{-6}`` | 1024x |
+
+SOS2 error decays **polynomially** as ``O(1/L^2)``; sawtooth error decays
+**exponentially** as ``O(4^{-L})``.
+
+### Same number of segments
+
+When both methods use the same number of uniform segments ``n``, they produce identical
+PWL interpolations, so the approximation error is the same. The difference is in
+formulation size: SOS2 needs ``O(n)`` binary variables, sawtooth needs only
+``\log_2(n)``.
+
+| Segments ``n`` | Error                 | SOS2 vars | Sawtooth vars | Var ratio |
+|:-------------- |:--------------------- |:--------- |:------------- |:--------- |
+| 2              | ``6.25\times10^{-2}`` | 1         | 1             | 1.0x      |
+| 4              | ``1.56\times10^{-2}`` | 3         | 2             | 1.5x      |
+| 8              | ``3.91\times10^{-3}`` | 7         | 3             | 2.3x      |
+| 16             | ``9.77\times10^{-4}`` | 15        | 4             | 3.8x      |
+| 32             | ``2.44\times10^{-4}`` | 31        | 5             | 6.2x      |
+| 64             | ``6.10\times10^{-5}`` | 63        | 6             | 10.5x     |
+| 128            | ``1.53\times10^{-5}`` | 127       | 7             | 18.1x     |
+| 256            | ``3.81\times10^{-6}`` | 255       | 8             | 31.9x     |
+
+## Extension to Bilinear Terms
+
+Bilinear terms ``z = xy`` arise throughout optimization (energy systems, pooling problems,
+gas networks). The standard univariate reformulation uses the identity:
+
+```math
+xy = \frac{1}{4}\left[(x + y)^2 - (x - y)^2\right]
+```
+
+Each squared term is approximated independently with one of the methods above. With both
+terms at the same refinement level, the bilinear error satisfies:
+
+```math
+\varepsilon_{xy} \leq \frac{1}{2} \, \varepsilon_{\text{quad}}
+```
+
+All scaling relationships from the univariate case carry over with a constant factor of
+``1/2``. The exponential gap between SOS2 and sawtooth persists.
+
+## Practical Considerations
+
+**SOS2** has the advantage of being natively supported by commercial solvers (Gurobi,
+CPLEX) with specialized branching rules. Both the solver SOS2 and manual SOS2
+formulations produce sharp LP relaxations for convex functions.
+
+**Sawtooth** introduces auxiliary continuous variables and big-M-type constraints, which
+may interact less favorably with presolve and cutting planes. However, Beach et al. (2023)
+show that the sawtooth relaxation is **sharp** (its LP relaxation equals the convex hull)
+and **hereditarily sharp** (sharpness is preserved at every node in the branch-and-bound
+tree). This strong theoretical property, combined with exponentially fewer binary
+variables, can lead to significant solver performance gains for problems requiring high
+approximation accuracy.
+
+Whether the tighter approximation at a given variable budget outweighs the structural
+advantages of SOS2 depends on the specific problem and solver.
+
+## References
+
+  - Beach, B., Burlacu, R., Barmann, A., Hager, L., Kleinert, T. (2023). *Enhancements of discretization approaches for non-convex MIQCQPs*. Journal of Global Optimization.
+  - Barmann, A., Burlacu, R., Hager, L., Kleinert, T. (2023). *On piecewise linear approximations of bilinear terms: structural comparison of univariate and bivariate MIP formulations*. Journal of Global Optimization, 85, 789-819.
+  - Yarotsky, D. (2017). *Error bounds for approximations with deep ReLU networks*. Neural Networks, 94, 103-114.
+  - Huchette, J.A. (2018). *Advanced mixed-integer programming formulations: methodology, computation, and application*. PhD thesis, MIT.

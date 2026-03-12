@@ -45,7 +45,6 @@ src/
     add_jump_expressions.jl   # JuMP expression builders
     add_param_container.jl    # Parameter container builders
     add_constraint_dual.jl    # Constraint & dual helpers
-    add_pwl_methods.jl        # Piecewise-linear variable/constraint methods
     constraint_helpers.jl     # Generic constraint utilities
     range_constraint.jl       # Min/max range constraints
     duration_constraints.jl   # Min up/down time constraints
@@ -82,6 +81,17 @@ src/
     initial_conditions_update_in_memory_store.jl
     model_numerical_analysis_utils.jl
     optimization_debugging.jl # Debug/diagnostic tools
+  quadratic_approximations/  # PWL approximation of x² (univariate)
+    pwl_utils.jl              # Shared breakpoint generator, _square helper
+    incremental.jl            # Incremental PWL formulation (δ/z variables)
+    solver_sos2.jl            # Solver-native SOS2 quadratic approximation
+    manual_sos2.jl            # Manual SOS2 (binary adjacency) quadratic approximation
+    sawtooth.jl               # Sawtooth relaxation approximation
+    epigraph.jl               # Epigraph-based approximation
+  bilinear_approximations/  # Approximation of bilinear products x·y
+    mccormick.jl              # McCormick envelopes for bilinear terms
+    bilinear.jl               # Bin2 separable bilinear approximation
+    hybs.jl                   # HybS hybrid separable approximation
   utils/                  # General-purpose utilities
     jump_utils.jl             # JuMP helper functions
     dataframes_utils.jl       # DataFrame manipulation
@@ -142,6 +152,12 @@ scripts/formatter/        # Code formatting (JuliaFormatter)
   concrete formulations call into.
 - **`src/objective_function/`** translates cost curves into JuMP objective terms. Each cost
   curve type has its own file.
+- **`src/quadratic_approximations/`** implements PWL approximation methods for x²:
+  SOS2 (solver and manual), sawtooth, epigraph, plus the incremental formulation
+  and shared breakpoint utilities.
+- **`src/bilinear_approximations/`** implements approximation methods for bilinear
+  products x·y: Bin2 separable decomposition, HybS hybrid relaxation, and McCormick
+  envelopes.
 - **`src/operation/`** implements `DecisionModel` and `EmulationModel` — the two main model
   types — plus serialization, output stores, and the problem template.
 - **`src/utils/`** is for pure utility functions with no domain coupling.

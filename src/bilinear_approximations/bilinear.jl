@@ -42,8 +42,8 @@ function _add_bilinear_approx_impl!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -62,8 +62,7 @@ function _add_bilinear_approx_impl!(
     meta_x = meta * "_x"
     meta_y = meta * "_y"
 
-    # Create p expression container
-    p_container = add_expression_container!(
+    p_expr = add_expression_container!(
         container,
         VariableSumExpression(),
         C,
@@ -71,91 +70,63 @@ function _add_bilinear_approx_impl!(
         time_steps;
         meta = meta_plus,
     )
-
     for name in names, t in time_steps
-        p_expr = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(p_expr, x_var_container[name, t])
-        JuMP.add_to_expression!(p_expr, y_var_container[name, t])
-        p_container[name, t] = p_expr
+        p = JuMP.AffExpr(0.0)
+        JuMP.add_to_expression!(p, x_var[name, t])
+        JuMP.add_to_expression!(p, y_var[name, t])
+        p_expr[name, t] = p
     end
 
     # Approximate p², x², y² using the provided quadratic approximation function
-    quad_approx_fn(
-        container, C, names, time_steps, p_container, p_min, p_max, meta_plus,
+    zp_expr = quad_approx_fn(
+        container, C, names, time_steps, p_expr, p_min, p_max, meta_plus,
     )
-    quad_approx_fn(
-        container, C, names, time_steps, x_var_container, x_min, x_max, meta_x,
+    zx_expr = quad_approx_fn(
+        container, C, names, time_steps, x_var, x_min, x_max, meta_x,
     )
-    quad_approx_fn(
-        container, C, names, time_steps, y_var_container, y_min, y_max, meta_y,
-    )
-
-    # Retrieve quadratic approximation expression containers
-    zp_container = get_expression(
-        container, QuadraticApproximationExpression(), C, meta_plus,
-    )
-    zx_container = get_expression(
-        container, QuadraticApproximationExpression(), C, meta_x,
-    )
-    zy_container = get_expression(
-        container, QuadraticApproximationExpression(), C, meta_y,
+    zy_expr = quad_approx_fn(
+        container, C, names, time_steps, y_var, y_min, y_max, meta_y,
     )
 
-    z_container = add_variable_container!(
-        container,
-        BilinearProductVariable(),
-        C,
-        names,
-        time_steps;
-        meta,
-    )
+    z_var = @_add_container(variable, BilinearProductVariable)
+    link_cons = @_add_container(constraints, BilinearProductLinkingConstraint)
+    result_expr = @_add_container(expression, BilinearProductExpression)
 
-    link_container = add_constraints_container!(
-        container,
-        BilinearProductLinkingConstraint(),
-        C,
-        names,
-        time_steps;
-        meta,
-    )
-    expr_container = add_expression_container!(
-        container,
-        BilinearProductExpression(),
-        C,
-        names,
-        time_steps;
-        meta,
-    )
+    # Compute valid bounds for z = x·y from variable bounds
+    z_lo = min(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
+    z_hi = max(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
 
     for name in names, t in time_steps
         # It's not necessary to create a variable container here, but it is
         # necessary in HybS, so this is here for symmetry.
-        z_var = JuMP.@variable(
-            jump_model,
-            base_name = "BilinearProduct_$(C)_{$(name), $(t)}",
-        )
-        z_container[name, t] = z_var
+        z =
+            z_var[name, t] = JuMP.@variable(
+                jump_model,
+                base_name = "BilinearProduct_$(C)_{$(name), $(t)}",
+                lower_bound = z_lo,
+                upper_bound = z_hi,
+            )
 
         # z = (1/2) * (p² − x² - y²)
         z_expr = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(z_expr, 0.5, zp_container[name, t])
-        JuMP.add_to_expression!(z_expr, -0.5, zx_container[name, t])
-        JuMP.add_to_expression!(z_expr, -0.5, zy_container[name, t])
-        link_container[name, t] = JuMP.@constraint(jump_model, z_var == z_expr)
+        JuMP.add_to_expression!(z_expr, 0.5, zp_expr[name, t])
+        JuMP.add_to_expression!(z_expr, -0.5, zx_expr[name, t])
+        JuMP.add_to_expression!(z_expr, -0.5, zy_expr[name, t])
+        link_cons[name, t] = JuMP.@constraint(jump_model, z == z_expr)
 
-        expr_container[name, t] = JuMP.AffExpr(0.0, z_var => 1.0)
+        result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
     end
 
     # Optional McCormick envelope
     if add_mccormick
         _add_mccormick_envelope!(
             container, C, names, time_steps,
-            x_var_container, y_var_container, z_container,
+            x_var, y_var, z_var,
             x_min, x_max, y_min, y_max, meta,
         )
     end
 
-    return
+    return result_expr
 end
 
 """
@@ -185,13 +156,12 @@ function _add_sos2_bilinear_approx!(
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
             _add_sos2_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, num_segments, m)
-    _add_bilinear_approx_impl!(
+    return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
         add_mccormick,
     )
-    return
 end
 
 """
@@ -231,13 +201,12 @@ function _add_manual_sos2_bilinear_approx!(
                 num_segments,
                 m,
             )
-    _add_bilinear_approx_impl!(
+    return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
         add_mccormick,
     )
-    return
 end
 
 """
@@ -267,11 +236,10 @@ function _add_sawtooth_bilinear_approx!(
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
             _add_sawtooth_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, depth, m)
-    _add_bilinear_approx_impl!(
+    return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
         add_mccormick,
     )
-    return
 end

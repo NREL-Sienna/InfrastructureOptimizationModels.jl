@@ -562,14 +562,14 @@ include("common_models/add_constraint_dual.jl")
 include("common_models/add_jump_expressions.jl") # helpers only used in POM.
 include("common_models/set_expression.jl") # helpers only used in POM.
 include("common_models/get_time_series.jl")
-include("common_models/add_pwl_methods.jl")
+# PWL interpolation methods moved to quadratic_approximations/
 include("common_models/constraint_helpers.jl")
 include("common_models/range_constraint.jl")
 include("common_models/duration_constraints.jl")
 include("common_models/rateofchange_constraints.jl")
 
 # Objective function implementations
-include("objective_function/cost_term_helpers.jl") # generic helpers: add_cost_term_{invariant,variant}!, PWL helpers
+include("objective_function/cost_term_helpers.jl") # generic helpers: add_cost_term_{invariant,variant}!
 include("objective_function/common.jl")
 include("objective_function/proportional.jl") # add_proportional_cost! and add_proportional_cost_maybe_time_variant!
 include("objective_function/start_up_shut_down.jl") # add_{start_up, shut_down}_cost!
@@ -579,20 +579,33 @@ include("objective_function/linear_curve.jl")
 include("objective_function/quadratic_curve.jl")
 include("objective_function/import_export.jl")
 
-# add_variable_cost! implementations, but "it's complicated." Other stuff exported too
-include("objective_function/piecewise_linear.jl")
-# Offer curve types must come before market_bid.jl
+# Offer curve types (pure type definitions, no dependencies)
 include("objective_function/offer_curve_types.jl")
-include("objective_function/market_bid.jl")
+
+# Pure PWL formulation math (must come before cost-data-specific files)
+include("objective_function/objective_function_pwl_lambda.jl") # lambda/convex combination PWL
+include("objective_function/objective_function_pwl_delta.jl")  # delta/incremental block PWL
+
+# Cost-data-specific mapping to PWL formulations
+include("objective_function/piecewise_linear.jl")  # CostCurve/FuelCurve → lambda PWL
+include("objective_function/market_bid.jl")         # OfferCurveCost → delta PWL
 
 # Quadratic approximations (PWL via SOS2)
+include("quadratic_approximations/common.jl")
+include("quadratic_approximations/pwl_utils.jl")
+include("quadratic_approximations/incremental.jl")
 include("quadratic_approximations/solver_sos2.jl")
 include("quadratic_approximations/manual_sos2.jl")
 include("quadratic_approximations/sawtooth.jl")
-include("quadratic_approximations/mccormick.jl")
 include("quadratic_approximations/epigraph.jl")
-include("quadratic_approximations/bilinear.jl")
-include("quadratic_approximations/hybs.jl")
+
+# Bilinear approximations (x·y via Bin2/HybS decomposition)
+include("bilinear_approximations/mccormick.jl")
+include("bilinear_approximations/bilinear.jl")
+include("bilinear_approximations/hybs.jl")
+
+# DNMDT uses BilinearProductVariable from bilinear.jl — must come after bilinear_approximations
+include("quadratic_approximations/dnmdt.jl")
 
 # add_param_container! wrappers — must come after piecewise_linear.jl
 # (which defines VariableValueParameter and FixValueParameter)

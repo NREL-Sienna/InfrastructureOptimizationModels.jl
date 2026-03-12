@@ -1,58 +1,11 @@
-"""
-    _get_breakpoints_for_pwl_function(min_val, max_val, f; num_segments = DEFAULT_INTERPOLATION_LENGTH)
-
-Generate breakpoints for piecewise linear (PWL) approximation of a nonlinear function.
-
-This function creates equally-spaced breakpoints over the specified domain [min_val, max_val]
-and evaluates the given function at each breakpoint to construct a piecewise linear approximation.
-The breakpoints are used in optimization problems to linearize nonlinear constraints or objectives.
-
-# Arguments
-- `min_val::Float64`: Minimum value of the domain for the PWL approximation
-- `max_val::Float64`: Maximum value of the domain for the PWL approximation  
-- `f`: Function to be approximated (must be callable with Float64 input)
-- `num_segments::Int`: Number of linear segments in the PWL approximation (default: DEFAULT_INTERPOLATION_LENGTH)
-
-# Returns
-- `Tuple{Vector{Float64}, Vector{Float64}}`: A tuple containing:
-  - `x_bkpts`: Vector of x-coordinates (breakpoints) in the domain
-  - `y_bkpts`: Vector of y-coordinates (function values at breakpoints)
-
-# Notes
-- The number of breakpoints is `num_segments + 1`
-- Breakpoints are equally spaced across the domain
-- The first breakpoint is always at `min_val` and the last at `max_val`
-"""
-function _get_breakpoints_for_pwl_function(
-    min_val::Float64,
-    max_val::Float64,
-    f;
-    num_segments = DEFAULT_INTERPOLATION_LENGTH,
-)
-    # Calculate total number of breakpoints (one more than segments)
-    # num_segments is the number of linear segments in the PWL approximation
-    # num_bkpts is the total number of breakpoints needed for the segments
-    num_bkpts = num_segments + 1
-
-    # Calculate step size for equally-spaced breakpoints
-    step = (max_val - min_val) / num_segments
-
-    # Pre-allocate vectors for breakpoint coordinates
-    x_bkpts = Vector{Float64}(undef, num_bkpts)  # Domain values (x-coordinates)
-    y_bkpts = Vector{Float64}(undef, num_bkpts)  # Function values (y-coordinates)
-
-    # Set the first breakpoint at the minimum domain value
-    x_bkpts[1] = min_val
-    y_bkpts[1] = f(min_val)
-
-    # Generate remaining breakpoints by stepping through the domain
-    for i in 1:num_segments
-        x_val = min_val + step * i  # Calculate x-coordinate of current breakpoint
-        x_bkpts[i + 1] = x_val
-        y_bkpts[i + 1] = f(x_val)  # Evaluate function at current breakpoint
-    end
-    return x_bkpts, y_bkpts
-end
+# Incremental piecewise linear (PWL) formulation.
+#
+# This implements the incremental method for PWL approximation using δ (interpolation)
+# and z (binary ordering) variables. Retained for downstream compatibility (POM HVDC models).
+#
+# The same mathematical problem (PWL approximation of nonlinear functions) is also solved by
+# `_add_sos2_quadratic_approx!` (convex combination + SOS2) and
+# `_add_sawtooth_quadratic_approx!` (sawtooth relaxation), which use different formulations.
 
 """
     add_sparse_pwl_interpolation_variables!(container, devices, ::T, model, num_segments = DEFAULT_INTERPOLATION_LENGTH)
@@ -137,7 +90,7 @@ function add_sparse_pwl_interpolation_variables!(
                 ub = get_variable_upper_bound(T(), d, V())
                 ub !== nothing && JuMP.set_upper_bound(var_container[name, i, t], ub)
 
-                # Set lower bound if specified by the device formulation  
+                # Set lower bound if specified by the device formulation
                 lb = get_variable_lower_bound(T(), d, V())
                 lb !== nothing && JuMP.set_lower_bound(var_container[name, i, t], lb)
             end
@@ -164,7 +117,7 @@ Binary variables z ensure the incremental property: δᵢ₊₁ ≤ zᵢ ≤ δ�
 # Arguments
 - `container::OptimizationContainer`: The optimization container to add constraints to
 - `::R`: Type parameter for the original variable (x)
-- `::S`: Type parameter for the approximated variable (y = f(x))  
+- `::S`: Type parameter for the approximated variable (y = f(x))
 - `::T`: Type parameter for the interpolation variables (δ)
 - `::U`: Type parameter for the binary interpolation variables (z)
 - `::V`: Type parameter for the constraint type
@@ -175,7 +128,7 @@ Binary variables z ensure the incremental property: δᵢ₊₁ ≤ zᵢ ≤ δ�
 
 # Type Parameters
 - `R <: VariableType`: Original variable type
-- `S <: VariableType`: Approximated variable type  
+- `S <: VariableType`: Approximated variable type
 - `T <: VariableType`: Interpolation variable type
 - `U <: VariableType`: Binary interpolation variable type
 - `V <: ConstraintType`: Constraint type

@@ -4,7 +4,7 @@
 struct McCormickConstraint <: ConstraintType end
 
 """
-    _add_mccormick_envelope!(container, C, names, time_steps, x_var_container, y_var_container, z_var_container, x_min, x_max, y_min, y_max, meta)
+    _add_mccormick_envelope!(container, C, names, time_steps, x_var, y_var, z_var, x_min, x_max, y_min, y_max, meta)
 
 Add McCormick envelope constraints for the bilinear product z ≈ x·y.
 
@@ -21,9 +21,9 @@ z ≤ x_min·y + x·y_max − x_min·y_max
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
 - `time_steps::UnitRange{Int}`: time periods
-- `x_var_container`: container of x variables indexed by (name, t)
-- `y_var_container`: container of y variables indexed by (name, t)
-- `z_var_container`: container of z variables indexed by (name, t)
+- `x_var`: container of x variables indexed by (name, t)
+- `y_var`: container of y variables indexed by (name, t)
+- `z_var`: container of z variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x
 - `x_max::Float64`: upper bound of x
 - `y_min::Float64`: lower bound of y
@@ -38,9 +38,9 @@ function _add_mccormick_envelope!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
-    z_var_container,
+    x_var,
+    y_var,
+    z_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -51,39 +51,30 @@ function _add_mccormick_envelope!(
     IS.@assert_op y_max > y_min
     jump_model = get_jump_model(container)
 
-    mc_container = add_constraints_container!(
-        container,
-        McCormickConstraint(),
-        C,
-        names,
-        1:4,
-        time_steps;
-        meta,
-        sparse = true,
-    )
+    mc_cons = @_add_container(constraints, McCormickConstraint, 1:4, sparse)
 
     for name in names, t in time_steps
-        x = x_var_container[name, t]
-        y = y_var_container[name, t]
-        z = z_var_container[name, t]
+        x = x_var[name, t]
+        y = y_var[name, t]
+        z = z_var[name, t]
 
         # z ≥ x_min·y + x·y_min − x_min·y_min
-        mc_container[(name, 1, t)] = JuMP.@constraint(
+        mc_cons[(name, 1, t)] = JuMP.@constraint(
             jump_model,
             z >= x_min * y + x * y_min - x_min * y_min,
         )
         # z ≥ x_max·y + x·y_max − x_max·y_max
-        mc_container[(name, 2, t)] = JuMP.@constraint(
+        mc_cons[(name, 2, t)] = JuMP.@constraint(
             jump_model,
             z >= x_max * y + x * y_max - x_max * y_max,
         )
         # z ≤ x_max·y + x·y_min − x_max·y_min
-        mc_container[(name, 3, t)] = JuMP.@constraint(
+        mc_cons[(name, 3, t)] = JuMP.@constraint(
             jump_model,
             z <= x_max * y + x * y_min - x_max * y_min,
         )
         # z ≤ x_min·y + x·y_max − x_min·y_max
-        mc_container[(name, 4, t)] = JuMP.@constraint(
+        mc_cons[(name, 4, t)] = JuMP.@constraint(
             jump_model,
             z <= x_min * y + x * y_max - x_min * y_max,
         )
