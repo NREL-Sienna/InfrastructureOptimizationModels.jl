@@ -524,8 +524,25 @@ end
 #################################################################################
 
 """
-Add PWL cost terms for data coming from a MarketBidCost / ImportExportCost
-with offer curves, dispatched on OfferDirection.
+Add PWL cost terms using the **delta (incremental/block-offer) formulation**.
+
+Given an offer curve with breakpoints ``P_0, P_1, \\ldots, P_n`` and slopes
+``m_1, m_2, \\ldots, m_n``, this function:
+
+1. Creates delta variables ``\\delta_k \\geq 0`` for each segment via [`add_pwl_variables!`](@ref),
+   with no upper bound (block sizes are enforced by constraints).
+2. Adds linking and block-size constraints via [`_add_pwl_constraint!`](@ref):
+   ``p = \\sum_k \\delta_k`` and ``\\delta_k \\leq P_{k+1} - P_k``.
+3. Builds the cost expression ``C = \\sum_k m_k \\, \\delta_k`` via [`get_pwl_cost_expression`](@ref).
+
+For convex offer curves (``m_1 \\leq m_2 \\leq \\cdots \\leq m_n``), no SOS2 or binary
+variables are needed — the optimizer fills cheap segments first automatically.
+
+Dispatches on `OfferDirection` (incremental or decremental) to select the appropriate
+variable and constraint types.
+
+See also: [`_add_pwl_term!`](@ref) for the lambda (convex combination) formulation used by
+`CostCurve{PiecewisePointCurve}`.
 """
 function add_pwl_term!(
     dir::OfferDirection,

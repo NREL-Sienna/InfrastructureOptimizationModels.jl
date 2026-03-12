@@ -60,7 +60,21 @@ end
 ##################################################
 
 """
-Add PWL cost terms for data coming from a PiecewisePointCurve
+Add PWL cost terms using the **lambda (convex combination) formulation**.
+
+Given a `PiecewisePointCurve` with breakpoints ``(P_i, C_i)``, this function:
+
+1. Creates lambda variables ``\\lambda_i \\in [0, 1]`` at each breakpoint via [`_add_pwl_variables!`](@ref).
+2. Adds linking and normalization constraints via [`_add_pwl_constraint_standard!`](@ref).
+3. If the cost curve is **non-convex**, adds an SOS2 adjacency constraint so that at most
+   two neighboring ``\\lambda`` values are nonzero.
+4. Builds the cost expression ``C = \\sum_i \\lambda_i \\, C(P_i)``.
+
+Returns a vector of cost expressions, one per time step, which the caller adds to the
+objective function.
+
+See also: [`add_pwl_term!`](@ref) for the delta (block-offer) formulation used by
+`MarketBidCost`.
 """
 function _add_pwl_term!(
     container::OptimizationContainer,
