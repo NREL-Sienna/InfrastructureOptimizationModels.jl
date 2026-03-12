@@ -131,7 +131,7 @@ function _add_dnmdt_univariate_approx!(
     ws_hi = eps_L + 1.0
 
     # Precompute power-of-two coefficients (invariant across names and time steps)
-    pow2_neg = [2.0^(-j) for j in 1:depth]
+    pow2_neg = tuple(2.0^(-j) for j in 1:depth)
 
     # Valid bounds for z ≈ x²
     z_ub = max(x_min^2, x_max^2)
@@ -141,19 +141,19 @@ function _add_dnmdt_univariate_approx!(
 
     # Binary expansion
     xh_con = add_variable_container!(
-        container, DNMDTScaledVariable(), C, names, time_steps; meta = meta,
+        container, DNMDTScaledVariable(), C, names, time_steps; meta,
     )
     beta_con = add_variable_container!(
-        container, DNMDTBinaryVariable(), C, names, 1:depth, time_steps; meta = meta,
+        container, DNMDTBinaryVariable(), C, names, 1:depth, time_steps; meta,
     )
     dx_con = add_variable_container!(
-        container, DNMDTResidualVariable(), C, names, time_steps; meta = meta,
+        container, DNMDTResidualVariable(), C, names, time_steps; meta,
     )
     scaling = add_constraints_container!(
-        container, DNMDTScalingConstraint(), C, names, time_steps; meta = meta,
+        container, DNMDTScalingConstraint(), C, names, time_steps; meta,
     )
     expansion = add_constraints_container!(
-        container, DNMDTBinaryExpansionConstraint(), C, names, time_steps; meta = meta,
+        container, DNMDTBinaryExpansionConstraint(), C, names, time_steps; meta,
     )
 
     # Product aux u[j]
@@ -163,38 +163,38 @@ function _add_dnmdt_univariate_approx!(
     )
     bmc = add_constraints_container!(
         container, DNMDTBinaryMcCormickConstraint(), C,
-        names, 1:3, 1:depth, time_steps; sparse = true, meta = meta,
+        names, 1:3, 1:depth, time_steps; sparse = true, meta,
     )
 
     # Residual Delta_z
     dz_con = add_variable_container!(
-        container, DNMDTResidualProductVariable(), C, names, time_steps; meta = meta,
+        container, DNMDTResidualProductVariable(), C, names, time_steps; meta,
     )
 
     # Final z variable + back-transform
     z_con = add_variable_container!(
-        container, BilinearProductVariable(), C, names, time_steps; meta = meta,
+        container, BilinearProductVariable(), C, names, time_steps; meta,
     )
     bt = add_constraints_container!(
-        container, DNMDTBackTransformConstraint(), C, names, time_steps; meta = meta,
+        container, DNMDTBackTransformConstraint(), C, names, time_steps; meta,
     )
 
     # McCormick on x^2 (global bounds)
     sq = add_constraints_container!(
         container, DNMDTSquareBoundConstraint(), C,
-        names, 1:3, time_steps; sparse = true, meta = meta,
+        names, 1:3, time_steps; sparse = true, meta,
     )
 
     # Result expression
     result_expr = add_expression_container!(
-        container, DNMDTQuadraticExpression(), C, names, time_steps; meta = meta,
+        container, DNMDTQuadraticExpression(), C, names, time_steps; meta,
     )
 
     # Tightening: residual upper bound
     if tighten
         ub = add_constraints_container!(
             container, DNMDTResidualUpperBoundConstraint(), C,
-            names, time_steps; meta = meta,
+            names, time_steps; meta,
         )
     end
 
@@ -285,10 +285,9 @@ function _add_dnmdt_univariate_approx!(
             dx_con, dx_con, dz_con,
             0.0, eps_L, 0.0, eps_L, meta * "_residual",
         )
-    end
 
     # ── Epigraph tightening (T-D-NMDT only) ──
-    if tighten
+    else
         _add_epigraph_quadratic_approx!(
             container, C, names, time_steps,
             x_var_container, x_min, x_max, epigraph_depth, meta * "_epi",
@@ -412,25 +411,25 @@ function _add_dnmdt_bilinear_approx!(
     # Binary McCormick constraints
     bmc = add_constraints_container!(
         container, DNMDTBinaryMcCormickConstraint(), C,
-        names, 1:3, 1:depth, ["u", "v"], time_steps; sparse = true, meta = meta,
+        names, 1:3, 1:depth, ["u", "v"], time_steps; sparse = true, meta,
     )
 
     # Residual product Delta_z
     dz_con = add_variable_container!(
-        container, DNMDTResidualProductVariable(), C, names, time_steps; meta = meta,
+        container, DNMDTResidualProductVariable(), C, names, time_steps; meta,
     )
 
     # Final z variable + back-transform constraint
     z_con = add_variable_container!(
-        container, BilinearProductVariable(), C, names, time_steps; meta = meta,
+        container, BilinearProductVariable(), C, names, time_steps; meta,
     )
     bt = add_constraints_container!(
-        container, DNMDTBackTransformConstraint(), C, names, time_steps; meta = meta,
+        container, DNMDTBackTransformConstraint(), C, names, time_steps; meta,
     )
 
     # Result expression
     result_expr = add_expression_container!(
-        container, DNMDTBilinearExpression(), C, names, time_steps; meta = meta,
+        container, DNMDTBilinearExpression(), C, names, time_steps; meta,
     )
 
     # ── Populate: binary expansions ──────────────────────────────────────
