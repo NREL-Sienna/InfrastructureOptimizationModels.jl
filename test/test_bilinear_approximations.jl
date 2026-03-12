@@ -1,31 +1,5 @@
 const BILINEAR_META = "BilinearTest"
 
-function _setup_bilinear_test(device_names::Vector{String}, time_steps::UnitRange{Int})
-    container = _setup_qa_container(time_steps)
-    x_var_container = IOM.add_variable_container!(
-        container,
-        TestOriginalVariable(),
-        MockThermalGen,
-        device_names,
-        time_steps,
-    )
-    y_var_container = IOM.add_variable_container!(
-        container,
-        TestApproximatedVariable(),
-        MockThermalGen,
-        device_names,
-        time_steps,
-    )
-    jump_model = IOM.get_jump_model(container)
-    for name in device_names, t in time_steps
-        x_var_container[name, t] =
-            JuMP.@variable(jump_model, base_name = "x_$(name)_$(t)")
-        y_var_container[name, t] =
-            JuMP.@variable(jump_model, base_name = "y_$(name)_$(t)")
-    end
-    return (; container, x_var_container, y_var_container, jump_model)
-end
-
 @testset "Bilinear Approximations" begin
     @testset "Solver SOS2 Bilinear" begin
         @testset "Constraint structure" begin

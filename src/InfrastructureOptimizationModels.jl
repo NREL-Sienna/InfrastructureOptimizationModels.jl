@@ -591,6 +591,7 @@ include("objective_function/piecewise_linear.jl")  # CostCurve/FuelCurve → lam
 include("objective_function/market_bid.jl")         # OfferCurveCost → delta PWL
 
 # Quadratic approximations (PWL via SOS2)
+include("quadratic_approximations/common.jl")
 include("quadratic_approximations/pwl_utils.jl")
 include("quadratic_approximations/incremental.jl")
 include("quadratic_approximations/solver_sos2.jl")

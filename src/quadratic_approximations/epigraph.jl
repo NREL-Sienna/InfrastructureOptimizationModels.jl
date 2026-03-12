@@ -12,7 +12,7 @@ struct EpigraphVariable <: VariableType end
 struct EpigraphTangentConstraint <: ConstraintType end
 
 """
-    _add_epigraph_quadratic_approx!(container, C, names, time_steps, x_var_container, x_min, x_max, depth, meta)
+    _add_epigraph_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
 
 Create a variable z that lower-bounds x² using tangent-line cuts (Q^{L1} relaxation).
 
@@ -30,7 +30,7 @@ The maximum underestimation gap between the tangent envelope and x² is
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
 - `time_steps::UnitRange{Int}`: time periods
-- `x_var_container`: container of variables indexed by (name, t)
+- `x_var`: container of variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
 - `depth::Int`: epigraph depth L1 (uses 2^depth + 1 tangent breakpoints)
@@ -41,7 +41,7 @@ function _add_epigraph_quadratic_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
+    x_var,
     x_min::Float64,
     x_max::Float64,
     depth::Int,
@@ -51,127 +51,77 @@ function _add_epigraph_quadratic_approx!(
     IS.@assert_op depth >= 1
     jump_model = get_jump_model(container)
     delta = x_max - x_min
-
-    # Create z variable container
-    z_container = add_variable_container!(
-        container,
-        EpigraphVariable(),
-        C,
-        names,
-        time_steps;
-        meta,
-    )
-
     g_levels = 0:depth
-    g_container = add_variable_container!(
-        container,
-        SawtoothAuxVariable(),
-        C,
-        names,
-        g_levels,
-        time_steps;
-        meta,
-    )
-    lp_container = add_constraints_container!(
-        container,
-        SawtoothLPConstraint(),
-        C,
-        names,
-        1:2,
-        time_steps;
-        meta,
-    )
-    link_container = add_constraints_container!(
-        container,
-        SawtoothLinkingConstraint(),
-        C,
-        names,
-        time_steps;
-        meta,
-    )
 
-    # Create tangent constraint container (sparse: name × breakpoint_idx × t)
-    tangent_container = add_constraints_container!(
-        container,
-        EpigraphTangentConstraint(),
-        C,
-        names,
-        1:(depth + 2),
-        time_steps;
-        meta,
-        sparse = true,
-    )
-
-    expr_container = add_expression_container!(
-        container,
-        EpigraphExpression(),
-        C,
-        names,
-        time_steps;
-        meta,
-    )
+    z_var = @_add_container(variable, EpigraphVariable)
+    g_var = @_add_container(variable, SawtoothAuxVariable, g_levels)
+    lp_cons = @_add_container(constraints, SawtoothLPConstraint, 1:2)
+    link_cons = @_add_container(constraints, SawtoothLinkingConstraint)
+    tangent_cons =
+        @_add_container(constraints, EpigraphTangentConstraint, 1:(depth + 2), sparse)
+    result_expr = @_add_container(expression, EpigraphExpression)
 
     # Upper bound for epigraph variable z ≈ x²
     z_ub = max(x_min^2, x_max^2)
 
     for name in names, t in time_steps
-        x_var = x_var_container[name, t]
+        x = x_var[name, t]
 
         # Auxiliary variables g_0,...,g_L ∈ [0, 1]
         for j in g_levels
-            g_container[name, j, t] = JuMP.@variable(
+            g_var[name, j, t] = JuMP.@variable(
                 jump_model,
                 base_name = "SawtoothAux_$(C)_{$(name), $(j), $(t)}",
                 lower_bound = 0.0,
                 upper_bound = 1.0,
             )
         end
-        g0 = g_container[name, 0, t]
+        g0 = g_var[name, 0, t]
 
         # Linking constraint: g_0 = (x - x_min) / Δ
-        link_container[name, t] = JuMP.@constraint(
+        link_cons[name, t] = JuMP.@constraint(
             jump_model,
-            g0 == (x_var - x_min) / delta,
+            g0 == (x - x_min) / delta,
         )
 
         # T^L constraints for j = 1,...,L
         for j in 1:depth
-            g_prev = g_container[name, j - 1, t]
-            g_curr = g_container[name, j, t]
+            g_prev = g_var[name, j - 1, t]
+            g_curr = g_var[name, j, t]
 
             # g_j ≤ 2 g_{j-1}
-            lp_container[name, 1, t] = JuMP.@constraint(jump_model, g_curr <= 2.0 * g_prev)
+            lp_cons[name, 1, t] = JuMP.@constraint(jump_model, g_curr <= 2.0 * g_prev)
             # g_j ≤ 2(1 - g_{j-1})
-            lp_container[name, 2, t] =
+            lp_cons[name, 2, t] =
                 JuMP.@constraint(jump_model, g_curr <= 2.0 * (1.0 - g_prev))
         end
 
         # Create the epigraph variable (bounded from below by tangent cuts)
-        z_var = JuMP.@variable(
-            jump_model,
-            base_name = "EpigraphVar_$(C)_{$(name), $(t)}",
-            lower_bound = 0.0,
-            upper_bound = z_ub,
-        )
-        z_container[name, t] = z_var
+        z =
+            z_var[name, t] = JuMP.@variable(
+                jump_model,
+                base_name = "EpigraphVar_$(C)_{$(name), $(t)}",
+                lower_bound = 0.0,
+                upper_bound = z_ub,
+            )
 
         fL = JuMP.AffExpr(0.0)
         for j in 1:depth
-            JuMP.add_to_expression!(fL, delta * delta * 2.0^(-2j), g_container[name, j, t])
-            tangent_container[(name, j + 1, t)] = JuMP.@constraint(
+            JuMP.add_to_expression!(fL, delta * delta * 2.0^(-2j), g_var[name, j, t])
+            tangent_cons[(name, j + 1, t)] = JuMP.@constraint(
                 jump_model,
-                z_var >=
+                z >=
                 x_min * (2 * delta * g0 + x_min) - fL + delta^2 * (g0 - 2.0^(-2j - 2))
             )
         end
-        tangent_container[name, 1, t] = JuMP.@constraint(jump_model, z_var >= 0)
-        tangent_container[name, depth + 1, t] = JuMP.@constraint(
+        tangent_cons[name, 1, t] = JuMP.@constraint(jump_model, z >= 0)
+        tangent_cons[name, depth + 1, t] = JuMP.@constraint(
             jump_model,
-            z_var >= 2.0 * x_min - 1.0 + 2.0 * delta * g_container[name, 0, t]
+            z >= 2.0 * x_min - 1.0 + 2.0 * delta * g0
         )
 
-        expr_container[name, t] = JuMP.AffExpr(0.0, z_var => 1.0)
+        result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
     end
 
-    return
+    return result_expr
 end
