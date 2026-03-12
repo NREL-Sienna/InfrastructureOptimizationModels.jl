@@ -5,6 +5,7 @@
 struct ManualSOS2BinaryVariable <: SparseVariableType end
 "Ensures exactly one segment is active (∑zⱼ = 1) in manual SOS2 quadratic approximation."
 struct ManualSOS2SegmentSelectionConstraint <: ConstraintType end
+struct ManualSOS2SegmentSelectionExpression <: ExpressionType end
 "Links active segment to lambda variables."
 struct ManualSOS2AdjacencyConstraint <: ConstraintType end
 
@@ -51,8 +52,11 @@ function _add_manual_sos2_quadratic_approx!(
         add_variable_container!(container, QuadraticApproxVariable(), C; meta)
     z_container = add_variable_container!(container, ManualSOS2BinaryVariable(), C; meta)
     link_cons = @_add_container!(constraints, SOS2LinkingConstraint)
+    link_expr = @_add_container!(expression, SOS2LinkingExpression)
     norm_cons = @_add_container!(constraints, SOS2NormConstraint)
+    norm_expr = @_add_container!(expression, SOS2NormExpression)
     seg_cons = @_add_container!(constraints, ManualSOS2SegmentSelectionConstraint)
+    seg_expr = @_add_container!(expression, ManualSOS2SegmentSelectionExpression)
     adj_cons = @_add_container!(constraints, ManualSOS2AdjacencyConstraint, 1:n_points)
     result_expr = @_add_container!(expression, QuadraticApproxExpression)
 
@@ -72,13 +76,18 @@ function _add_manual_sos2_quadratic_approx!(
         end
 
         # x = Σ λ_i * x_i
-        link_cons[name, t] = JuMP.@constraint(
-            jump_model,
-            x == sum(lambda[i] * x_bkpts[i] for i in eachindex(x_bkpts))
-        )
+        link = link_expr[name, t] = JuMP.AffExpr(0.0)
+        for i in eachindex(x_bkpts)
+            JuMP.add_to_expression!(link, lambda[i], x_bkpts[i])
+        end
+        link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
 
         # Σ λ_i = 1
-        norm_cons[name, t] = JuMP.@constraint(jump_model, sum(lambda) == 1.0)
+        norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
+        for l in lambda
+            JuMP.add_to_expression!(norm, l)
+        end
+        norm_cons[name, t] = JuMP.@constraint(jump_model, norm == 1.0)
 
         # Create binary segment-selection variables z_j
         z_vars = Vector{JuMP.VariableRef}(undef, n_bins)
@@ -92,7 +101,11 @@ function _add_manual_sos2_quadratic_approx!(
         end
 
         # Σ z_j = 1 (segment selection)
-        seg_cons[name, t] = JuMP.@constraint(jump_model, sum(z_vars) == 1)
+        seg = seg_expr[name, t] = JuMP.AffExpr(0.0)
+        for z in z_vars
+            JuMP.add_to_expression!(seg, z)
+        end
+        seg_cons[name, t] = JuMP.@constraint(jump_model, seg == 1)
 
         # Adjacency constraints: λ_i ≤ z_{i-1} + z_i (with boundary cases)
         # λ_1 ≤ z_1

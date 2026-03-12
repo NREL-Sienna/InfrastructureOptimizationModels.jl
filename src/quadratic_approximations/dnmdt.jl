@@ -18,6 +18,7 @@ struct DNMDTResidualProductVariable <: VariableType end
 # ── Constraint types ──────────────────────────────────────────────────────────
 "Binary expansion constraint: w_hat = sum(2^-j * beta[j]) + Delta_w."
 struct DNMDTBinaryExpansionConstraint <: ConstraintType end
+struct DNMDTBinaryExpansionExpression <: ExpressionType end
 "Scaling constraint: w_hat = (w - w_min) / (w_max - w_min)."
 struct DNMDTScalingConstraint <: ConstraintType end
 "McCormick constraints on beta[j] x continuous products."
@@ -67,6 +68,7 @@ function _populate_binary_expansion!(
     delta_var = @_add_container!(variable, DNMDTResidualVariable)
     scaling_cons = @_add_container!(constraints, DNMDTScalingConstraint)
     expansion_cons = @_add_container!(constraints, DNMDTBinaryExpansionConstraint)
+    expansion_expr = @_add_container!(expression, DNMDTBinaryExpansionExpression)
 
     for name in names, t in time_steps
         xh = xh_var[name, t] = JuMP.@variable(
@@ -94,11 +96,13 @@ function _populate_binary_expansion!(
             jump_model,
             xh == (x_var[name, t] - x_min) / lx,
         )
-        expansion_cons[name, t] = JuMP.@constraint(
-            jump_model,
-            xh ==
-            sum(2.0^(-j) * beta_var[name, j, t] for j in 1:depth) + delta,
-        )
+        ex = expansion_expr[name, t] = JuMP.AffExpr(0.0)
+        for j=1:depth
+            JuMP.add_to_expression!(ex, 2.0^(-j), beta_var[name, j, t])
+        end
+        JuMP.add_to_expression!(ex, delta)
+
+        expansion_cons[name, t] = JuMP.@constraint( jump_model, xh == ex)
     end
     return xh_var, beta_var, delta_var
 end
@@ -152,7 +156,6 @@ function _add_dnmdt_univariate_approx!(
     bt_cons = @_add_container!(constraints, DNMDTBackTransformConstraint)
     sq_cons = @_add_container!(constraints, DNMDTSquareBoundConstraint, 1:3, sparse)
     result_expr = @_add_container!(expression, DNMDTQuadraticExpression)
-
     if tighten
         ub_cons = @_add_container!(constraints, DNMDTResidualUpperBoundConstraint)
     end
@@ -171,8 +174,8 @@ function _add_dnmdt_univariate_approx!(
 
         # Sum term: w_sum = Delta_x + x_hat (used locally in McCormick below)
         w_sum = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(w_sum, 1.0, dx_var[name, t])
-        JuMP.add_to_expression!(w_sum, 1.0, xh_var[name, t])
+        JuMP.add_to_expression!(w_sum, dx_var[name, t])
+        JuMP.add_to_expression!(w_sum, xh_var[name, t])
 
         # Binary McCormick for u[j]
         for j in 1:depth

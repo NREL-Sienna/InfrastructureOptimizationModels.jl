@@ -11,6 +11,7 @@ struct SOS2LinkingConstraint <: ConstraintType end
 struct SOS2LinkingExpression <: ExpressionType end
 "Ensures the sum of λ weights equals 1 in SOS2 quadratic approximation."
 struct SOS2NormConstraint <: ConstraintType end
+struct SOS2NormExpression <: ExpressionType end
 
 struct SolverSOS2Constraint <: ConstraintType end
 
@@ -55,6 +56,7 @@ function _add_sos2_quadratic_approx!(
         add_variable_container!(container, QuadraticApproxVariable(), C; meta)
     link_expr = @_add_container!(expression, SOS2LinkingExpression)
     link_cons = @_add_container!(constraints, SOS2LinkingConstraint)
+    norm_expr = @_add_container!(expression, SOS2NormExpression)
     norm_cons = @_add_container!(constraints, SOS2NormConstraint)
     sos_cons = @_add_container!(constraints, SolverSOS2Constraint)
     result_expr = @_add_container!(expression, QuadraticApproxExpression)
@@ -82,7 +84,11 @@ function _add_sos2_quadratic_approx!(
         link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
 
         # Σ λ_i = 1
-        norm_cons[name, t] = JuMP.@constraint(jump_model, sum(lambda) == 1.0)
+        norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
+        for l in lambda
+            JuMP.add_to_expression!(norm, l)
+        end
+        norm_cons[name, t] = JuMP.@constraint(jump_model, norm == 1.0)
 
         # λ ∈ SOS2 (solver-native)
         sos_cons[name, t] =
