@@ -20,7 +20,7 @@ Approximate x² using the sawtooth MIP formulation.
 Creates auxiliary continuous variables g_0,...,g_L and binary variables α_1,...,α_L,
 adds S^L constraints (4 per level) and a linking constraint for each component and
 time step, and stores affine expressions approximating x² in a
-`QuadraticApproximationExpression` expression container.
+`QuadraticApproxExpression` expression container.
 
 For depth L, the approximation interpolates x² at 2^L + 1 uniformly spaced breakpoints
 with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
@@ -59,7 +59,7 @@ function _add_sawtooth_quadratic_approx!(
     alpha_var = @_add_container(variable, SawtoothBinaryVariable, alpha_levels)
     mip_cons = @_add_container(constraints, SawtoothMIPConstraint, 1:4, sparse)
     link_cons = @_add_container(constraints, SawtoothLinkingConstraint)
-    result_expr = @_add_container(expression, QuadraticApproximationExpression)
+    result_expr = @_add_container(expression, QuadraticApproxExpression)
 
     # Precompute sawtooth coefficients (invariant across names and time steps)
     saw_coeffs = [delta * delta * (2.0^(-2 * j)) for j in alpha_levels]

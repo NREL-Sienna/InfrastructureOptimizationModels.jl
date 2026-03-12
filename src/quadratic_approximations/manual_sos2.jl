@@ -15,7 +15,7 @@ Approximate x² using a piecewise linear function with manually-implemented SOS2
 
 Creates lambda (λ) variables representing convex combination weights over breakpoints,
 adds linking, normalization, and manual adjacency constraints using binary variables,
-and stores affine expressions approximating x² in a `QuadraticApproximationExpression`
+and stores affine expressions approximating x² in a `QuadraticApproxExpression`
 expression container.
 
 # Arguments
@@ -50,11 +50,11 @@ function _add_manual_sos2_quadratic_approx!(
     lambda_container =
         add_variable_container!(container, QuadraticApproxVariable(), C; meta)
     z_container = add_variable_container!(container, ManualSOS2BinaryVariable(), C; meta)
-    link_cons = @_add_container(constraints, QuadraticApproxLinkingConstraint)
-    norm_cons = @_add_container(constraints, QuadraticApproxNormalizationConstraint)
+    link_cons = @_add_container(constraints, SOS2LinkingConstraint)
+    norm_cons = @_add_container(constraints, SOS2NormConstraint)
     seg_cons = @_add_container(constraints, ManualSOS2SegmentSelectionConstraint)
     adj_cons = @_add_container(constraints, ManualSOS2AdjacencyConstraint, 1:n_points)
-    result_expr = @_add_container(expression, QuadraticApproximationExpression)
+    result_expr = @_add_container(expression, QuadraticApproxExpression)
 
     for name in names, t in time_steps
         x = x_var[name, t]

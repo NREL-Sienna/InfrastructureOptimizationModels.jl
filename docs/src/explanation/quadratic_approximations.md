@@ -57,8 +57,8 @@ decreases as ``O(1/S^2)``.
 | Container Type                                   | Description                                     |
 |:------------------------------------------------ |:----------------------------------------------- |
 | [`QuadraticApproxVariable`](@ref)                | Lambda (``\lambda``) convex combination weights |
-| [`QuadraticApproxLinkingConstraint`](@ref)       | Links ``x`` to weighted breakpoints             |
-| [`QuadraticApproxNormalizationConstraint`](@ref) | Ensures ``\sum \lambda_i = 1``                  |
+| [`SOS2LinkingConstraint`](@ref)       | Links ``x`` to weighted breakpoints             |
+| [`SOS2NormConstraint`](@ref) | Ensures ``\sum \lambda_i = 1``                  |
 
 ## Manual SOS2
 
@@ -92,8 +92,8 @@ linear constraints per component per time step. Same approximation quality as So
 |:------------------------------------------------ |:----------------------------------------------- |
 | [`QuadraticApproxVariable`](@ref)                | Lambda (``\lambda``) convex combination weights |
 | [`ManualSOS2BinaryVariable`](@ref)               | Binary segment-selection variables (``z``)      |
-| [`QuadraticApproxLinkingConstraint`](@ref)       | Links ``x`` to weighted breakpoints             |
-| [`QuadraticApproxNormalizationConstraint`](@ref) | Ensures ``\sum \lambda_i = 1``                  |
+| [`SOS2LinkingConstraint`](@ref)       | Links ``x`` to weighted breakpoints             |
+| [`SOS2NormConstraint`](@ref) | Ensures ``\sum \lambda_i = 1``                  |
 | [`ManualSOS2SegmentSelectionConstraint`](@ref)   | Ensures ``\sum z_j = 1``                        |
 
 ## Sawtooth
