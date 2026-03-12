@@ -5,8 +5,14 @@ using CoverageTools
 using Coverage
 
 const BASE_DIR = joinpath(@__DIR__, "..")
-if Base.JLOptions().code_coverage != 0
-    CoverageTools.clean_folder("$BASE_DIR/src")
+
+function is_running_on_ci()
+    return get(ENV, "CI", "false") == "true" || haskey(ENV, "GITHUB_ACTIONS")
+end
+
+const LOCAL_COVERAGE = Base.JLOptions().code_coverage != 0 && !is_running_on_ci()
+if LOCAL_COVERAGE
+    CoverageTools.clean_folder(joinpath(BASE_DIR, "src"))
 end
 
 # Import InfrastructureSystems for logging utilities
@@ -35,8 +41,8 @@ try
 finally
     # Guarantee that the global logger is reset
     global_logger(logger)
-    if Base.JLOptions().code_coverage != 0
-        coverage = CoverageTools.process_folder("$BASE_DIR/src")
-        LCOV.writefile("$BASE_DIR/lcov.info", coverage)
+    if LOCAL_COVERAGE
+        coverage = CoverageTools.process_folder(joinpath(BASE_DIR, "src"))
+        LCOV.writefile(joinpath(BASE_DIR, "lcov.info"), coverage)
     end
 end

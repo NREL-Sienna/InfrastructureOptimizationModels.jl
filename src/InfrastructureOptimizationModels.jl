@@ -345,6 +345,7 @@ export add_semicontinuous_range_constraints!, add_semicontinuous_ramp_constraint
 # Cost helpers
 export add_shut_down_cost!, add_start_up_cost!
 export _add_pwl_term!, _get_sos_value, _onvar_cost, add_cost_to_expression!
+export uses_commitment_variables
 # Duration constraint helpers
 export device_duration_compact_retrospective!
 export device_duration_parameters!, device_duration_retrospective!
