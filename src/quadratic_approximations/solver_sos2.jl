@@ -53,11 +53,11 @@ function _add_sos2_quadratic_approx!(
     # Create all containers upfront
     lambda_var = # how is this working with no axes?
         add_variable_container!(container, QuadraticApproxVariable(), C; meta)
-    link_expr = @_add_container(expression, SOS2LinkingExpression)
-    link_cons = @_add_container(constraints, SOS2LinkingConstraint)
-    norm_cons = @_add_container(constraints, SOS2NormConstraint)
-    sos_cons = @_add_container(constraints, SolverSOS2Constraint)
-    result_expr = @_add_container(expression, QuadraticApproxExpression)
+    link_expr = @_add_container!(expression, SOS2LinkingExpression)
+    link_cons = @_add_container!(constraints, SOS2LinkingConstraint)
+    norm_cons = @_add_container!(constraints, SOS2NormConstraint)
+    sos_cons = @_add_container!(constraints, SolverSOS2Constraint)
+    result_expr = @_add_container!(expression, QuadraticApproxExpression)
 
     for name in names, t in time_steps
         x = x_var[name, t]

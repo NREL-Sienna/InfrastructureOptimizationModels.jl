@@ -88,9 +88,9 @@ function _add_bilinear_approx_impl!(
         container, C, names, time_steps, y_var, y_min, y_max, meta_y,
     )
 
-    z_var = @_add_container(variable, BilinearProductVariable)
-    link_cons = @_add_container(constraints, BilinearProductLinkingConstraint)
-    result_expr = @_add_container(expression, BilinearProductExpression)
+    z_var = @_add_container!(variable, BilinearProductVariable)
+    link_cons = @_add_container!(constraints, BilinearProductLinkingConstraint)
+    result_expr = @_add_container!(expression, BilinearProductExpression)
 
     # Compute valid bounds for z = x·y from variable bounds
     z_lo = min(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)

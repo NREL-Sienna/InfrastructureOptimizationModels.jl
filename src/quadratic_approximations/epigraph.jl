@@ -53,13 +53,13 @@ function _add_epigraph_quadratic_approx!(
     delta = x_max - x_min
     g_levels = 0:depth
 
-    z_var = @_add_container(variable, EpigraphVariable)
-    g_var = @_add_container(variable, SawtoothAuxVariable, g_levels)
-    lp_cons = @_add_container(constraints, SawtoothLPConstraint, 1:2)
-    link_cons = @_add_container(constraints, SawtoothLinkingConstraint)
+    z_var = @_add_container!(variable, EpigraphVariable)
+    g_var = @_add_container!(variable, SawtoothAuxVariable, g_levels)
+    lp_cons = @_add_container!(constraints, SawtoothLPConstraint, 1:2)
+    link_cons = @_add_container!(constraints, SawtoothLinkingConstraint)
     tangent_cons =
-        @_add_container(constraints, EpigraphTangentConstraint, 1:(depth + 2), sparse)
-    result_expr = @_add_container(expression, EpigraphExpression)
+        @_add_container!(constraints, EpigraphTangentConstraint, 1:(depth + 2), sparse)
+    result_expr = @_add_container!(expression, EpigraphExpression)
 
     # Upper bound for epigraph variable z ≈ x²
     z_ub = max(x_min^2, x_max^2)

@@ -51,7 +51,7 @@ function _add_mccormick_envelope!(
     IS.@assert_op y_max > y_min
     jump_model = get_jump_model(container)
 
-    mc_cons = @_add_container(constraints, McCormickConstraint, 1:4, sparse)
+    mc_cons = @_add_container!(constraints, McCormickConstraint, 1:4, sparse)
 
     for name in names, t in time_steps
         x = x_var[name, t]
