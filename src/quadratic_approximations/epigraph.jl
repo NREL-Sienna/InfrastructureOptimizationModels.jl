@@ -57,7 +57,8 @@ function _add_epigraph_quadratic_approx!(
     g_var = @_add_container(variable, SawtoothAuxVariable, g_levels)
     lp_cons = @_add_container(constraints, SawtoothLPConstraint, 1:2)
     link_cons = @_add_container(constraints, SawtoothLinkingConstraint)
-    tangent_cons = @_add_container(constraints, EpigraphTangentConstraint, 1:(depth + 2), sparse)
+    tangent_cons =
+        @_add_container(constraints, EpigraphTangentConstraint, 1:(depth + 2), sparse)
     result_expr = @_add_container(expression, EpigraphExpression)
 
     # Precompute upper bound (invariant across names and time steps)
@@ -96,12 +97,13 @@ function _add_epigraph_quadratic_approx!(
         end
 
         # Create the epigraph variable (bounded from below by tangent cuts)
-        z = z_var[name, t] = JuMP.@variable(
-            jump_model,
-            base_name = "EpigraphVar_$(C)_{$(name), $(t)}",
-            lower_bound = 0.0,
-            upper_bound = z_ub,
-        )
+        z =
+            z_var[name, t] = JuMP.@variable(
+                jump_model,
+                base_name = "EpigraphVar_$(C)_{$(name), $(t)}",
+                lower_bound = 0.0,
+                upper_bound = z_ub,
+            )
 
         fL = JuMP.AffExpr(0.0)
         for j in 1:depth
