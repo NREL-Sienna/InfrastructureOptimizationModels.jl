@@ -50,7 +50,6 @@ function _add_bilinear_approx_impl!(
     y_max::Float64,
     quad_approx_fn,
     meta::String;
-    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     # Bounds for p = x + y
     p_min = x_min + y_min
@@ -78,15 +77,9 @@ function _add_bilinear_approx_impl!(
     end
 
     # Approximate p², x², y² using the provided quadratic approximation function
-    zp_expr = quad_approx_fn(
-        container, C, names, time_steps, p_expr, p_min, p_max, meta_plus,
-    )
-    zx_expr = quad_approx_fn(
-        container, C, names, time_steps, x_var, x_min, x_max, meta_x,
-    )
-    zy_expr = quad_approx_fn(
-        container, C, names, time_steps, y_var, y_min, y_max, meta_y,
-    )
+    zp_expr = quad_approx_fn(container, C, names, time_steps, p_expr, p_min, p_max,meta_plus)
+    zx_expr = quad_approx_fn(container, C, names, time_steps, x_var, x_min, x_max, meta_x)
+    zy_expr = quad_approx_fn(container, C, names, time_steps, y_var, y_min, y_max, meta_y)
 
     z_var = add_variable_container!(
         container,
@@ -138,15 +131,6 @@ function _add_bilinear_approx_impl!(
         result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
     end
 
-    # Optional McCormick envelope
-    if add_mccormick
-        _add_mccormick_envelope!(
-            container, C, names, time_steps,
-            x_var, y_var, z_var,
-            x_min, x_max, y_min, y_max, meta,
-        )
-    end
-
     return result_expr
 end
 
@@ -176,12 +160,11 @@ function _add_sos2_bilinear_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sos2_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, num_segments, m)
+            _add_sos2_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, num_segments, m; add_mccormick)
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
-        add_mccormick,
     )
 end
 
@@ -220,13 +203,13 @@ function _add_manual_sos2_bilinear_approx!(
                 lo,
                 hi,
                 num_segments,
-                m,
+                m;
+                add_mccormick,
             )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
-        add_mccormick,
     )
 end
 
@@ -256,11 +239,10 @@ function _add_sawtooth_bilinear_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sawtooth_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, depth, m)
+            _add_sawtooth_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, depth, m, add_mccormick)
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
-        add_mccormick,
     )
 end

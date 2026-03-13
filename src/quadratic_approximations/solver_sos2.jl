@@ -45,6 +45,7 @@ function _add_sos2_quadratic_approx!(
     x_max::Float64,
     num_segments::Int,
     meta::String,
+    add_mccormick::Bool = false
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
         _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments)
@@ -142,6 +143,15 @@ function _add_sos2_quadratic_approx!(
             JuMP.add_to_expression!(x_hat_sq, x_sq_bkpts[i], lambda[i])
         end
         result_expr[name, t] = x_hat_sq
+    end
+
+    if add_mccormick
+        _add_mccormick_envelope!(
+            container, C, names, time_steps,
+            x_var, z_var,
+            x_min, x_max,
+            meta
+        )
     end
 
     return result_expr
