@@ -283,6 +283,7 @@ function _add_dmndt_bilinear_approx!(
     y_max::Float64,
     depth::Int,
     meta::String;
+    double::Bool = false,
     tigthen::Bool = false,
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
@@ -298,6 +299,7 @@ function _add_dmndt_bilinear_approx!(
                 hi,
                 depth,
                 m;
+                double,
                 tigthen,
                 add_mccormick,
             )

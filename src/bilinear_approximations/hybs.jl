@@ -205,11 +205,23 @@ function _add_hybs_sos2_bilinear_approx!(
     depth::Int,
     meta::String;
     add_mccormick::Bool = false,
+    add_quad_mccormick::Bool = false,
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sos2_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, depth, m)
+            _add_sos2_quadratic_approx!(
+                cont,
+                CT,
+                nms,
+                ts,
+                vc,
+                lo,
+                hi,
+                depth,
+                m;
+                add_mccormick = add_quad_mccormick,
+            )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
@@ -233,11 +245,23 @@ function _add_hybs_manual_sos2_bilinear_approx!(
     depth::Int,
     meta::String;
     add_mccormick::Bool = false,
+    add_quad_mccormick::Bool = false,
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_manual_sos2_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, depth, m)
+            _add_manual_sos2_quadratic_approx!(
+                cont,
+                CT,
+                nms,
+                ts,
+                vc,
+                lo,
+                hi,
+                depth,
+                m;
+                add_mccormick = add_quad_mccormick,
+            )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
@@ -261,11 +285,25 @@ function _add_hybs_sawtooth_bilinear_approx!(
     depth::Int,
     meta::String;
     add_mccormick::Bool = false,
+    add_quad_mccormick::Bool = false,
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
+    tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sawtooth_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, depth, m)
+            _add_sawtooth_quadratic_approx!(
+                cont,
+                CT,
+                nms,
+                ts,
+                vc,
+                lo,
+                hi,
+                depth,
+                m;
+                tighten,
+                add_mccormick = add_quad_mccormick,
+            )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,

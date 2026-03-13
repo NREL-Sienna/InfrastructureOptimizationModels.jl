@@ -359,7 +359,7 @@ function _add_dnmdt_bilinear_approx!(
     meta::String;
     double::Bool = false,
     lambda::Float64 = DNMDT_LAMBDA,
-    add_mccormick::Bool = true,
+    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op y_max > y_min

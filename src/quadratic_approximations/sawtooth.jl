@@ -49,7 +49,7 @@ function _add_sawtooth_quadratic_approx!(
     x_min::Float64,
     x_max::Float64,
     depth::Int,
-    meta::String,
+    meta::String;
     tighten::Bool = false,
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
@@ -103,14 +103,14 @@ function _add_sawtooth_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     if tighten
         lp_expr = _add_epigraph_quadratic_approx!(
             container, C, names, time_steps,
             x_var, x_min, x_max,
-            epigraph_depth, meta
+            epigraph_depth, meta,
         )
         z_var = add_variable_container!(
             container,
@@ -118,7 +118,7 @@ function _add_sawtooth_quadratic_approx!(
             C,
             names,
             time_steps,
-            meta
+            meta,
         )
         tight_cons = add_constraints_container!(
             container,
@@ -127,7 +127,7 @@ function _add_sawtooth_quadratic_approx!(
             names,
             1:2,
             time_steps,
-            meta
+            meta,
         )
     end
 
@@ -197,12 +197,13 @@ function _add_sawtooth_quadratic_approx!(
         end
 
         if tigthen
-            z = z_var[name, t] = JuMP.@variable(
-                jump_model,
-                base_name = "TigthenedSawtooth_$C_{$(name), $t}",
-                lower_bound = z_min,
-                upper_bound = z_max
-            )
+            z =
+                z_var[name, t] = JuMP.@variable(
+                    jump_model,
+                    base_name = "TigthenedSawtooth_$C_{$(name), $t}",
+                    lower_bound = z_min,
+                    upper_bound = z_max
+                )
             tight_cons[name, 1, t] = JuMP.@constraint(jump_model, z <= x_sq_approx)
             tight_cons[name, 2, t] = JuMP.@constraint(jump_model, z >= lp_expr[name, t])
             result_expr = JuMP.AffExpr(0.0, z => 1.0)

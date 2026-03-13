@@ -205,6 +205,25 @@ end
 
 # ─── MIP model using IOM bilinear approximations ─────────────────────────────
 
+bilinear_methods = (
+    ("Bin2+sSOS", IOM._add_sos2_bilinear_approx!, ()),
+    ("Bin2+mSOS+McQuad", _add_manual_sos2_bilinear_approx!, (add_mccormick = true,)),
+    ("Bin2+Saw", IOM._add_sawtooth_bilinear_approx!, ()),
+    ("Bin2+DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true,)),
+    ("Bin2+T-DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true, tighten = true,)),
+    ("Bin2+DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true,)),
+    ("Bin2+DNMDT+McQuad", IOM._add_dmndt_bilinear_approx!, (double = true, add_mccormick = true)),
+    ("HybS+sSOS", IOM._add_hybs_sos2_bilinear_approx!, ()),
+    ("HybS+sSOS+McAll", IOM._add_hybs_sos2_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
+    ("HybS+Saw", IOM._add_hybs_sawtooth_bilinear_approx!, ()),
+    ("HybS+Saw+McAll", IOM._add_hybs_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
+    ("HybS+T-Saw", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true,)),
+    ("HybS+T-Saw+McBil", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true, add_mccormick = true)),
+    ("NMDT", IOM._add_dmndt_bilinear_approx!, ()),
+    ("DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true,)),
+    ("DNMDT+McBil", IOM._add_dmndt_bilinear_approx!, (double = true, add_mccormick = true))
+)
+
 """
     build_mip_model(net, method, refinement) -> NamedTuple
 
@@ -251,38 +270,22 @@ function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
     end
 
     # --- Dispatch to the chosen bilinear approximation method ---
-    bilinear_fn! = if method === :sos2
-        (cont, names, xc, yc, ylo, yhi, meta) ->
-            IOM._add_sos2_bilinear_approx!(
-                cont, NetworkNode, names, time_steps, xc, yc,
-                V_MIN, V_MAX, ylo, yhi, refinement, meta,
-            )
-    elseif method === :manual_sos2
-        (cont, names, xc, yc, ylo, yhi, meta) ->
-            IOM._add_manual_sos2_bilinear_approx!(
-                cont, NetworkNode, names, time_steps, xc, yc,
-                V_MIN, V_MAX, ylo, yhi, refinement, meta,
-            )
-    elseif method === :sawtooth
-        (cont, names, xc, yc, ylo, yhi, meta) ->
-            IOM._add_sawtooth_bilinear_approx!(
-                cont, NetworkNode, names, time_steps, xc, yc,
-                V_MIN, V_MAX, ylo, yhi, refinement, meta,
-            )
-    else
-        error("Unknown method: $method. Use :sos2, :manual_sos2, or :sawtooth.")
-    end
+    bilinear_fn!, kwargs = bilinear_method_lookup[method]
 
     # Generator bilinear: z_gen ≈ V · I_gen
     z_gen = bilinear_fn!(
-        container, net.gen_nodes, V_container, I_container,
-        I_GEN_MIN, I_GEN_MAX, "gen",
+        container, NetworkNode, names, time_steps,
+        V_container, I_container, 
+        V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
+        refinement, "gen"; kwargs...
     )
 
     # Demand bilinear: z_dem ≈ V · I_dem
     z_dem = bilinear_fn!(
-        container, net.dem_nodes, V_container, I_container,
-        I_DEM_MIN, I_DEM_MAX, "dem",
+        container, NetworkNode, names, time_steps,
+        V_container, I_container, 
+        V_MIN, V_MAX, I_DEM_MIN, I_DEM_MAX,
+        refinement, "dem"; kwargs...
     )
 
     # --- Remaining linear model components (directly in JuMP) ---
@@ -305,6 +308,7 @@ function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
     ))
 
     # Pg == bilinear approx of V·I (generators)
+    @show Pg z_gen
     for g in net.gen_nodes
         JuMP.@constraint(jump_model, Pg[g] == z_gen[g, 1])
     end
@@ -382,8 +386,8 @@ function run_benchmark(;
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
-    segment_counts::Vector{Int} = [2, 4, 8],
-    sawtooth_depths::Vector{Int} = [2, 4, 8],
+    segment_counts::Vector{Int} = [2],#, 4, 8],
+    sawtooth_depths::Vector{Int} = [2]#, 4, 8],
 )
     net = generate_network(; N, K, seed)
     println("Network: $(net.N) nodes, $(length(net.edges)) edges, $(net.K) cost segments")
@@ -418,16 +422,22 @@ function run_benchmark(;
 
     # --- MIP benchmarks ---
     method_configs = [
-        (:sos2, "Solver SOS2", segment_counts),
-        (:manual_sos2, "Manual SOS2", segment_counts),
-        (:sawtooth, "Sawtooth", sawtooth_depths),
+        (:bin2_sos, "Bin2+sSOS", segment_counts),
+        (:bin2_sos_mcquad, "Bin2+mSOS+McQuad", segment_counts),
+        (:bin2_saw, "Bin2+Saw", sawtooth_depths),
+        (:hybs_sos, "HybS+sSOS", segment_counts),
+        (:hybs_sos_mcall, "HybS+sSOS+McAll", segment_counts),
+        (:hybs_saw, "HybS+Saw", sawtooth_depths),
+        (:hybs_saw_mcall, "HybS+Saw+McAll", sawtooth_depths),
+        (:hybs_tight, "HybS+Saw-T", sawtooth_depths),
+        (:hybs_tight_mcbil, "Hybs+Saw-T+McBil", sawtooth_depths)
     ]
 
     println("=" ^ 100)
     println("MIP Bilinear Approximations (HiGHS)")
     println("  Refinement = num_segments for SOS2 methods, depth for Sawtooth")
     println("=" ^ 100)
-    @printf("%-14s %4s %6s %7s %6s %12s %9s %11s %10s %8s\n",
+    @printf("%-15s %4s %6s %7s %6s %12s %9s %11s %10s %8s\n",
         "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
     println("-" ^ 100)
 
@@ -451,12 +461,12 @@ function run_benchmark(;
                 gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / max(abs(nlp_obj), 1e-10) * 100.0
                 geometric_mean, max = compute_bilinear_residuals(result, net)
                 gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
-                @printf("%-14s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
+                @printf("%-15s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
                     label, ref,
                     sz.variables, sz.constraints, sz.binaries,
                     obj, gap_str, geometric_mean, max, solve_t)
             else
-                @printf("%-14s %4d %6d %7d %6d %12s %9s %10s %8.4f\n",
+                @printf("%-15s %4d %6d %7d %6d %12s %9s %10s %8.4f\n",
                     label, ref,
                     sz.variables, sz.constraints, sz.binaries,
                     string(status), "-", "-", solve_t)

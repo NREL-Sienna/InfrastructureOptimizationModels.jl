@@ -39,8 +39,8 @@ function _add_manual_sos2_quadratic_approx!(
     x_min::Float64,
     x_max::Float64,
     num_segments::Int,
-    meta::String,
-    add_mccormick::Bool = false,
+    meta::String;
+    add_mccormick::Bool = false
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
         _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments)
