@@ -77,7 +77,8 @@ function _add_bilinear_approx_impl!(
     end
 
     # Approximate p², x², y² using the provided quadratic approximation function
-    zp_expr = quad_approx_fn(container, C, names, time_steps, p_expr, p_min, p_max,meta_plus)
+    zp_expr =
+        quad_approx_fn(container, C, names, time_steps, p_expr, p_min, p_max, meta_plus)
     zx_expr = quad_approx_fn(container, C, names, time_steps, x_var, x_min, x_max, meta_x)
     zy_expr = quad_approx_fn(container, C, names, time_steps, y_var, y_min, y_max, meta_y)
 
@@ -160,7 +161,18 @@ function _add_sos2_bilinear_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sos2_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, num_segments, m; add_mccormick)
+            _add_sos2_quadratic_approx!(
+                cont,
+                CT,
+                nms,
+                ts,
+                vc,
+                lo,
+                hi,
+                num_segments,
+                m;
+                add_mccormick,
+            )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
@@ -239,7 +251,18 @@ function _add_sawtooth_bilinear_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sawtooth_quadratic_approx!(cont, CT, nms, ts, vc, lo, hi, depth, m, add_mccormick)
+            _add_sawtooth_quadratic_approx!(
+                cont,
+                CT,
+                nms,
+                ts,
+                vc,
+                lo,
+                hi,
+                depth,
+                m,
+                add_mccormick,
+            )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,

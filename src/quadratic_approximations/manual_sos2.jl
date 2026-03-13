@@ -190,7 +190,7 @@ function _add_manual_sos2_quadratic_approx!(
             container, C, names, time_steps,
             x_var, z_var,
             x_min, x_max,
-            meta
+            meta,
         )
     end
 

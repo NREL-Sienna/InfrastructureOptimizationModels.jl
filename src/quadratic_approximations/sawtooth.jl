@@ -46,7 +46,7 @@ function _add_sawtooth_quadratic_approx!(
     x_max::Float64,
     depth::Int,
     meta::String,
-    add_mccormick::Bool = false
+    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op depth >= 1
@@ -170,7 +170,7 @@ function _add_sawtooth_quadratic_approx!(
             container, C, names, time_steps,
             x_var, z_var,
             x_min, x_max,
-            meta
+            meta,
         )
     end
 
