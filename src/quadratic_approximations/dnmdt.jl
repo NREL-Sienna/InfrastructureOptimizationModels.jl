@@ -154,8 +154,9 @@ function _add_dnmdt_quadratic_approx!(
     x_max::Float64,
     depth::Int,
     meta::String;
-    tighten::Bool = true,
+    tighten::Bool = false,
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
+    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op depth >= 1
@@ -300,6 +301,16 @@ function _add_dnmdt_quadratic_approx!(
                 result_expr[name, t] >= epi_expr[name, t],
             )
         end
+    end
+
+    # Not included in a paper but we're trying it
+    if add_mccormick
+        _add_mccormick_envelope!(
+            container, C, names, time_steps,
+            x_var, y_var, result_expr,
+            x_min, x_max, y_min, y_max,
+            meta; lower_bounds = !tigthen
+        )
     end
 
     return result_expr

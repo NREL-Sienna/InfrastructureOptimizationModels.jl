@@ -269,3 +269,41 @@ function _add_sawtooth_bilinear_approx!(
         x_min, x_max, y_min, y_max, quad_fn, meta;
     )
 end
+
+function _add_dmndt_bilinear_approx!(
+    container::OptimizationContainer,
+    ::Type{C},
+    names::Vector{String},
+    time_steps::UnitRange{Int},
+    x_var_container,
+    y_var_container,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
+    depth::Int,
+    meta::String;
+    tigthen::Bool = false,
+    add_mccormick::Bool = false,
+) where {C <: IS.InfrastructureSystemsComponent}
+    quad_fn =
+        (cont, CT, nms, ts, vc, lo, hi, m) ->
+            _add_dnmdt_quadratic_approx!(
+                cont,
+                CT,
+                nms,
+                ts,
+                vc,
+                lo,
+                hi,
+                depth,
+                m;
+                tigthen,
+                add_mccormick,
+            )
+    return _add_bilinear_approx_impl!(
+        container, C, names, time_steps,
+        x_var_container, y_var_container,
+        x_min, x_max, y_min, y_max, quad_fn, meta;
+    )
+end
