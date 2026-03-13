@@ -102,9 +102,8 @@ function _populate_binary_expansion!(
     )
 
     for name in names, t in time_steps
-        xh = xh_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(xh, 1 / lx, x_var[name, t])
-        JuMP.add_to_expression!(xh, -x_min / lx)
+        xh = xh_expr[name, t] = JuMP.AffExpr(-x_min / lx)
+        JuMP.add_to_expression!(xh, x_var[name, t])
 
         delta =
             delta_var[name, t] = JuMP.@variable(
@@ -168,14 +167,16 @@ function _add_dnmdt_quadratic_approx!(
 
     # ── Allocate containers ──────────────────────────────────────────────
 
-    beta_coeff_expr = add_expression_container!(
-        container,
-        DNMDTBinaryCoefficientExpression(),
-        C,
-        names,
-        time_steps;
-        meta,
-    )
+    if double
+        beta_coeff_expr = add_expression_container!(
+            container,
+            DNMDTBinaryCoefficientExpression(),
+            C,
+            names,
+            time_steps;
+            meta,
+        )
+    end
     u_var = add_variable_container!(
         container,
         DNMDTProductAuxVariable(),
@@ -231,13 +232,14 @@ function _add_dnmdt_quadratic_approx!(
     # ── Populate: sum term, product aux, assembly, back-transform ────────
 
     for name in names, t in time_steps
-        # Sum term: w_sum = Delta_x + x_hat (used locally in McCormick below)
-        beta_coeff_hi = 1.0
-        beta_coeff = beta_coeff_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(beta_coeff, xh_var[name, t])
         if double
+            beta_coeff = beta_coeff_expr[name, t] = JuMP.AffExpr(0.0)
+            JuMP.add_to_expression!(beta_coeff, xh_var[name, t])
             JuMP.add_to_expression!(beta_coeff, dx_var[name, t])
-            beta_coeff_hi += eps_L
+            beta_coeff_hi += 1.0 + eps_L
+        else
+            beta_coeff = xh_var[name, t]
+            beta_coeff_hi = 1.0
         end
 
         # Binary McCormick for u[j]
@@ -251,7 +253,7 @@ function _add_dnmdt_quadratic_approx!(
                 )
             _add_mccormick_envelope!(
                 jump_model, bmc_cons, (name, j, t),
-                beta_coeff_expr, beta_var[name, j, t], u_j,
+                beta_coeff, beta_var[name, j, t], u_j,
                 0.0, beta_coeff_hi, 0.0, 1.0;
                 lower_bounds = !tighten,
             )
@@ -271,11 +273,9 @@ function _add_dnmdt_quadratic_approx!(
             JuMP.add_to_expression!(zh, 2.0^(-j), u_var[name, j, t])
         end
         JuMP.add_to_expression!(zh, dz_var[name, t])
-
-        result = result_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(result, lx^2, zh)
+        result = result_expr[name, t] = JuMP.AffExpr(x_min * x_min)
+        JuMP.add_to_expression!(result, lx * lx, zh)
         JuMP.add_to_expression!(result, 2 * x_min * lx, xh_var[name, t])
-        JuMP.add_to_expression!(result, x_min^2)
     end
 
     # ── Residual McCormick ──
@@ -322,9 +322,9 @@ function _add_dnmdt_quadratic_approx!(
     if add_mccormick
         _add_mccormick_envelope!(
             container, C, names, time_steps,
-            x_var, y_var, result_expr,
-            x_min, x_max, y_min, y_max,
-            meta; lower_bounds = !tigthen
+            x_var, result_expr,
+            x_min, x_max,
+            meta; lower_bounds = !tighten
         )
     end
 
@@ -372,27 +372,25 @@ function _add_dnmdt_bilinear_approx!(
     # Precompute power-of-two coefficients
     pow2_neg = [2.0^(-j) for j in 1:depth]
 
-    # Blended-term bounds
-    
-
     # ── Allocate containers ──────────────────────────────────────────────
-
-    beta_x_coeff_expr = add_expression_container!(
-        container,
-        DNMDTBinaryCoefficientExpression(),
-        C,
-        names,
-        time_steps;
-        meta = meta * "_wx",
-    )
-    beta_y_coeff_expr = add_expression_container!(
-        container,
-        DNMDTBinaryCoefficientExpression(),
-        C,
-        names,
-        time_steps;
-        meta = meta * "_wy",
-    )
+    if double
+        beta_x_coeff_expr = add_expression_container!(
+            container,
+            DNMDTBinaryCoefficientExpression(),
+            C,
+            names,
+            time_steps;
+            meta = meta * "_wx",
+        )
+        beta_y_coeff_expr = add_expression_container!(
+            container,
+            DNMDTBinaryCoefficientExpression(),
+            C,
+            names,
+            time_steps;
+            meta = meta * "_wy",
+        )
+    end
     u_var = add_variable_container!(
         container,
         DNMDTProductAuxVariable(),
@@ -462,19 +460,19 @@ function _add_dnmdt_bilinear_approx!(
     # ── Populate: blended terms, product aux, assembly, back-transform ───
 
     for name in names, t in time_steps
-        beta_x_coeff = beta_x_coeff_expr[name, t] = JuMP.AffExpr(0.0)
-        beta_y_coeff = beta_y_coeff_expr[name, t] = JuMP.AffExpr(0.0)
         if double
+            beta_x_coeff = beta_x_coeff_expr[name, t] = JuMP.AffExpr(0.0)
             JuMP.add_to_expression!(beta_x_coeff, 1 - lambda, yh_var[name, t])
             JuMP.add_to_expression!(beta_x_coeff, lambda, dy_var[name, t])
             beta_x_coeff_hi = lambda * eps_L + (1 - lambda)
+            beta_y_coeff = beta_y_coeff_expr[name, t] = JuMP.AffExpr(0.0)
             JuMP.add_to_expression!(beta_y_coeff, lambda, xh_var[name, t])
             JuMP.add_to_expression!(beta_y_coeff, 1 - lambda, dx_var[name, t])
             beta_y_coeff_hi = (1 - lambda) * eps_L + lambda
         else
-            JuMP.add_to_expression!(beta_x_coeff, yh_var[name, t])
+            beta_x_coeff = xh_var[name, t]
             beta_x_coeff_hi = 1.0
-            JuMP.add_to_expression(beta_y_coeff, xh_var[name, t])
+            beta_y_coeff = yh_var[name, t]
             beta_y_coeff_hi = 1.0
         end
 
@@ -497,12 +495,12 @@ function _add_dnmdt_bilinear_approx!(
 
             _add_mccormick_envelope!(
                 jump_model, bmc_cons, (name, j, 1, t),
-                w_u, beta_x_var[name, j, t], u_j,
+                beta_x_coeff, beta_x_var[name, j, t], u_j,
                 0.0, beta_x_coeff_hi, 0.0, 1.0;
             )
             _add_mccormick_envelope!(
                 jump_model, bmc_cons, (name, j, 2, t),
-                w_v, beta_y_var[name, j, t], v_j,
+                beta_y_coeff, beta_y_var[name, j, t], v_j,
                 0.0, beta_y_coeff_hi, 0.0, 1.0,
             )
         end
@@ -522,12 +520,10 @@ function _add_dnmdt_bilinear_approx!(
             JuMP.add_to_expression!(zh, pow2_neg[j], v_var[name, j, t])
         end
         JuMP.add_to_expression!(zh, dz_var[name, t])
-
-        result = result_expr[name, t] = JuMP.AffExpr(0.0)
+        result = result_expr[name, t] = JuMP.AffExpr(x_min * y_min)
         JuMP.add_to_expression!(result, lx * ly, zh)
         JuMP.add_to_expression!(result, x_min * ly, yh_var[name, t])
         JuMP.add_to_expression!(result, y_min * lx, xh_var[name, t])
-        JuMP.add_to_expression!(result, x_min * y_min)
     end
 
     # ── Residual McCormick (Delta_z ~ Delta_x * Delta_y) ──

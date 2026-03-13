@@ -109,6 +109,8 @@ function _add_hybs_bilinear_approx_impl!(
         y_var, y_min, y_max, meta_y,
     )
 
+    @show zx_expr
+
     # --- Epigraph Q^{L1} lower bound for (x+y)² and (x−y)² (no binaries) ---
     zp1_expr = _add_epigraph_quadratic_approx!(
         container, C, names, time_steps,

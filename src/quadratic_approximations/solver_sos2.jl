@@ -148,7 +148,7 @@ function _add_sos2_quadratic_approx!(
     if add_mccormick
         _add_mccormick_envelope!(
             container, C, names, time_steps,
-            x_var, z_var,
+            x_var, result_expr,
             x_min, x_max,
             meta,
         )

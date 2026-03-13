@@ -14,7 +14,7 @@ struct SawtoothLinkingConstraint <: ConstraintType end
 struct SawtoothMIPConstraint <: ConstraintType end
 struct SawtoothLPConstraint <: ConstraintType end
 "Bounds tightened variable."
-struct SawtoothTigthenedConstraint <: ConstraintType end
+struct SawtoothTightenedConstraint <: ConstraintType end
 
 """
     _add_sawtooth_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
@@ -51,6 +51,7 @@ function _add_sawtooth_quadratic_approx!(
     depth::Int,
     meta::String;
     tighten::Bool = false,
+    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
@@ -99,7 +100,7 @@ function _add_sawtooth_quadratic_approx!(
     )
     result_expr = add_expression_container!(
         container,
-        QuadraticExpresion(),
+        QuadraticExpression(),
         C,
         names,
         time_steps;
@@ -110,23 +111,23 @@ function _add_sawtooth_quadratic_approx!(
         lp_expr = _add_epigraph_quadratic_approx!(
             container, C, names, time_steps,
             x_var, x_min, x_max,
-            epigraph_depth, meta,
+            epigraph_depth, meta * "_lb",
         )
         z_var = add_variable_container!(
             container,
             SawtoothTightenedVariable(),
             C,
             names,
-            time_steps,
+            time_steps;
             meta,
         )
         tight_cons = add_constraints_container!(
             container,
-            SawtoothTightenedVariable(),
+            SawtoothTightenedConstraint(),
             C,
             names,
             1:2,
-            time_steps,
+            time_steps;
             meta,
         )
     end
@@ -196,17 +197,17 @@ function _add_sawtooth_quadratic_approx!(
             JuMP.add_to_expression!(x_sq_approx, -saw_coeffs[j], g_var[name, j, t])
         end
 
-        if tigthen
+        if tighten
             z =
                 z_var[name, t] = JuMP.@variable(
                     jump_model,
-                    base_name = "TigthenedSawtooth_$C_{$(name), $t}",
+                    base_name = "TightenedSawtooth_$(C)_{$(name), $(t)}",
                     lower_bound = z_min,
                     upper_bound = z_max
                 )
             tight_cons[name, 1, t] = JuMP.@constraint(jump_model, z <= x_sq_approx)
             tight_cons[name, 2, t] = JuMP.@constraint(jump_model, z >= lp_expr[name, t])
-            result_expr = JuMP.AffExpr(0.0, z => 1.0)
+            result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
         else
             result_expr[name, t] = x_sq_approx
         end

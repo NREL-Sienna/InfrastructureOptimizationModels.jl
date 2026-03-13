@@ -247,6 +247,7 @@ function _add_sawtooth_bilinear_approx!(
     y_max::Float64,
     depth::Int,
     meta::String;
+    tighten::Bool = false,
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
@@ -260,7 +261,8 @@ function _add_sawtooth_bilinear_approx!(
                 lo,
                 hi,
                 depth,
-                m,
+                m;
+                tighten,
                 add_mccormick,
             )
     return _add_bilinear_approx_impl!(
@@ -284,7 +286,7 @@ function _add_dmndt_bilinear_approx!(
     depth::Int,
     meta::String;
     double::Bool = false,
-    tigthen::Bool = false,
+    tighten::Bool = false,
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
@@ -300,7 +302,7 @@ function _add_dmndt_bilinear_approx!(
                 depth,
                 m;
                 double,
-                tigthen,
+                tighten,
                 add_mccormick,
             )
     return _add_bilinear_approx_impl!(
