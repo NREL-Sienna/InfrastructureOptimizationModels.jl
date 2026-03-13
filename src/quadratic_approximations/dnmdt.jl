@@ -135,7 +135,7 @@ end
 # ── Univariate D-NMDT / T-D-NMDT for z = x^2 ────────────────────────────────
 
 """
-    _add_dnmdt_univariate_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta; tighten, epigraph_depth)
+    _add_dnmdt_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta; tighten, epigraph_depth)
 
 Approximate z = x^2 using univariate D-NMDT (Definition 9) or T-D-NMDT (Definition 10).
 
@@ -144,7 +144,7 @@ When `tighten=true`: T-D-NMDT replaces residual lower bounds with epigraph Q^{L1
 
 Stores result in a `QuadraticExpression` expression container.
 """
-function _add_dnmdt_univariate_approx!(
+function _add_dnmdt_quadratic_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
