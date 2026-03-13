@@ -293,25 +293,25 @@ function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
         Pg[g] = JuMP.@variable(jump_model, base_name = "Pg_$(g)",
             lower_bound = 0.0, upper_bound = P_MAX)
         for k in 1:(net.K)
-            delta[(g, k)] = JuMP.@variable(jump_model, base_name = "delta_$(g)_$(k)",
+            delta[g, k] = JuMP.@variable(jump_model, base_name = "delta_$(g)_$(k)",
                 lower_bound = 0.0, upper_bound = net.segment_widths[g][k])
         end
     end
 
     # Objective: min Σ m_{i,k} · δ_{i,k}
     JuMP.@objective(jump_model, Min, sum(
-        net.marginal_costs[g][k] * delta[(g, k)]
+        net.marginal_costs[g][k] * delta[g, k]
         for g in net.gen_nodes, k in 1:(net.K)
     ))
 
     # Pg == bilinear approx of V·I (generators)
     for g in net.gen_nodes
-        JuMP.@constraint(jump_model, Pg[g] == z_gen[(g, 1)])
+        JuMP.@constraint(jump_model, Pg[g] == z_gen[g, 1])
     end
 
     # V·I == -d (demands)
     for d in net.dem_nodes
-        JuMP.@constraint(jump_model, z_dem[(d, 1)] == -net.demands[d])
+        JuMP.@constraint(jump_model, z_dem[d, 1] == -net.demands[d])
     end
 
     # KCL: I_i = Σ g_{ij}(V_i - V_j)
@@ -326,7 +326,7 @@ function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
     # Delta link: Pg = Σ δ_{g,k}
     for g in net.gen_nodes
         JuMP.@constraint(jump_model,
-            Pg[g] == sum(delta[(g, k)] for k in 1:(net.K)))
+            Pg[g] == sum(delta[g, k] for k in 1:(net.K)))
     end
 
     return (; container, jump_model, V_container, I_container, z_gen, z_dem)
@@ -338,19 +338,20 @@ function compute_bilinear_residuals(result, net)
     V = result.V_container
     I = result.I_container
     residuals = Float64[]
-    for g in net.gen_nodes
-        v_val = JuMP.value(V[g, 1])
-        i_val = JuMP.value(I[g, 1])
-        z_val = JuMP.value(result.z_gen[(g, 1)])
-        push!(residuals, abs(v_val * i_val - z_val))
+    grouped_nodes = (net.gen_nodes, net.dem_nodes)
+    zs = (result.z_gen, result.z_dem)
+    for (nodes, z) in zip(grouped_nodes, zs)
+        for n in nodes
+            product = JuMP.value(V[n, 1]) * JuMP.value(I[n, 1])
+            if product == 0.0
+                continue
+            end
+            resid = abs(product - JuMP.value(z[n, 1])) / abs(product)
+            push!(residuals, resid)
+        end
     end
-    for d in net.dem_nodes
-        v_val = JuMP.value(V[d, 1])
-        i_val = JuMP.value(I[d, 1])
-        z_val = JuMP.value(result.z_dem[(d, 1)])
-        push!(residuals, abs(v_val * i_val - z_val))
-    end
-    return residuals
+    geometric_mean = reduce(*, residuals)^(1/length(residuals))
+    return geometric_mean, maximum(residuals)
 end
 
 function model_size(jump_model)
@@ -381,7 +382,7 @@ function run_benchmark(;
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
-    segment_counts::Vector{Int} = [2, 4, 8, 16],
+    segment_counts::Vector{Int} = [2, 4, 8],
     sawtooth_depths::Vector{Int} = [2, 4, 8],
 )
     net = generate_network(; N, K, seed)
@@ -392,9 +393,9 @@ function run_benchmark(;
     # --- NLP reference ---
     nlp_obj = NaN
     if HAS_IPOPT
-        println("=" ^ 90)
+        println("=" ^ 100)
         println("NLP Reference (Ipopt, bilinear V·I constraints)")
-        println("=" ^ 90)
+        println("=" ^ 100)
         nlp_model = build_nlp_model(net)
         JuMP.set_optimizer(nlp_model, Ipopt.Optimizer)
         JuMP.set_optimizer_attribute(nlp_model, "print_level", 0)
@@ -422,13 +423,13 @@ function run_benchmark(;
         (:sawtooth, "Sawtooth", sawtooth_depths),
     ]
 
-    println("=" ^ 90)
+    println("=" ^ 100)
     println("MIP Bilinear Approximations (HiGHS)")
     println("  Refinement = num_segments for SOS2 methods, depth for Sawtooth")
-    println("=" ^ 90)
-    @printf("%-14s %4s %6s %7s %6s %12s %9s %10s %8s\n",
-        "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Max Resid", "Time(s)")
-    println("-" ^ 90)
+    println("=" ^ 100)
+    @printf("%-14s %4s %6s %7s %6s %12s %9s %11s %10s %8s\n",
+        "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
+    println("-" ^ 100)
 
     for (method, label, refs) in method_configs
         for ref in refs
@@ -448,12 +449,12 @@ function run_benchmark(;
                JuMP.has_values(result.jump_model)
                 obj = JuMP.objective_value(result.jump_model)
                 gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / max(abs(nlp_obj), 1e-10) * 100.0
-                resids = compute_bilinear_residuals(result, net)
+                geometric_mean, max = compute_bilinear_residuals(result, net)
                 gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
-                @printf("%-14s %4d %6d %7d %6d %12.6f %s %10.2e %8.4f\n",
+                @printf("%-14s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
                     label, ref,
                     sz.variables, sz.constraints, sz.binaries,
-                    obj, gap_str, maximum(resids), solve_t)
+                    obj, gap_str, geometric_mean, max, solve_t)
             else
                 @printf("%-14s %4d %6d %7d %6d %12s %9s %10s %8.4f\n",
                     label, ref,
@@ -463,7 +464,7 @@ function run_benchmark(;
         end
         println()
     end
-    println("=" ^ 90)
+    println("=" ^ 100)
 end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
