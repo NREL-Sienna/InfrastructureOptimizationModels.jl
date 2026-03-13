@@ -57,7 +57,7 @@ function _add_manual_sos2_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     link_expr = add_expression_container!(
         container,
@@ -65,7 +65,7 @@ function _add_manual_sos2_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     norm_cons = add_constraints_container!(
         container,
@@ -73,7 +73,7 @@ function _add_manual_sos2_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     norm_expr = add_expression_container!(
         container,
@@ -81,7 +81,7 @@ function _add_manual_sos2_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     seg_cons = add_constraints_container!(
         container,
@@ -89,7 +89,7 @@ function _add_manual_sos2_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     seg_expr = add_expression_container!(
         container,
@@ -97,7 +97,7 @@ function _add_manual_sos2_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     adj_cons = add_constraints_container!(
         container,
@@ -106,7 +106,7 @@ function _add_manual_sos2_quadratic_approx!(
         names,
         1:n_points,
         time_steps;
-        meta
+        meta,
     )
     result_expr = add_expression_container!(
         container,
@@ -114,7 +114,7 @@ function _add_manual_sos2_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     for name in names, t in time_steps

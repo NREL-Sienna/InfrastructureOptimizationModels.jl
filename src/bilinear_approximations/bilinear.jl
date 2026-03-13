@@ -94,7 +94,7 @@ function _add_bilinear_approx_impl!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     link_cons = add_constraints_container!(
         container,
@@ -102,7 +102,7 @@ function _add_bilinear_approx_impl!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     result_expr = add_expression_container!(
         container,
@@ -110,7 +110,7 @@ function _add_bilinear_approx_impl!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     # Compute valid bounds for z = x·y from variable bounds

@@ -62,7 +62,7 @@ function _add_sawtooth_quadratic_approx!(
         names,
         g_levels,
         time_steps;
-        meta
+        meta,
     )
     alpha_var = add_variable_container!(
         container,
@@ -71,7 +71,7 @@ function _add_sawtooth_quadratic_approx!(
         names,
         alpha_levels,
         time_steps;
-        meta
+        meta,
     )
     mip_cons = add_constraints_container!(
         container,
@@ -81,7 +81,7 @@ function _add_sawtooth_quadratic_approx!(
         1:4,
         time_steps;
         sparse = true,
-        meta
+        meta,
     )
     link_cons = add_constraints_container!(
         container,
@@ -89,7 +89,7 @@ function _add_sawtooth_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     result_expr = add_expression_container!(
         container,
@@ -97,7 +97,7 @@ function _add_sawtooth_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     # Precompute sawtooth coefficients (invariant across names and time steps)

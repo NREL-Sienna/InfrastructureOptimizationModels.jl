@@ -65,7 +65,7 @@ function _populate_binary_expansion!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     beta_var = add_variable_container!(
         container,
@@ -74,7 +74,7 @@ function _populate_binary_expansion!(
         names,
         1:depth,
         time_steps;
-        meta
+        meta,
     )
     delta_var = add_variable_container!(
         container,
@@ -82,7 +82,7 @@ function _populate_binary_expansion!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     expansion_expr = add_expression_container!(
         container,
@@ -90,7 +90,7 @@ function _populate_binary_expansion!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     expansion_cons = add_constraints_container!(
         container,
@@ -98,13 +98,13 @@ function _populate_binary_expansion!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     for name in names, t in time_steps
         xh = xh_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(xh, 1/lx, x_var[name, t])
-        JuMP.add_to_expression!(xh, -x_min/lx)
+        JuMP.add_to_expression!(xh, 1 / lx, x_var[name, t])
+        JuMP.add_to_expression!(xh, -x_min / lx)
 
         delta =
             delta_var[name, t] = JuMP.@variable(
@@ -172,7 +172,7 @@ function _add_dnmdt_univariate_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     u_var = add_variable_container!(
         container,
@@ -181,7 +181,7 @@ function _add_dnmdt_univariate_approx!(
         names,
         1:depth,
         time_steps;
-        meta = meta * "_u"
+        meta = meta * "_u",
     )
     bmc_cons = add_constraints_container!(
         container,
@@ -192,7 +192,7 @@ function _add_dnmdt_univariate_approx!(
         1:4,
         time_steps;
         sparse = true,
-        meta
+        meta,
     )
     dz_var = add_variable_container!(
         container,
@@ -200,7 +200,7 @@ function _add_dnmdt_univariate_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     zh_expr = add_expression_container!(
         container,
@@ -208,7 +208,7 @@ function _add_dnmdt_univariate_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     result_expr = add_expression_container!(
         container,
@@ -216,7 +216,7 @@ function _add_dnmdt_univariate_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     # ── Populate: binary expansion ───────────────────────────────────────
@@ -247,7 +247,7 @@ function _add_dnmdt_univariate_approx!(
                 jump_model, bmc_cons, (name, j, t),
                 w_sum, beta_var[name, j, t], u_j,
                 0.0, ws_hi, 0.0, 1.0;
-                lower_bounds = !tighten
+                lower_bounds = !tighten,
             )
         end
 
@@ -277,7 +277,7 @@ function _add_dnmdt_univariate_approx!(
         container, C, names, time_steps,
         dx_var, dz_var,
         0.0, eps_L, meta * "_residual";
-        lower_bounds = !tighten
+        lower_bounds = !tighten,
     )
 
     # ── Epigraph tightening (T-D-NMDT only) ──
@@ -292,7 +292,7 @@ function _add_dnmdt_univariate_approx!(
             C,
             names,
             time_steps;
-            meta = meta * "_epi_lb"
+            meta = meta * "_epi_lb",
         )
         for name in names, t in time_steps
             epi_cons[name, t] = JuMP.@constraint(
@@ -357,7 +357,7 @@ function _add_dnmdt_bilinear_approx!(
         C,
         names,
         time_steps;
-        meta = meta * "_wu"
+        meta = meta * "_wu",
     )
     wv_expr = add_expression_container!(
         container,
@@ -365,7 +365,7 @@ function _add_dnmdt_bilinear_approx!(
         C,
         names,
         time_steps;
-        meta = meta * "_wv"
+        meta = meta * "_wv",
     )
     u_var = add_variable_container!(
         container,
@@ -374,7 +374,7 @@ function _add_dnmdt_bilinear_approx!(
         names,
         1:depth,
         time_steps;
-        meta = meta * "_u"
+        meta = meta * "_u",
     )
     v_var = add_variable_container!(
         container,
@@ -383,7 +383,7 @@ function _add_dnmdt_bilinear_approx!(
         names,
         1:depth,
         time_steps;
-        meta = meta * "_v"
+        meta = meta * "_v",
     )
     bmc_cons = add_constraints_container!(
         container,
@@ -395,7 +395,7 @@ function _add_dnmdt_bilinear_approx!(
         1:2, # u, v
         time_steps;
         sparse = true,
-        meta
+        meta,
     )
     dz_var = add_variable_container!(
         container,
@@ -403,7 +403,7 @@ function _add_dnmdt_bilinear_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     zh_expr = add_expression_container!(
         container,
@@ -411,7 +411,7 @@ function _add_dnmdt_bilinear_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     result_expr = add_expression_container!(
         container,
@@ -419,7 +419,7 @@ function _add_dnmdt_bilinear_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     # ── Populate: binary expansions ──────────────────────────────────────
@@ -470,7 +470,7 @@ function _add_dnmdt_bilinear_approx!(
             _add_mccormick_envelope!(
                 jump_model, bmc_cons, (name, j, 2, t),
                 w_v, beta_y_var[name, j, t], v_j,
-                0.0, wv_hi, 0.0, 1.0
+                0.0, wv_hi, 0.0, 1.0,
             )
         end
 

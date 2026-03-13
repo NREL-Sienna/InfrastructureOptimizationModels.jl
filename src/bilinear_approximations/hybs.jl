@@ -72,7 +72,7 @@ function _add_hybs_bilinear_approx!(
         C,
         names,
         time_steps;
-        meta = meta_p1
+        meta = meta_p1,
     )
     p2_expr = add_expression_container!(
         container,
@@ -80,7 +80,7 @@ function _add_hybs_bilinear_approx!(
         C,
         names,
         time_steps;
-        meta = meta_p2
+        meta = meta_p2,
     )
 
     for name in names, t in time_steps
@@ -125,7 +125,7 @@ function _add_hybs_bilinear_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     hybrid_cons = add_constraints_container!(
         container,
@@ -135,7 +135,7 @@ function _add_hybs_bilinear_approx!(
         1:2,
         time_steps;
         sparse = true,
-        meta
+        meta,
     )
     result_expr = add_expression_container!(
         container,
@@ -143,7 +143,7 @@ function _add_hybs_bilinear_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     # Compute valid bounds for z ≈ x·y from variable bounds

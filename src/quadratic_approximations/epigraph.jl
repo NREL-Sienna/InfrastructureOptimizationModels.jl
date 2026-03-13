@@ -60,7 +60,7 @@ function _add_epigraph_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     g_var = add_variable_container!(
         container,
@@ -69,7 +69,7 @@ function _add_epigraph_quadratic_approx!(
         names,
         g_levels,
         time_steps;
-        meta
+        meta,
     )
     lp_cons = add_constraints_container!(
         container,
@@ -78,7 +78,7 @@ function _add_epigraph_quadratic_approx!(
         names,
         1:2,
         time_steps;
-        meta
+        meta,
     )
     link_cons = add_constraints_container!(
         container,
@@ -86,7 +86,7 @@ function _add_epigraph_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     fL_expr = add_expression_container!(
         container,
@@ -94,7 +94,7 @@ function _add_epigraph_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     tangent_cons = add_constraints_container!(
         container,
@@ -104,7 +104,7 @@ function _add_epigraph_quadratic_approx!(
         1:(depth + 2),
         time_steps;
         sparse = true,
-        meta
+        meta,
     )
     result_expr = add_expression_container!(
         container,
@@ -112,7 +112,7 @@ function _add_epigraph_quadratic_approx!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     # Upper bound for epigraph variable z ≈ x²
