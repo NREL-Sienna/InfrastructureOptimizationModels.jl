@@ -52,7 +52,16 @@ function _add_mccormick_envelope!(
     IS.@assert_op y_max > y_min
     jump_model = get_jump_model(container)
 
-    mc_cons = @_add_container!(constraints, McCormickConstraint, 1:4, sparse)
+    mc_cons = add_constraints_container!(
+        container,
+        McCormickConstraint(),
+        C,
+        names,
+        1:4,
+        time_steps;
+        sparse = true,
+        meta
+    )
 
     for name in names, t in time_steps
         _add_mccormick_envelope!(
@@ -88,12 +97,12 @@ function _add_mccormick_envelope!(
 end
 
 function _add_mccormick_envelope!(
-    jump_model,
+    jump_model::JuMP.Model,
     cons,
     index,
-    x,
-    y,
-    z,
+    x::JuMP.AbstractJuMPScalar,
+    y::JuMP.AbstractJuMPScalar,
+    z::JuMP.AbstractJuMPScalar,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -121,11 +130,11 @@ function _add_mccormick_envelope!(
 end
 
 function _add_mccormick_envelope!(
-    jump_model,
+    jump_model::JuMP.Model,
     cons,
     index,
-    x,
-    z,
+    x::JuMP.VariableRef,
+    z::JuMP.VariableRef,
     x_min::Float64,
     x_max::Float64;
     lower_bounds = true

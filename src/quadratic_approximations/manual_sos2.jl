@@ -51,14 +51,71 @@ function _add_manual_sos2_quadratic_approx!(
     lambda_container =
         add_variable_container!(container, QuadraticVariable(), C; meta)
     z_container = add_variable_container!(container, ManualSOS2BinaryVariable(), C; meta)
-    link_cons = @_add_container!(constraints, SOS2LinkingConstraint)
-    link_expr = @_add_container!(expression, SOS2LinkingExpression)
-    norm_cons = @_add_container!(constraints, SOS2NormConstraint)
-    norm_expr = @_add_container!(expression, SOS2NormExpression)
-    seg_cons = @_add_container!(constraints, ManualSOS2SegmentSelectionConstraint)
-    seg_expr = @_add_container!(expression, ManualSOS2SegmentSelectionExpression)
-    adj_cons = @_add_container!(constraints, ManualSOS2AdjacencyConstraint, 1:n_points)
-    result_expr = @_add_container!(expression, QuadraticExpression)
+    link_cons = add_constraints_container!(
+        container,
+        SOS2LinkingConstraint(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    link_expr = add_expression_container!(
+        container,
+        SOS2LinkingExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    norm_cons = add_constraints_container!(
+        container,
+        SOS2NormConstraint(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    norm_expr = add_expression_container!(
+        container,
+        SOS2NormExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    seg_cons = add_constraints_container!(
+        container,
+        ManualSOS2SegmentSelectionConstraint(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    seg_expr = add_expression_container!(
+        container,
+        ManualSOS2SegmentSelectionExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    adj_cons = add_constraints_container!(
+        container,
+        ManualSOS2AdjacencyConstraint(),
+        C,
+        names,
+        1:n_points,
+        time_steps;
+        meta
+    )
+    result_expr = add_expression_container!(
+        container,
+        QuadraticExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
 
     for name in names, t in time_steps
         x = x_var[name, t]

@@ -28,13 +28,17 @@ struct DNMDTSquareBoundConstraint <: ConstraintType end
 struct DNMDTScaledVariableExpression <: ExpressionType end
 "Binary expansion constraint: w_hat = sum(2^-j * beta[j]) + Delta_w."
 struct DNMDTBinaryExpansionExpression <: ExpressionType end
+"Intermediate sum before McCormick: w_sum = x_hat + delta_x"
+struct DNMDTIntermediateSumExpression <: ExpressionType end
+"Scaled product expression z_hat"
+struct DNMDTScaledProductExpression <: ExpressionType end
 
 # ── Helper: populate binary expansion ─────────────────────────────────────────
 
 """
-    _populate_binary_expansion!(jump_model, C, names, time_steps, x_var, x_min, lw, depth, eps_L, xh_var, beta_var, dx_var, scaling_con, expansion_con)
+    _populate_binary_expansion!(jump_model, C, names, time_steps, x_var, x_min, lx, depth, meta)
 
-Populate pre-allocated containers with base-2 binary expansion variables and constraints.
+Creates and populates containers with base-2 binary expansion variables and constraints.
 
 For each (name, t), creates:
 - Scaled variable x_hat in [0,1]
@@ -55,11 +59,47 @@ function _populate_binary_expansion!(
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     jump_model = get_jump_model(container)
-    xh_expr = @_add_container!(expression, DNMDTScaledVariableExpression)
-    beta_var = @_add_container!(variable, DNMDTBinaryVariable, 1:depth)
-    delta_var = @_add_container!(variable, DNMDTResidualVariable)
-    expansion_cons = @_add_container!(constraints, DNMDTBinaryExpansionConstraint)
-    expansion_expr = @_add_container!(expression, DNMDTBinaryExpansionExpression)
+    xh_expr = add_expression_container!(
+        container,
+        DNMDTScaledVariableExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    beta_var = add_variable_container!(
+        container,
+        DNMDTBinaryVariable(),
+        C,
+        names,
+        1:depth,
+        time_steps;
+        meta
+    )
+    delta_var = add_variable_container!(
+        container,
+        DNMDTResidualVariable(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    expansion_expr = add_expression_container!(
+        container,
+        DNMDTBinaryExpansionExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    expansion_cons = add_constraints_container!(
+        container,
+        DNMDTBinaryExpansionConstraint(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
 
     for name in names, t in time_steps
         xh = xh_expr[name, t] = JuMP.AffExpr(0.0)
@@ -123,15 +163,61 @@ function _add_dnmdt_univariate_approx!(
     lx = x_max - x_min
     eps_L = 2.0^(-depth)
     ws_hi = eps_L + 1.0
-    meta_u = meta * "_u"
 
     # ── Allocate containers ──────────────────────────────────────────────
 
-    u_var = @_add_container!(variable, DNMDTProductAuxVariable, 1:depth, meta_u)
-    bmc_cons =
-        @_add_container!(constraints, DNMDTBinaryMcCormickConstraint, 1:depth, 1:4, sparse)
-    dz_var = @_add_container!(variable, DNMDTResidualProductVariable)
-    result_expr = @_add_container!(expression, QuadraticExpression)
+    wsum_expr = add_expression_container!(
+        container,
+        DNMDTIntermediateSumExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    u_var = add_variable_container!(
+        container,
+        DNMDTProductAuxVariable(),
+        C,
+        names,
+        1:depth,
+        time_steps;
+        meta = meta * "_u"
+    )
+    bmc_cons = add_constraints_container!(
+        container,
+        DNMDTBinaryMcCormickConstraint(),
+        C,
+        names,
+        1:depth,
+        1:4,
+        time_steps;
+        sparse = true,
+        meta
+    )
+    dz_var = add_variable_container!(
+        container,
+        DNMDTResidualProductVariable(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    zh_expr = add_expression_container!(
+        container,
+        DNMDTScaledProductExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    result_expr = add_expression_container!(
+        container,
+        QuadraticExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
 
     # ── Populate: binary expansion ───────────────────────────────────────
 
@@ -144,7 +230,7 @@ function _add_dnmdt_univariate_approx!(
 
     for name in names, t in time_steps
         # Sum term: w_sum = Delta_x + x_hat (used locally in McCormick below)
-        w_sum = JuMP.AffExpr(0.0)
+        w_sum = wsum_expr[name, t] = JuMP.AffExpr(0.0)
         JuMP.add_to_expression!(w_sum, dx_var[name, t])
         JuMP.add_to_expression!(w_sum, xh_var[name, t])
 
@@ -174,7 +260,7 @@ function _add_dnmdt_univariate_approx!(
         )
 
         # Scaled product z_hat (used locally in back-transform below)
-        zh = JuMP.AffExpr(0.0)
+        zh = zh_expr[name, t] = JuMP.AffExpr(0.0)
         for j in 1:depth
             JuMP.add_to_expression!(zh, 2.0^(-j), u_var[name, j, t])
         end
@@ -200,8 +286,14 @@ function _add_dnmdt_univariate_approx!(
             container, C, names, time_steps,
             x_var, x_min, x_max, epigraph_depth, meta * "_epi",
         )
-        meta_lb = meta * "_epi_lb"
-        epi_cons = @_add_container!(constraints, DNMDTSquareBoundConstraint, meta_lb)
+        epi_cons = add_constraints_container!(
+            container,
+            DNMDTSquareBoundConstraint(),
+            C,
+            names,
+            time_steps;
+            meta = meta * "_epi_lb"
+        )
         for name in names, t in time_steps
             epi_cons[name, t] = JuMP.@constraint(
                 jump_model,
@@ -216,7 +308,7 @@ end
 # ── Bivariate D-NMDT for z = x*y ─────────────────────────────────────────────
 
 """
-    _add_dnmdt_bilinear_approx!(container, C, names, time_steps, x_var, x_var, x_min, x_max, y_min, y_max, depth, meta; add_mccormick)
+    _add_dnmdt_bilinear_approx!(container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta; add_mccormick)
 
 Approximate z = x*y using bivariate D-NMDT (Definition 8).
 
@@ -248,10 +340,6 @@ function _add_dnmdt_bilinear_approx!(
     lx = x_max - x_min
     ly = y_max - y_min
     eps_L = 2.0^(-depth)
-    meta_u = meta * "u"
-    meta_v = meta * "v"
-    meta_x = meta * "_x"
-    meta_y = meta * "_y"
 
     # Precompute power-of-two coefficients
     pow2_neg = [2.0^(-j) for j in 1:depth]
@@ -263,40 +351,97 @@ function _add_dnmdt_bilinear_approx!(
 
     # ── Allocate containers ──────────────────────────────────────────────
 
-    # Product aux variables u[j], v[j]
-    u_var = @_add_container!(variable, DNMDTProductAuxVariable, 1:depth, meta_u)
-    v_var = @_add_container!(variable, DNMDTProductAuxVariable, 1:depth, meta_v)
-    bmc_cons = @_add_container!(
-        constraints,
-        DNMDTBinaryMcCormickConstraint,
-        1:3,
-        1:depth,
-        ["u", "v"],
-        sparse
+    wu_expr = add_expression_container!(
+        container,
+        DNMDTIntermediateSumExpression(),
+        C,
+        names,
+        time_steps;
+        meta = meta * "_wu"
     )
-    dz_var = @_add_container!(variable, DNMDTResidualProductVariable)
-    result_expr = @_add_container!(expression, BilinearProductExpression)
+    wv_expr = add_expression_container!(
+        container,
+        DNMDTIntermediateSumExpression(),
+        C,
+        names,
+        time_steps;
+        meta = meta * "_wv"
+    )
+    u_var = add_variable_container!(
+        container,
+        DNMDTProductAuxVariable(),
+        C,
+        names,
+        1:depth,
+        time_steps;
+        meta = meta * "_u"
+    )
+    v_var = add_variable_container!(
+        container,
+        DNMDTProductAuxVariable(),
+        C,
+        names,
+        1:depth,
+        time_steps;
+        meta = meta * "_v"
+    )
+    bmc_cons = add_constraints_container!(
+        container,
+        DNMDTBinaryMcCormickConstraint(),
+        C,
+        names,
+        1:depth,
+        1:4,
+        1:2, # u, v
+        time_steps;
+        sparse = true,
+        meta
+    )
+    dz_var = add_variable_container!(
+        container,
+        DNMDTResidualProductVariable(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    zh_expr = add_expression_container!(
+        container,
+        DNMDTScaledProductExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    result_expr = add_expression_container!(
+        container,
+        BilinearProductExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
 
     # ── Populate: binary expansions ──────────────────────────────────────
 
     xh_var, beta_x_var, dx_var = _populate_binary_expansion!(
         container, C, names, time_steps,
-        x_var, x_min, lx, depth, meta_x,
+        x_var, x_min, lx, depth, meta * "_x",
     )
     yh_var, beta_y_var, dy_var = _populate_binary_expansion!(
         container, C, names, time_steps,
-        y_var, y_min, ly, depth, meta_y,
+        y_var, y_min, ly, depth, meta * "_y",
     )
 
     # ── Populate: blended terms, product aux, assembly, back-transform ───
 
     for name in names, t in time_steps
         # Blended terms (used locally in McCormick below)
-        w_u = JuMP.AffExpr(0.0)
+        w_u = wu_expr[name, t] = JuMP.AffExpr(0.0)
         JuMP.add_to_expression!(w_u, lambda, dy_var[name, t])
         JuMP.add_to_expression!(w_u, 1 - lambda, yh_var[name, t])
 
-        w_v = JuMP.AffExpr(0.0)
+        w_v = wv_expr[name, t] = JuMP.AffExpr(0.0)
         JuMP.add_to_expression!(w_v, 1 - lambda, dx_var[name, t])
         JuMP.add_to_expression!(w_v, lambda, xh_var[name, t])
 
@@ -317,21 +462,16 @@ function _add_dnmdt_bilinear_approx!(
                     upper_bound = wv_hi,
                 )
 
-            beta_xj = beta_x_var[name, j, t]
-            bmc_cons[(name, 1, j, "u", t)] =
-                JuMP.@constraint(jump_model, u_j <= wu_hi * beta_xj)
-            bmc_cons[(name, 2, j, "u", t)] =
-                JuMP.@constraint(jump_model, u_j >= w_u - wu_hi * (1 - beta_xj))
-            bmc_cons[(name, 3, j, "u", t)] =
-                JuMP.@constraint(jump_model, u_j <= w_u)
-
-            beta_yj = beta_y_var[name, j, t]
-            bmc_cons[(name, 1, j, "v", t)] =
-                JuMP.@constraint(jump_model, v_j <= wv_hi * beta_yj)
-            bmc_cons[(name, 2, j, "v", t)] =
-                JuMP.@constraint(jump_model, v_j >= w_v - wv_hi * (1 - beta_yj))
-            bmc_cons[(name, 3, j, "v", t)] =
-                JuMP.@constraint(jump_model, v_j <= w_v)
+            _add_mccormick_envelope!(
+                jump_model, bmc_cons, (name, j, 1, t),
+                w_u, beta_x_var[name, j, t], u_j,
+                0.0, wu_hi, 0.0, 1.0;
+            )
+            _add_mccormick_envelope!(
+                jump_model, bmc_cons, (name, j, 2, t),
+                w_v, beta_y_var[name, j, t], v_j,
+                0.0, wv_hi, 0.0, 1.0
+            )
         end
 
         # Residual product variable (bounded by [0, eps_L²])
@@ -343,7 +483,7 @@ function _add_dnmdt_bilinear_approx!(
         )
 
         # Scaled product z_hat (used locally in back-transform below)
-        zh = JuMP.AffExpr(0.0)
+        zh = zh_expr[name, t] = JuMP.AffExpr(0.0)
         for j in 1:depth
             JuMP.add_to_expression!(zh, pow2_neg[j], u_var[name, j, t])
             JuMP.add_to_expression!(zh, pow2_neg[j], v_var[name, j, t])

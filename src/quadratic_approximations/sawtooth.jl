@@ -55,11 +55,50 @@ function _add_sawtooth_quadratic_approx!(
     # Create containers with known dimensions
     g_levels = 0:depth
     alpha_levels = 1:depth
-    g_var = @_add_container!(variable, SawtoothAuxVariable, g_levels)
-    alpha_var = @_add_container!(variable, SawtoothBinaryVariable, alpha_levels)
-    mip_cons = @_add_container!(constraints, SawtoothMIPConstraint, 1:4, sparse)
-    link_cons = @_add_container!(constraints, SawtoothLinkingConstraint)
-    result_expr = @_add_container!(expression, QuadraticExpression)
+    g_var = add_variable_container!(
+        container,
+        SawtoothAuxVariable(),
+        C,
+        names,
+        g_levels,
+        time_steps;
+        meta
+    )
+    alpha_var = add_variable_container!(
+        container,
+        SawtoothBinaryVariable(),
+        C,
+        names,
+        alpha_levels,
+        time_steps;
+        meta
+    )
+    mip_cons = add_constraints_container!(
+        container,
+        SawtoothMIPConstraint(),
+        C,
+        names,
+        1:4,
+        time_steps;
+        sparse = true,
+        meta
+    )
+    link_cons = add_constraints_container!(
+        container,
+        SawtoothLinkingConstraint(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
+    result_expr = add_expression_container!(
+        container,
+        QuadraticExpression(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
 
     # Precompute sawtooth coefficients (invariant across names and time steps)
     saw_coeffs = [delta * delta * (2.0^(-2 * j)) for j in alpha_levels]
