@@ -272,7 +272,7 @@ function _add_sawtooth_bilinear_approx!(
     )
 end
 
-function _add_dmndt_bilinear_approx!(
+function _add_dmndt_quadratic_bilinear_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},

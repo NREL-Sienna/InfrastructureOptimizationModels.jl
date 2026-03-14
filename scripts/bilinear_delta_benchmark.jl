@@ -206,22 +206,21 @@ end
 # ─── MIP model using IOM bilinear approximations ─────────────────────────────
 
 bilinear_methods = (
-    ("Bin2+sSOS", IOM._add_sos2_bilinear_approx!, ()),
-    ("Bin2+mSOS+McQuad", IOM._add_manual_sos2_bilinear_approx!, (add_mccormick = true,)),
-    ("Bin2+Saw", IOM._add_sawtooth_bilinear_approx!, ()),
-    ("Bin2+DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true,)),
-    ("Bin2+T-DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true, tighten = true,)),
-    ("Bin2+DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true,)),
-    ("Bin2+DNMDT+McQuad", IOM._add_dmndt_bilinear_approx!, (double = true, add_mccormick = true)),
-    ("HybS+sSOS", IOM._add_hybs_sos2_bilinear_approx!, ()),
-    ("HybS+sSOS+McAll", IOM._add_hybs_sos2_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
-    ("HybS+Saw", IOM._add_hybs_sawtooth_bilinear_approx!, ()),
-    ("HybS+Saw+McAll", IOM._add_hybs_sawtooth_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
-    ("HybS+T-Saw", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true,)),
-    ("HybS+T-Saw+McBil", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true, add_mccormick = true)),
-    ("NMDT", IOM._add_dmndt_bilinear_approx!, ()),
-    ("DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true,)),
-    ("DNMDT+McBil", IOM._add_dmndt_bilinear_approx!, (double = true, add_mccormick = true))
+    # ("Bin2+sSOS", IOM._add_sos2_bilinear_approx!, ()),
+    # ("Bin2+mSOS+McQuad", IOM._add_manual_sos2_bilinear_approx!, (add_mccormick = true,)),
+    # ("Bin2+Saw", IOM._add_sawtooth_bilinear_approx!, ()),
+    # ("Bin2+DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true,)),
+    # ("Bin2+T-DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true, tighten = true,)),
+    # ("Bin2+DNMDT+McQuad", IOM._add_dmndt_bilinear_approx!, (double = true, add_mccormick = true)),
+    # ("HybS+sSOS", IOM._add_hybs_sos2_bilinear_approx!, ()),
+    # ("HybS+sSOS+McAll", IOM._add_hybs_sos2_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
+    # ("HybS+Saw", IOM._add_hybs_sawtooth_bilinear_approx!, ()),
+    # ("HybS+Saw+McAll", IOM._add_hybs_sawtooth_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
+    # ("HybS+T-Saw", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true,)),
+    # ("HybS+T-Saw+McBil", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true, add_mccormick = true)),
+    ("NMDT", IOM._add_dnmdt_bilinear_approx!, ()),
+    ("DNMDT", IOM._add_dnmdt_bilinear_approx!, (double = true,)),
+    ("DNMDT+McBil", IOM._add_dnmdt_bilinear_approx!, (double = true, add_mccormick = true))
 )
 
 """
@@ -421,7 +420,7 @@ function run_benchmark(;
     println("MIP Bilinear Approximations (HiGHS)")
     println("  Refinement = num_segments for SOS2 methods, depth for Sawtooth")
     println("=" ^ 100)
-    @printf("%-15s %4s %6s %7s %6s %12s %9s %11s %10s %8s\n",
+    @printf("%-17s %4s %6s %7s %6s %12s %9s %11s %10s %8s\n",
         "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
     println("-" ^ 100)
 
@@ -445,7 +444,7 @@ function run_benchmark(;
             gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / max(abs(nlp_obj), 1e-10) * 100.0
             geometric_mean, max = compute_bilinear_residuals(result, net)
             gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
-            @printf("%-15s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
+            @printf("%-17s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
                 label, ref,
                 sz.variables, sz.constraints, sz.binaries,
                 obj, gap_str, geometric_mean, max, solve_t)

@@ -47,7 +47,7 @@ For each (name, t), creates:
 - Scaling constraint: x_hat = (x - x_min) / lx
 - Expansion constraint: x_hat = sum(2^{-j} * beta[j]) + Delta_x
 """
-function _populate_binary_expansion!(
+function _formulate_binary_expansion!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -103,7 +103,7 @@ function _populate_binary_expansion!(
 
     for name in names, t in time_steps
         xh = xh_expr[name, t] = JuMP.AffExpr(-x_min / lx)
-        JuMP.add_to_expression!(xh, x_var[name, t])
+        JuMP.add_to_expression!(xh, 1 / lx, x_var[name, t])
 
         delta =
             delta_var[name, t] = JuMP.@variable(
@@ -224,7 +224,7 @@ function _add_dnmdt_quadratic_approx!(
 
     # ── Populate: binary expansion ───────────────────────────────────────
 
-    xh_var, beta_var, dx_var = _populate_binary_expansion!(
+    xh_var, beta_var, dx_var = _formulate_binary_expansion!(
         container, C, names, time_steps,
         x_var, x_min, lx, depth, meta,
     )
@@ -236,7 +236,7 @@ function _add_dnmdt_quadratic_approx!(
             beta_coeff = beta_coeff_expr[name, t] = JuMP.AffExpr(0.0)
             JuMP.add_to_expression!(beta_coeff, xh_var[name, t])
             JuMP.add_to_expression!(beta_coeff, dx_var[name, t])
-            beta_coeff_hi += 1.0 + eps_L
+            beta_coeff_hi = 1.0 + eps_L
         else
             beta_coeff = xh_var[name, t]
             beta_coeff_hi = 1.0
@@ -400,15 +400,17 @@ function _add_dnmdt_bilinear_approx!(
         time_steps;
         meta = meta * "_u",
     )
-    v_var = add_variable_container!(
-        container,
-        DNMDTProductAuxVariable(),
-        C,
-        names,
-        1:depth,
-        time_steps;
-        meta = meta * "_v",
-    )
+    if double
+        v_var = add_variable_container!(
+            container,
+            DNMDTProductAuxVariable(),
+            C,
+            names,
+            1:depth,
+            time_steps;
+            meta = meta * "_v",
+        )
+    end
     bmc_cons = add_constraints_container!(
         container,
         DNMDTBinaryMcCormickConstraint(),
@@ -448,11 +450,11 @@ function _add_dnmdt_bilinear_approx!(
 
     # ── Populate: binary expansions ──────────────────────────────────────
 
-    xh_var, beta_x_var, dx_var = _populate_binary_expansion!(
+    xh_var, beta_x_var, dx_var = _formulate_binary_expansion!(
         container, C, names, time_steps,
         x_var, x_min, lx, depth, meta * "_x",
     )
-    yh_var, beta_y_var, dy_var = _populate_binary_expansion!(
+    yh_var, beta_y_var, dy_var = _formulate_binary_expansion!(
         container, C, names, time_steps,
         y_var, y_min, ly, depth, meta * "_y",
     )
@@ -462,18 +464,16 @@ function _add_dnmdt_bilinear_approx!(
     for name in names, t in time_steps
         if double
             beta_x_coeff = beta_x_coeff_expr[name, t] = JuMP.AffExpr(0.0)
-            JuMP.add_to_expression!(beta_x_coeff, 1 - lambda, yh_var[name, t])
             JuMP.add_to_expression!(beta_x_coeff, lambda, dy_var[name, t])
+            JuMP.add_to_expression!(beta_x_coeff, 1 - lambda, yh_var[name, t])
             beta_x_coeff_hi = lambda * eps_L + (1 - lambda)
             beta_y_coeff = beta_y_coeff_expr[name, t] = JuMP.AffExpr(0.0)
-            JuMP.add_to_expression!(beta_y_coeff, lambda, xh_var[name, t])
             JuMP.add_to_expression!(beta_y_coeff, 1 - lambda, dx_var[name, t])
+            JuMP.add_to_expression!(beta_y_coeff, lambda, xh_var[name, t])
             beta_y_coeff_hi = (1 - lambda) * eps_L + lambda
         else
-            beta_x_coeff = xh_var[name, t]
+            beta_x_coeff = yh_var[name, t]
             beta_x_coeff_hi = 1.0
-            beta_y_coeff = yh_var[name, t]
-            beta_y_coeff_hi = 1.0
         end
 
         # Binary McCormick for u[j] and v[j]
@@ -481,28 +481,29 @@ function _add_dnmdt_bilinear_approx!(
             u_j =
                 u_var[name, j, t] = JuMP.@variable(
                     jump_model,
-                    base_name = "DNMDTu_$(C)_{$(name), $(j), $(t)}",
+                    base_name = "DNMDT_u_$(C)_{$(name), $(j), $(t)}",
                     lower_bound = 0.0,
                     upper_bound = beta_x_coeff_hi,
                 )
-            v_j =
-                v_var[name, j, t] = JuMP.@variable(
-                    jump_model,
-                    base_name = "DNMDTv_$(C)_{$(name), $(j), $(t)}",
-                    lower_bound = 0.0,
-                    upper_bound = beta_y_coeff_hi,
-                )
-
             _add_mccormick_envelope!(
                 jump_model, bmc_cons, (name, j, 1, t),
                 beta_x_coeff, beta_x_var[name, j, t], u_j,
                 0.0, beta_x_coeff_hi, 0.0, 1.0;
             )
-            _add_mccormick_envelope!(
-                jump_model, bmc_cons, (name, j, 2, t),
-                beta_y_coeff, beta_y_var[name, j, t], v_j,
-                0.0, beta_y_coeff_hi, 0.0, 1.0,
-            )
+            if double
+                v_j =
+                v_var[name, j, t] = JuMP.@variable(
+                    jump_model,
+                    base_name = "DNMDT_v_$(C)_{$(name), $(j), $(t)}",
+                    lower_bound = 0.0,
+                    upper_bound = beta_y_coeff_hi,
+                )
+                _add_mccormick_envelope!(
+                    jump_model, bmc_cons, (name, j, 2, t),
+                    beta_y_coeff, beta_y_var[name, j, t], v_j,
+                    0.0, beta_y_coeff_hi, 0.0, 1.0,
+                )
+            end
         end
 
         # Residual product variable (bounded by [0, eps_L²])
@@ -517,7 +518,9 @@ function _add_dnmdt_bilinear_approx!(
         zh = zh_expr[name, t] = JuMP.AffExpr(0.0)
         for j in 1:depth
             JuMP.add_to_expression!(zh, pow2_neg[j], u_var[name, j, t])
-            JuMP.add_to_expression!(zh, pow2_neg[j], v_var[name, j, t])
+            if double
+                JuMP.add_to_expression!(zh, pow2_neg[j], v_var[name, j, t])
+            end
         end
         JuMP.add_to_expression!(zh, dz_var[name, t])
         result = result_expr[name, t] = JuMP.AffExpr(x_min * y_min)
@@ -550,5 +553,5 @@ function _add_dnmdt_bilinear_approx!(
         )
     end
 
-    return
+    return result_expr
 end
