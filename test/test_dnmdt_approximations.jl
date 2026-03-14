@@ -22,8 +22,8 @@ const DNMDT_HYBS_META = "HybSTest"
 
         @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
 
-        xh = IOM.get_variable(
-            setup.container, IOM.DNMDTScaledVariable(), MockThermalGen, DNMDT_META,
+        xh = IOM.get_expression(
+            setup.container, IOM.DNMDTScaledVariableExpression(), MockThermalGen, DNMDT_META,
         )
         beta = IOM.get_variable(
             setup.container, IOM.DNMDTBinaryVariable(), MockThermalGen, DNMDT_META,
@@ -53,7 +53,7 @@ const DNMDT_HYBS_META = "HybSTest"
                     tighten = false,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.DNMDTQuadraticExpression(),
+                    setup.container, IOM.QuadraticExpression(),
                     MockThermalGen, DNMDT_META,
                 )
 
@@ -85,7 +85,7 @@ const DNMDT_HYBS_META = "HybSTest"
                         tighten = false,
                     )
                     expr = IOM.get_expression(
-                        setup.container, IOM.DNMDTQuadraticExpression(),
+                        setup.container, IOM.QuadraticExpression(),
                         MockThermalGen, DNMDT_META,
                     )
 
@@ -120,16 +120,10 @@ const DNMDT_HYBS_META = "HybSTest"
 
         # Container keys exist
         @test IOM.has_container_key(
-            setup.container, IOM.DNMDTScaledVariable, MockThermalGen, DNMDT_META,
-        )
-        @test IOM.has_container_key(
             setup.container, IOM.DNMDTBinaryVariable, MockThermalGen, DNMDT_META,
         )
         @test IOM.has_container_key(
             setup.container, IOM.DNMDTResidualVariable, MockThermalGen, DNMDT_META,
-        )
-        @test IOM.has_container_key(
-            setup.container, IOM.DNMDTBackTransformConstraint, MockThermalGen, DNMDT_META,
         )
     end
 
@@ -144,7 +138,7 @@ const DNMDT_HYBS_META = "HybSTest"
             tighten = false,
         )
         expr = IOM.get_expression(
-            setup.container, IOM.DNMDTQuadraticExpression(),
+            setup.container, IOM.QuadraticExpression(),
             MockThermalGen, DNMDT_META,
         )
 
@@ -169,7 +163,7 @@ end
                     tighten = tighten,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.DNMDTQuadraticExpression(),
+                    setup.container, IOM.QuadraticExpression(),
                     MockThermalGen, DNMDT_META,
                 )
 
@@ -206,7 +200,7 @@ end
                 tighten = true,
             )
             expr = IOM.get_expression(
-                setup.container, IOM.DNMDTQuadraticExpression(),
+                setup.container, IOM.QuadraticExpression(),
                 MockThermalGen, DNMDT_META,
             )
 
@@ -240,7 +234,7 @@ end
                     0.0, 1.0, 0.0, 1.0, 2, DNMDT_META,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.DNMDTBilinearExpression(),
+                    setup.container, IOM.BilinearProductExpression(),
                     MockThermalGen, DNMDT_META,
                 )
 
@@ -274,7 +268,7 @@ end
                             0.0, 1.0, 0.0, 1.0, L, DNMDT_META,
                         )
                         expr = IOM.get_expression(
-                            setup.container, IOM.DNMDTBilinearExpression(),
+                            setup.container, IOM.BilinearProductExpression(),
                             MockThermalGen, DNMDT_META,
                         )
 
@@ -311,7 +305,7 @@ end
                     x_min, x_max, y_min, y_max, 3, DNMDT_META,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.DNMDTBilinearExpression(),
+                    setup.container, IOM.BilinearProductExpression(),
                     MockThermalGen, DNMDT_META,
                 )
 
@@ -344,15 +338,7 @@ end
 
         # Container keys exist
         @test IOM.has_container_key(
-            setup.container, IOM.DNMDTScaledVariable, MockThermalGen,
-            DNMDT_META * "_x",
-        )
-        @test IOM.has_container_key(
-            setup.container, IOM.DNMDTScaledVariable, MockThermalGen,
-            DNMDT_META * "_y",
-        )
-        @test IOM.has_container_key(
-            setup.container, IOM.DNMDTBilinearExpression, MockThermalGen,
+            setup.container, IOM.BilinearProductExpression, MockThermalGen,
             DNMDT_META,
         )
     end
@@ -383,7 +369,7 @@ end
             0.0, 4.0, 0.0, 4.0, 3, DNMDT_META,
         )
         expr = IOM.get_expression(
-            setup.container, IOM.DNMDTBilinearExpression(),
+            setup.container, IOM.BilinearProductExpression(),
             MockThermalGen, DNMDT_META,
         )
 
@@ -405,7 +391,7 @@ end
             0.0, 1.0, 0.0, 1.0, 2, DNMDT_META,
         )
         expr = IOM.get_expression(
-            setup.container, IOM.DNMDTBilinearExpression(),
+            setup.container, IOM.BilinearProductExpression(),
             MockThermalGen, DNMDT_META,
         )
 
@@ -428,7 +414,7 @@ end
                 0.0, 1.0, 0.0, 1.0, depth, DNMDT_META,
             )
             expr_d = IOM.get_expression(
-                setup_d.container, IOM.DNMDTBilinearExpression(),
+                setup_d.container, IOM.BilinearProductExpression(),
                 MockThermalGen, DNMDT_META,
             )
 

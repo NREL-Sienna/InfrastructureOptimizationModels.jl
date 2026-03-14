@@ -10,6 +10,7 @@ struct EpigraphExpression <: ExpressionType end
 struct EpigraphVariable <: VariableType end
 "Tangent-line lower-bound constraints in epigraph relaxation."
 struct EpigraphTangentConstraint <: ConstraintType end
+struct EpigraphTangentExpression <: ExpressionType end
 
 """
     _add_epigraph_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
@@ -53,13 +54,66 @@ function _add_epigraph_quadratic_approx!(
     delta = x_max - x_min
     g_levels = 0:depth
 
-    z_var = @_add_container(variable, EpigraphVariable)
-    g_var = @_add_container(variable, SawtoothAuxVariable, g_levels)
-    lp_cons = @_add_container(constraints, SawtoothLPConstraint, 1:2)
-    link_cons = @_add_container(constraints, SawtoothLinkingConstraint)
-    tangent_cons =
-        @_add_container(constraints, EpigraphTangentConstraint, 1:(depth + 2), sparse)
-    result_expr = @_add_container(expression, EpigraphExpression)
+    z_var = add_variable_container!(
+        container,
+        EpigraphVariable(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    g_var = add_variable_container!(
+        container,
+        SawtoothAuxVariable(),
+        C,
+        names,
+        g_levels,
+        time_steps;
+        meta,
+    )
+    lp_cons = add_constraints_container!(
+        container,
+        SawtoothLPConstraint(),
+        C,
+        names,
+        1:2,
+        time_steps;
+        meta,
+    )
+    link_cons = add_constraints_container!(
+        container,
+        SawtoothLinkingConstraint(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    fL_expr = add_expression_container!(
+        container,
+        EpigraphTangentExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    tangent_cons = add_constraints_container!(
+        container,
+        EpigraphTangentConstraint(),
+        C,
+        names,
+        1:(depth + 2),
+        time_steps;
+        sparse = true,
+        meta,
+    )
+    result_expr = add_expression_container!(
+        container,
+        EpigraphExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
 
     # Upper bound for epigraph variable z ≈ x²
     z_ub = max(x_min^2, x_max^2)
@@ -105,7 +159,7 @@ function _add_epigraph_quadratic_approx!(
                 upper_bound = z_ub,
             )
 
-        fL = JuMP.AffExpr(0.0)
+        fL = fL_expr[name, t] = JuMP.AffExpr(0.0)
         for j in 1:depth
             JuMP.add_to_expression!(fL, delta * delta * 2.0^(-2j), g_var[name, j, t])
             tangent_cons[(name, j + 1, t)] = JuMP.@constraint(

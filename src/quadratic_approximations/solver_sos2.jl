@@ -2,16 +2,16 @@
 # Uses solver-native MOI.SOS2 constraints for adjacency enforcement.
 
 "Expression container for quadratic (x²) approximation results."
-struct QuadraticApproximationExpression <: ExpressionType end
+struct QuadraticExpression <: ExpressionType end
 
 "lambda_var (λ) convex combination weight variables for SOS2 quadratic approximation."
-struct QuadraticApproxVariable <: SparseVariableType end
+struct QuadraticVariable <: SparseVariableType end
 "Links x to the weighted sum of breakpoints in SOS2 quadratic approximation."
-struct QuadraticApproxLinkingConstraint <: ConstraintType end
+struct SOS2LinkingConstraint <: ConstraintType end
+struct SOS2LinkingExpression <: ExpressionType end
 "Ensures the sum of λ weights equals 1 in SOS2 quadratic approximation."
-struct QuadraticApproxNormalizationConstraint <: ConstraintType end
-
-struct QuadraticApproxLinkingExpression <: ExpressionType end
+struct SOS2NormConstraint <: ConstraintType end
+struct SOS2NormExpression <: ExpressionType end
 
 struct SolverSOS2Constraint <: ConstraintType end
 
@@ -22,7 +22,7 @@ Approximate x² using a piecewise linear function with solver-native SOS2 constr
 
 Creates lambda_var (λ) variables representing convex combination weights over breakpoints,
 adds linking, normalization, and MOI.SOS2 constraints, and stores affine expressions
-approximating x² in a `QuadraticApproximationExpression` expression container.
+approximating x² in a `QuadraticExpression` expression container.
 
 # Arguments
 - `container::OptimizationContainer`: the optimization container
@@ -52,13 +52,56 @@ function _add_sos2_quadratic_approx!(
     jump_model = get_jump_model(container)
 
     # Create all containers upfront
-    lambda_var = # how is this working with no axes?
-        add_variable_container!(container, QuadraticApproxVariable(), C; meta)
-    link_expr = @_add_container(expression, QuadraticApproxLinkingExpression)
-    link_cons = @_add_container(constraints, QuadraticApproxLinkingConstraint)
-    norm_cons = @_add_container(constraints, QuadraticApproxNormalizationConstraint)
-    sos_cons = @_add_container(constraints, SolverSOS2Constraint)
-    result_expr = @_add_container(expression, QuadraticApproximationExpression)
+    lambda_var =
+        add_variable_container!(container, QuadraticVariable(), C; meta)
+    link_cons = add_constraints_container!(
+        container,
+        SOS2LinkingConstraint(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    link_expr = add_expression_container!(
+        container,
+        SOS2LinkingExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    norm_cons = add_constraints_container!(
+        container,
+        SOS2NormConstraint(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    norm_expr = add_expression_container!(
+        container,
+        SOS2NormExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    sos_cons = add_constraints_container!(
+        container,
+        SolverSOS2Constraint(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    result_expr = add_expression_container!(
+        container,
+        QuadraticExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
 
     for name in names, t in time_steps
         x = x_var[name, t]
@@ -69,7 +112,7 @@ function _add_sos2_quadratic_approx!(
             lambda[i] =
                 lambda_var[(name, i, t)] = JuMP.@variable(
                     jump_model,
-                    base_name = "QuadraticApproxVariable_$(C)_{$(name), pwl_$(i), $(t)}",
+                    base_name = "QuadraticVariable_$(C)_{$(name), pwl_$(i), $(t)}",
                     lower_bound = 0.0,
                     upper_bound = 1.0,
                 )
@@ -83,7 +126,11 @@ function _add_sos2_quadratic_approx!(
         link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
 
         # Σ λ_i = 1
-        norm_cons[name, t] = JuMP.@constraint(jump_model, sum(lambda) == 1.0)
+        norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
+        for l in lambda
+            JuMP.add_to_expression!(norm, l)
+        end
+        norm_cons[name, t] = JuMP.@constraint(jump_model, norm == 1.0)
 
         # λ ∈ SOS2 (solver-native)
         sos_cons[name, t] =

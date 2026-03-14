@@ -21,7 +21,7 @@ const TEST_META = "TestVar"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -33,7 +33,7 @@ const TEST_META = "TestVar"
             # Lambda variables should exist
             lambda_container = IOM.get_variable(
                 setup.container,
-                IOM.QuadraticApproxVariable(),
+                IOM.QuadraticVariable(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -47,7 +47,7 @@ const TEST_META = "TestVar"
             # Linking constraint should exist
             @test IOM.has_container_key(
                 setup.container,
-                IOM.QuadraticApproxLinkingConstraint,
+                IOM.SOS2LinkingConstraint,
                 MockThermalGen,
                 TEST_META,
             )
@@ -55,7 +55,7 @@ const TEST_META = "TestVar"
             # Normalization constraint should exist
             @test IOM.has_container_key(
                 setup.container,
-                IOM.QuadraticApproxNormalizationConstraint,
+                IOM.SOS2NormConstraint,
                 MockThermalGen,
                 TEST_META,
             )
@@ -90,7 +90,7 @@ const TEST_META = "TestVar"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -127,7 +127,7 @@ const TEST_META = "TestVar"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -161,7 +161,7 @@ const TEST_META = "TestVar"
             # Verify lambda variables exist for each time step
             lambda_container = IOM.get_variable(
                 setup.container,
-                IOM.QuadraticApproxVariable(),
+                IOM.QuadraticVariable(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -172,7 +172,7 @@ const TEST_META = "TestVar"
             # Expression container should have entries for all (name, t) pairs
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -204,7 +204,7 @@ const TEST_META = "TestVar"
                 )
                 expr_container = IOM.get_expression(
                     setup.container,
-                    IOM.QuadraticApproximationExpression(),
+                    IOM.QuadraticExpression(),
                     MockThermalGen,
                     TEST_META,
                 )
@@ -244,7 +244,7 @@ const TEST_META = "TestVar"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -256,7 +256,7 @@ const TEST_META = "TestVar"
             # Lambda variables should exist
             lambda_container = IOM.get_variable(
                 setup.container,
-                IOM.QuadraticApproxVariable(),
+                IOM.QuadraticVariable(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -312,7 +312,7 @@ const TEST_META = "TestVar"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -348,7 +348,7 @@ const TEST_META = "TestVar"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -385,7 +385,7 @@ const TEST_META = "TestVar"
             # Expression container should contain AffExpr for each (name, t)
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -452,7 +452,7 @@ const TEST_META = "TestVar"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -488,7 +488,7 @@ const TEST_META = "TestVar"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -541,7 +541,7 @@ const TEST_META = "TestVar"
             # Expression container should have entries for all (name, t) pairs
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticApproximationExpression(),
+                IOM.QuadraticExpression(),
                 MockThermalGen,
                 TEST_META,
             )
@@ -573,7 +573,7 @@ const TEST_META = "TestVar"
                 )
                 expr_container = IOM.get_expression(
                     setup.container,
-                    IOM.QuadraticApproximationExpression(),
+                    IOM.QuadraticExpression(),
                     MockThermalGen,
                     TEST_META,
                 )
@@ -629,7 +629,7 @@ const TEST_META = "TestVar"
                     end
                     expr_container = IOM.get_expression(
                         setup.container,
-                        IOM.QuadraticApproximationExpression(),
+                        IOM.QuadraticExpression(),
                         MockThermalGen,
                         TEST_META,
                     )
