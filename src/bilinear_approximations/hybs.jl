@@ -66,8 +66,22 @@ function _add_hybs_bilinear_approx!(
     meta_p1 = meta * "_plus"
     meta_p2 = meta * "_diff"
 
-    p1_expr = @_add_container(expression, VariableSumExpression, meta_p1)
-    p2_expr = @_add_container(expression, VariableDifferenceExpression, meta_p2)
+    p1_expr = add_expression_container!(
+        container,
+        VariableSumExpression(),
+        C,
+        names,
+        time_steps;
+        meta = meta_p1,
+    )
+    p2_expr = add_expression_container!(
+        container,
+        VariableDifferenceExpression(),
+        C,
+        names,
+        time_steps;
+        meta = meta_p2,
+    )
 
     for name in names, t in time_steps
         x = x_var[name, t]
@@ -105,9 +119,32 @@ function _add_hybs_bilinear_approx!(
     )
 
     # --- Create z variable and two-sided HybS bounds ---
-    z_var = @_add_container(variable, BilinearProductVariable)
-    hybrid_cons = @_add_container(constraints, HybSBoundConstraint, 1:2, sparse)
-    result_expr = @_add_container(expression, BilinearProductExpression)
+    z_var = add_variable_container!(
+        container,
+        BilinearProductVariable(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    hybrid_cons = add_constraints_container!(
+        container,
+        HybSBoundConstraint(),
+        C,
+        names,
+        1:2,
+        time_steps;
+        sparse = true,
+        meta,
+    )
+    result_expr = add_expression_container!(
+        container,
+        BilinearProductExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
 
     # Compute valid bounds for z ≈ x·y from variable bounds
     z_lo = min(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)

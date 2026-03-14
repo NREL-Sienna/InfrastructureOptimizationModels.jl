@@ -64,8 +64,8 @@ Add PWL cost terms using the **lambda (convex combination) formulation**.
 
 Given a `PiecewisePointCurve` with breakpoints ``(P_i, C_i)``, this function:
 
-1. Creates lambda variables ``\\lambda_i \\in [0, 1]`` at each breakpoint via [`_add_pwl_variables!`](@ref).
-2. Adds linking and normalization constraints via [`_add_pwl_constraint_standard!`](@ref).
+1. Creates lambda variables ``\\lambda_i \\in [0, 1]`` at each breakpoint via `_add_pwl_variables!`.
+2. Adds linking and normalization constraints via `_add_pwl_constraint_standard!`.
 3. If the cost curve is **non-convex**, adds an SOS2 adjacency constraint so that at most
    two neighboring ``\\lambda`` values are nonzero.
 4. Builds the cost expression ``C = \\sum_i \\lambda_i \\, C(P_i)``.
