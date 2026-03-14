@@ -21,12 +21,19 @@ struct MockOperationCost
     proportional_term::Float64
     is_time_variant::Bool
     fuel_cost::Float64
+    start_up::Float64
+    shut_down::Float64
 end
 
 MockOperationCost(proportional_term::Float64) =
-    MockOperationCost(proportional_term, false, 0.0)
+    MockOperationCost(proportional_term, false, 0.0, 0.0, 0.0)
 MockOperationCost(proportional_term::Float64, is_time_variant::Bool) =
-    MockOperationCost(proportional_term, is_time_variant, 0.0)
+    MockOperationCost(proportional_term, is_time_variant, 0.0, 0.0, 0.0)
+MockOperationCost(proportional_term::Float64, is_time_variant::Bool, fuel_cost::Float64) =
+    MockOperationCost(proportional_term, is_time_variant, fuel_cost, 0.0, 0.0)
+
+IOM.get_start_up(c::MockOperationCost) = c.start_up
+IOM.get_shut_down(c::MockOperationCost) = c.shut_down
 
 # Abstract mock device type for testing rejection of abstract types in DeviceModel
 # Subtypes IS.InfrastructureSystemsComponent so they work with DeviceModel and container keys
@@ -52,13 +59,16 @@ struct MockThermalGen <: AbstractMockGenerator
     active_power_limits::NamedTuple{(:min, :max), Tuple{Float64, Float64}}
     base_power::Float64
     operation_cost::MockOperationCost
+    must_run::Bool
 end
 
 # Constructor with default base_power and no operation cost for backward compatibility
 MockThermalGen(name, available, bus, limits) =
-    MockThermalGen(name, available, bus, limits, 100.0, MockOperationCost(0.0))
+    MockThermalGen(name, available, bus, limits, 100.0, MockOperationCost(0.0), false)
 MockThermalGen(name, available, bus, limits, base_power) =
-    MockThermalGen(name, available, bus, limits, base_power, MockOperationCost(0.0))
+    MockThermalGen(name, available, bus, limits, base_power, MockOperationCost(0.0), false)
+MockThermalGen(name, available, bus, limits, base_power, operation_cost) =
+    MockThermalGen(name, available, bus, limits, base_power, operation_cost, false)
 
 get_name(g::MockThermalGen) = g.name
 get_available(g::MockThermalGen) = g.available
@@ -66,6 +76,7 @@ get_bus(g::MockThermalGen) = g.bus
 IOM.get_active_power_limits(g::MockThermalGen) = g.active_power_limits
 IOM.get_base_power(g::MockThermalGen) = g.base_power
 IOM.get_operation_cost(g::MockThermalGen) = g.operation_cost
+IOM.get_must_run(g::MockThermalGen) = g.must_run
 IS.get_fuel_cost(g::MockThermalGen) = g.operation_cost.fuel_cost
 
 # Mock Renewable Generator

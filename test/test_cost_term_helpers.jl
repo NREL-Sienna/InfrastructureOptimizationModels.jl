@@ -104,52 +104,262 @@ Test types defined in test_utils/test_types.jl.
         end
     end
 
-    #= TODO: add_cost_term_variant! tests require parameter container infrastructure
-    @testset "add_cost_term_variant!" begin
+    @testset "add_cost_term_variant! (parameter overload)" begin
         @testset "adds cost to variant objective using parameter rate" begin
             container = make_test_container(1:3)
-            var = add_test_variable!(container, TestCostVariable, MockThermalGen, "gen1", 1)
+            var = add_test_variable!(
+                container, TestCostVariable, MockThermalGen, "gen1", 1,
+            )
 
-            # Add parameter with value 20.0
-            param_values = [20.0 20.0 20.0]  # 1 device, 3 time steps
+            # Parameter value = 20.0, multiplier defaults to 1.0
+            # So rate = param * mult = 20.0, cost = var * 20.0
+            param_values = [20.0 20.0 20.0]
             add_test_parameter!(
-                container, TestCostParameter, MockThermalGen, ["gen1"], 1:3, param_values
+                container, TestCostParameter, MockThermalGen,
+                ["gen1"], 1:3, param_values,
             )
 
             cost = IOM.add_cost_term_variant!(
-                container, var, TestCostParameter, TestCostExpression, MockThermalGen, "gen1", 1
+                container, var, TestCostParameter,
+                TestCostExpression, MockThermalGen, "gen1", 1,
             )
 
-            # Verify it was added to variant objective (coefficient should be parameter * multiplier = 20)
             obj = IOM.get_objective_expression(container)
             variant = IOM.get_variant_terms(obj)
             @test JuMP.coefficient(variant, var) ≈ 20.0
 
-            # Verify invariant is empty
             invariant = IOM.get_invariant_terms(obj)
             @test JuMP.coefficient(invariant, var) ≈ 0.0
         end
 
         @testset "adds cost to expression if present" begin
             container = make_test_container(1:3)
-            var = add_test_variable!(container, TestCostVariable, MockThermalGen, "gen1", 1)
-            add_test_expression!(container, TestCostExpression, MockThermalGen, ["gen1"], 1:3)
+            var = add_test_variable!(
+                container, TestCostVariable, MockThermalGen, "gen1", 1,
+            )
+            add_test_expression!(
+                container, TestCostExpression, MockThermalGen, ["gen1"], 1:3,
+            )
             param_values = [15.0 15.0 15.0]
             add_test_parameter!(
-                container, TestCostParameter, MockThermalGen, ["gen1"], 1:3, param_values
+                container, TestCostParameter, MockThermalGen,
+                ["gen1"], 1:3, param_values,
             )
 
             IOM.add_cost_term_variant!(
-                container, var, TestCostParameter, TestCostExpression, MockThermalGen, "gen1", 1
+                container, var, TestCostParameter,
+                TestCostExpression, MockThermalGen, "gen1", 1,
             )
 
-            # Verify expression was updated
-            expr_container = IOM.get_expression(container, TestCostExpression(), MockThermalGen)
+            expr_container =
+                IOM.get_expression(container, TestCostExpression(), MockThermalGen)
             expr = expr_container["gen1", 1]
             @test JuMP.coefficient(expr, var) ≈ 15.0
         end
     end
-    =#
+
+    @testset "add_cost_term_variant! (rate overload)" begin
+        @testset "adds cost to variant objective with explicit rate" begin
+            container = make_test_container(1:3)
+            var = add_test_variable!(
+                container, TestCostVariable, MockThermalGen, "gen1", 1,
+            )
+
+            rate = 7.5
+            cost = IOM.add_cost_term_variant!(
+                container, var, rate,
+                TestCostExpression, MockThermalGen, "gen1", 1,
+            )
+
+            # cost = var * 7.5
+            @test cost == var * rate
+            obj = IOM.get_objective_expression(container)
+            variant = IOM.get_variant_terms(obj)
+            @test JuMP.coefficient(variant, var) ≈ rate
+        end
+
+        @testset "adds cost to expression if present" begin
+            container = make_test_container(1:3)
+            var = add_test_variable!(
+                container, TestCostVariable, MockThermalGen, "gen1", 1,
+            )
+            add_test_expression!(
+                container, TestCostExpression, MockThermalGen, ["gen1"], 1:3,
+            )
+
+            rate = 12.0
+            IOM.add_cost_term_variant!(
+                container, var, rate,
+                TestCostExpression, MockThermalGen, "gen1", 1,
+            )
+
+            expr_container =
+                IOM.get_expression(container, TestCostExpression(), MockThermalGen)
+            expr = expr_container["gen1", 1]
+            @test JuMP.coefficient(expr, var) ≈ rate
+        end
+    end
+
+    @testset "add_cost_to_expression!" begin
+        @testset "adds cost to expression when container key exists" begin
+            time_steps = 1:3
+            container = make_test_container(time_steps)
+
+            # Use FuelConsumptionExpression (accepts IS.InfrastructureSystemsComponent)
+            add_test_expression!(
+                container,
+                IOM.FuelConsumptionExpression,
+                MockThermalGen,
+                ["gen1"],
+                time_steps,
+            )
+
+            # Add a cost term at t=2
+            cost_value = 42.5
+            IOM.add_cost_to_expression!(
+                container,
+                IOM.FuelConsumptionExpression,
+                cost_value,
+                MockThermalGen,
+                "gen1",
+                2,
+            )
+
+            expr_container = IOM.get_expression(
+                container, IOM.FuelConsumptionExpression(), MockThermalGen,
+            )
+            @test JuMP.constant(expr_container["gen1", 2]) ≈ cost_value
+            # Other time steps should be unaffected
+            @test JuMP.constant(expr_container["gen1", 1]) ≈ 0.0
+            @test JuMP.constant(expr_container["gen1", 3]) ≈ 0.0
+        end
+
+        @testset "adds JuMP variable expression to expression container" begin
+            time_steps = 1:2
+            container = make_test_container(time_steps)
+            var = add_test_variable!(
+                container, TestCostVariable, MockThermalGen, "gen1", 1,
+            )
+
+            add_test_expression!(
+                container,
+                IOM.FuelConsumptionExpression,
+                MockThermalGen,
+                ["gen1"],
+                time_steps,
+            )
+
+            # Add var * 3.0 as cost expression
+            cost_expr = 3.0 * var
+            IOM.add_cost_to_expression!(
+                container,
+                IOM.FuelConsumptionExpression,
+                cost_expr,
+                MockThermalGen,
+                "gen1",
+                1,
+            )
+
+            expr_container = IOM.get_expression(
+                container, IOM.FuelConsumptionExpression(), MockThermalGen,
+            )
+            @test JuMP.coefficient(expr_container["gen1", 1], var) ≈ 3.0
+        end
+
+        @testset "no-op when container key does not exist" begin
+            container = make_test_container(1:2)
+            # Don't register FuelConsumptionExpression — should silently return
+            IOM.add_cost_to_expression!(
+                container,
+                IOM.FuelConsumptionExpression,
+                10.0,
+                MockThermalGen,
+                "gen1",
+                1,
+            )
+            @test !IOM.has_container_key(
+                container, IOM.FuelConsumptionExpression, MockThermalGen,
+            )
+        end
+    end
+
+    @testset "_add_time_varying_fuel_variable_cost!" begin
+        @testset "adds fuel cost to variant objective for each time step" begin
+            time_steps = 1:3
+            device = make_mock_thermal("gen1"; base_power = 100.0)
+            container = make_test_container(time_steps)
+
+            # Create power variable
+            power_var_container = IOM.add_variable_container!(
+                container, TestCostVariable(), MockThermalGen, ["gen1"], time_steps,
+            )
+            jump_model = IOM.get_jump_model(container)
+            for t in time_steps
+                power_var_container["gen1", t] = JuMP.@variable(
+                    jump_model, base_name = "P_gen1_$(t)",
+                )
+            end
+
+            # Pre-populate FuelConsumptionExpression:
+            # In production, POM's thermalgeneration_constructor.jl populates this
+            # via add_expressions!(container, FuelConsumptionExpression, ...).
+            # We set it to proportional_term * power_var to simulate that.
+            fuel_expr_container = IOM.add_expression_container!(
+                container,
+                IOM.FuelConsumptionExpression(),
+                MockThermalGen,
+                ["gen1"],
+                time_steps,
+            )
+            proportional_term = 6.0  # MMBTU/p.u.h
+            for t in time_steps
+                JuMP.add_to_expression!(
+                    fuel_expr_container["gen1", t],
+                    proportional_term,
+                    power_var_container["gen1", t],
+                )
+            end
+
+            # Set up FuelCostParameter with time-varying fuel prices
+            fuel_prices = [4.0, 8.0, 2.0]
+            add_test_parameter!(
+                container,
+                IOM.FuelCostParameter,
+                MockThermalGen,
+                ["gen1"],
+                time_steps,
+                reshape(fuel_prices, 1, :),
+            )
+
+            # Dispatch requires an IS.TimeSeriesKey argument (unused in the body)
+            ts_key = IS.StaticTimeSeriesKey(
+                IS.SingleTimeSeries,
+                "fuel_cost",
+                Dates.DateTime(2024, 1, 1),
+                Dates.Hour(1),
+                3,
+                Dict{String, Any}(),
+            )
+
+            IOM._add_time_varying_fuel_variable_cost!(
+                container,
+                TestCostVariable(),
+                device,
+                ts_key,
+            )
+
+            # Variant objective should contain:
+            #   fuel_consumption[name, t] * fuel_price[t]
+            # = proportional_term * power_var * fuel_price
+            obj = IOM.get_objective_expression(container)
+            variant = IOM.get_variant_terms(obj)
+            for t in time_steps
+                var = power_var_container["gen1", t]
+                expected = proportional_term * fuel_prices[t]
+                @test JuMP.coefficient(variant, var) ≈ expected atol = 1e-10
+            end
+        end
+    end
 
     @testset "PWL Helpers" begin
         @testset "add_pwl_variables! creates bounded variables" begin

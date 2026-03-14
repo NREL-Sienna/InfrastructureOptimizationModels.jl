@@ -134,7 +134,7 @@ Set up a complete PWL constraint test case.
 Returns a named tuple with all components needed for testing:
 container, x_var, y_var, δ_var, z_var, jump_model, x_bkpts, y_bkpts, devices
 """
-function setup_pwl_constraint_test(;
+function setup_pwl_interpolation_test(;
     device_names::Vector{String} = ["dev1"],
     time_steps::UnitRange{Int} = 1:1,
     num_segments::Int = 4,
@@ -316,7 +316,7 @@ end
 
     @testset "_add_generic_incremental_interpolation_constraint!" begin
         @testset "Constraint structure and count" begin
-            test = setup_pwl_constraint_test(;
+            test = setup_pwl_interpolation_test(;
                 time_steps = 1:2,
                 num_segments = 4,
                 f = x -> x^2,
@@ -344,7 +344,7 @@ end
         end
 
         @testset "Linear function gives exact PWL" begin
-            test = setup_pwl_constraint_test(;
+            test = setup_pwl_interpolation_test(;
                 num_segments = 3,
                 f = x -> x,
                 domain = (0.0, 9.0),
@@ -370,7 +370,7 @@ end
         end
 
         @testset "Quadratic function PWL approximation" begin
-            test = setup_pwl_constraint_test(;
+            test = setup_pwl_interpolation_test(;
                 num_segments = 4,
                 f = x -> x^2,
                 domain = (0.0, 4.0),
@@ -393,7 +393,7 @@ end
         end
 
         @testset "Multiple devices" begin
-            test = setup_pwl_constraint_test(;
+            test = setup_pwl_interpolation_test(;
                 device_names = ["dev1", "dev2"],
                 time_steps = 1:2,
                 num_segments = 3,

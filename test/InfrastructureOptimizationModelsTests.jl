@@ -134,7 +134,7 @@ function run_tests()
                     include(joinpath(TEST_DIR, "test_piecewise_linear.jl"))
                     include(joinpath(TEST_DIR, "test_proportional.jl"))
                     include(joinpath(TEST_DIR, "test_quadratic_curve.jl"))
-                    # startup_shut_down.jl: in integration tests
+                    include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
 
                     # --- common_models/, utils/, initial_conditions/ ---
                     # TODO tests?
@@ -167,10 +167,7 @@ function run_tests()
         =#
         if RUN_INTEGRATION_TESTS
             @time @testset "InfrastructureOptimizationModels Integration Tests" begin
-                @info "Starting integration tests..."                  # --- objective_function/ subfolder ---
-                # TODO integration tests for common.jl
-                include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
-
+                @info "Starting integration tests..."
                 # --- operation/ subfolder ---
                 include(joinpath(TEST_DIR, "test_model_store.jl"))
             end
