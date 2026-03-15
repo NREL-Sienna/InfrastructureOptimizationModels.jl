@@ -130,11 +130,12 @@ function run_tests()
                     # import_export.jl: commented out
                     include(joinpath(TEST_DIR, "test_cost_term_helpers.jl"))
                     include(joinpath(TEST_DIR, "test_linear_curve.jl"))
-                    # market_bid.jl: needs more work
+                    # value_curve_cost.jl: needs more work
                     include(joinpath(TEST_DIR, "test_piecewise_linear.jl"))
                     include(joinpath(TEST_DIR, "test_proportional.jl"))
                     include(joinpath(TEST_DIR, "test_quadratic_curve.jl"))
                     include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
+                    include(joinpath(TEST_DIR, "test_ts_value_curve_objective.jl"))
 
                     # --- common_models/, utils/, initial_conditions/ ---
                     # TODO tests?
