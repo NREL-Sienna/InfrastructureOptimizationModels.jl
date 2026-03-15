@@ -1,0 +1,306 @@
+"""
+Tests for CostCurve{TimeSeriesPiecewiseIncrementalCurve} objective function dispatch.
+Verifies the PSY-free delta formulation path added in value_curve_cost.jl.
+"""
+
+# Formulation dispatch: multiplier and sos_status for test types
+IOM.objective_function_multiplier(::TestVariableType, ::TestDeviceFormulation) = 1.0
+IOM._sos_status(::Type, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
+
+# Helper to create a ForecastKey with sensible defaults
+function _make_forecast_key(name::String)
+    return IS.ForecastKey(;
+        time_series_type = IS.Deterministic,
+        name = name,
+        initial_timestamp = Dates.DateTime("2020-01-01"),
+        resolution = Dates.Hour(1),
+        horizon = Dates.Hour(24),
+        interval = Dates.Hour(24),
+        count = 1,
+        features = Dict{String, Any}(),
+    )
+end
+
+# Helper to create a CostCurve{TimeSeriesPiecewiseIncrementalCurve}
+function _make_ts_incremental_cost_curve()
+    key = _make_forecast_key("test_forecast")
+    ii_key = _make_forecast_key("initial_input")
+    iaz_key = _make_forecast_key("input_at_zero")
+    return IS.CostCurve(IS.TimeSeriesPiecewiseIncrementalCurve(key, ii_key, iaz_key))
+end
+
+@testset "TimeSeriesValueCurve Objective Functions" begin
+    @testset "TS curve type construction and is_time_series_backed" begin
+        key = _make_forecast_key("test_forecast")
+        ii_key = _make_forecast_key("initial_input")
+        iaz_key = _make_forecast_key("input_at_zero")
+
+        # Construct TimeSeriesPiecewiseIncrementalCurve
+        ts_pic = IS.TimeSeriesPiecewiseIncrementalCurve(key, ii_key, iaz_key)
+        @test IS.is_time_series_backed(ts_pic)
+
+        # Wrap in CostCurve
+        cc = IS.CostCurve(ts_pic)
+        @test IS.is_time_series_backed(cc)
+
+        # Verify the type parameter
+        @test cc isa IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve}
+    end
+
+    @testset "Delta formulation with static parameters" begin
+        time_steps = 1:3
+        names = ["gen1"]
+        # 3 segments: breakpoints [0, 50, 100, 150], slopes [10.0, 20.0, 30.0]
+        breakpoints = [0.0, 50.0, 100.0, 150.0]
+        slopes = [10.0, 20.0, 30.0]
+
+        container = make_test_container(time_steps; base_power = 100.0)
+
+        # Add power variable
+        for t in time_steps
+            add_test_variable!(container, TestVariableType, MockThermalGen, "gen1", t)
+        end
+
+        # Add expression container
+        add_test_expression!(
+            container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
+
+        # Populate slope/breakpoint parameters
+        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
+        setup_delta_pwl_parameters!(
+            container, MockThermalGen, names, slopes_mat, bp_mat, time_steps)
+
+        cost_fn = _make_ts_incremental_cost_curve()
+        device = make_mock_thermal("gen1")
+
+        # Call the new dispatch
+        IOM.add_variable_cost_to_objective!(
+            container,
+            TestVariableType(),
+            device,
+            cost_fn,
+            TestDeviceFormulation(),
+        )
+
+        # Verify delta variables were created (PiecewiseLinearBlockIncrementalOffer)
+        @test IOM.has_container_key(
+            container,
+            IOM.PiecewiseLinearBlockIncrementalOffer,
+            MockThermalGen,
+        )
+
+        # Verify block constraints were created
+        @test IOM.has_container_key(
+            container,
+            IOM.PiecewiseLinearBlockIncrementalOfferConstraint,
+            MockThermalGen,
+        )
+
+        # Verify cost is in variant objective (time-series-backed = always variant)
+        @test count_objective_terms(container; variant = true) > 0
+
+        # With base_power=100, NATURAL_UNITS:
+        # breakpoints normalized: bp / base_power = [0, 0.5, 1.0, 1.5]
+        # slopes normalized: slope * base_power = [1000, 2000, 3000]
+        # dt = 1.0 (hourly), sign = +1.0
+        # Expected coefficients for each delta var: slope_normalized * dt
+        expected_slopes_normalized = slopes .* 100.0  # [1000, 2000, 3000]
+        dt = 1.0
+
+        delta_var_container = IOM.get_variable(
+            container, IOM.PiecewiseLinearBlockIncrementalOffer(), MockThermalGen)
+        for t in time_steps
+            for (k, expected_slope) in enumerate(expected_slopes_normalized)
+                delta_var = delta_var_container[("gen1", k, t)]
+                obj = IOM.get_objective_expression(container)
+                variant = IOM.get_variant_terms(obj)
+                coeff = JuMP.coefficient(variant, delta_var)
+                @test isapprox(coeff, expected_slope * dt; atol = 1e-10)
+            end
+        end
+    end
+
+    @testset "Time-varying slopes across time steps" begin
+        time_steps = 1:2
+        names = ["gen1"]
+        breakpoints = [0.0, 50.0, 100.0]
+
+        # Different slopes per time step
+        slopes_t1 = [10.0, 20.0]
+        slopes_t2 = [15.0, 25.0]
+        time_varying_slopes = Matrix{Vector{Float64}}(undef, 1, 2)
+        time_varying_slopes[1, 1] = slopes_t1
+        time_varying_slopes[1, 2] = slopes_t2
+
+        container = make_test_container(time_steps; base_power = 100.0)
+
+        for t in time_steps
+            add_test_variable!(container, TestVariableType, MockThermalGen, "gen1", t)
+        end
+        add_test_expression!(
+            container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
+
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
+        setup_delta_pwl_parameters!(
+            container, MockThermalGen, names, time_varying_slopes, bp_mat, time_steps)
+
+        cost_fn = _make_ts_incremental_cost_curve()
+        device = make_mock_thermal("gen1")
+
+        IOM.add_variable_cost_to_objective!(
+            container, TestVariableType(), device, cost_fn, TestDeviceFormulation())
+
+        delta_var_container = IOM.get_variable(
+            container, IOM.PiecewiseLinearBlockIncrementalOffer(), MockThermalGen)
+        obj = IOM.get_objective_expression(container)
+        variant = IOM.get_variant_terms(obj)
+
+        # t=1: slopes_t1 * base_power * dt = [1000, 2000]
+        # t=2: slopes_t2 * base_power * dt = [1500, 2500]
+        for (k, s) in enumerate(slopes_t1)
+            coeff = JuMP.coefficient(variant, delta_var_container[("gen1", k, 1)])
+            @test isapprox(coeff, s * 100.0; atol = 1e-10)
+        end
+        for (k, s) in enumerate(slopes_t2)
+            coeff = JuMP.coefficient(variant, delta_var_container[("gen1", k, 2)])
+            @test isapprox(coeff, s * 100.0; atol = 1e-10)
+        end
+    end
+
+    @testset "Resolution scaling (15-min)" begin
+        time_steps = 1:2
+        names = ["gen1"]
+        breakpoints = [0.0, 50.0, 100.0]
+        slopes = [10.0, 20.0]
+
+        container = make_test_container(
+            time_steps; base_power = 100.0, resolution = Dates.Minute(15))
+
+        for t in time_steps
+            add_test_variable!(container, TestVariableType, MockThermalGen, "gen1", t)
+        end
+        add_test_expression!(
+            container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
+
+        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
+        setup_delta_pwl_parameters!(
+            container, MockThermalGen, names, slopes_mat, bp_mat, time_steps)
+
+        cost_fn = _make_ts_incremental_cost_curve()
+        device = make_mock_thermal("gen1")
+
+        IOM.add_variable_cost_to_objective!(
+            container, TestVariableType(), device, cost_fn, TestDeviceFormulation())
+
+        # dt = 15min / 60min = 0.25
+        dt = 0.25
+        delta_var_container = IOM.get_variable(
+            container, IOM.PiecewiseLinearBlockIncrementalOffer(), MockThermalGen)
+        obj = IOM.get_objective_expression(container)
+        variant = IOM.get_variant_terms(obj)
+
+        for t in time_steps
+            for (k, s) in enumerate(slopes)
+                coeff = JuMP.coefficient(variant, delta_var_container[("gen1", k, t)])
+                @test isapprox(coeff, s * 100.0 * dt; atol = 1e-10)
+            end
+        end
+    end
+
+    @testset "Decremental direction" begin
+        time_steps = 1:2
+        names = ["gen1"]
+        breakpoints = [0.0, 50.0, 100.0]
+        slopes = [10.0, 20.0]
+
+        container = make_test_container(time_steps; base_power = 100.0)
+
+        for t in time_steps
+            add_test_variable!(container, TestVariableType, MockThermalGen, "gen1", t)
+        end
+        add_test_expression!(
+            container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
+
+        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
+        setup_delta_pwl_parameters!(
+            container, MockThermalGen, names, slopes_mat, bp_mat, time_steps;
+            dir = IOM.DecrementalOffer())
+
+        cost_fn = _make_ts_incremental_cost_curve()
+        device = make_mock_thermal("gen1")
+
+        IOM.add_variable_cost_to_objective!(
+            container, TestVariableType(), device, cost_fn, TestDeviceFormulation();
+            dir = IOM.DecrementalOffer())
+
+        # Verify decremental variable and constraint types used
+        @test IOM.has_container_key(
+            container,
+            IOM.PiecewiseLinearBlockDecrementalOffer,
+            MockThermalGen,
+        )
+        @test IOM.has_container_key(
+            container,
+            IOM.PiecewiseLinearBlockDecrementalOfferConstraint,
+            MockThermalGen,
+        )
+
+        # Verify negative sign: OBJECTIVE_FUNCTION_NEGATIVE = -1.0
+        dt = 1.0
+        delta_var_container = IOM.get_variable(
+            container, IOM.PiecewiseLinearBlockDecrementalOffer(), MockThermalGen)
+        obj = IOM.get_objective_expression(container)
+        variant = IOM.get_variant_terms(obj)
+
+        for t in time_steps
+            for (k, s) in enumerate(slopes)
+                coeff = JuMP.coefficient(variant, delta_var_container[("gen1", k, t)])
+                expected = s * 100.0 * dt * IOM.OBJECTIVE_FUNCTION_NEGATIVE
+                @test isapprox(coeff, expected; atol = 1e-10)
+            end
+        end
+    end
+
+    @testset "_add_pwl_constraint! accepts mock types" begin
+        # Direct call with MockThermalGen to confirm widened type bound works
+        time_steps = 1:1
+        container = make_test_container(time_steps; base_power = 100.0)
+
+        device = make_mock_thermal("gen1")
+
+        # Add variable container
+        add_test_variable!(container, TestVariableType, MockThermalGen, "gen1", 1)
+
+        breakpoints = [0.0, 0.5, 1.0]
+        pwl_vars = IOM.add_pwl_variables!(
+            container,
+            IOM.PiecewiseLinearBlockIncrementalOffer,
+            MockThermalGen,
+            "gen1",
+            1,
+            2;
+            upper_bound = Inf,
+        )
+
+        # This should not throw with the widened type bound
+        IOM._add_pwl_constraint!(
+            container,
+            device,
+            TestVariableType(),
+            TestDeviceFormulation(),
+            breakpoints,
+            pwl_vars,
+            1,
+            IOM.PiecewiseLinearBlockIncrementalOfferConstraint,
+        )
+
+        @test IOM.has_container_key(
+            container,
+            IOM.PiecewiseLinearBlockIncrementalOfferConstraint,
+            MockThermalGen,
+        )
+    end
+end

@@ -1,15 +1,25 @@
 #################################################################################
-# Market Bid Cost / Import-Export Cost: Generic Optimization Infrastructure
+# Value Curve Objective Function: Delta PWL Formulation
 #
-# This file provides the generic (device-agnostic) infrastructure for
-# MarketBidCost and ImportExportCost offer curves. Device-specific overloads
-# (e.g., for ThermalMultiStart, ControllableLoad formulations) are in POM's
-# market_bid_overrides.jl.
+# Objective function formulations for ValueCurve-based offer curves using the
+# delta (incremental/block) PWL method. Maps ValueCurve types (static and
+# time-series-backed) to slopes/breakpoints and routes to the delta formulation
+# primitives in objective_function_pwl_delta.jl.
+#
+# IOM defines objective function formulations — the mathematical structure of
+# JuMP objective terms. "Costs" (production cost, fuel cost, etc.) are a
+# domain concept defined in POM. This file provides the formulation machinery
+# that POM routes specific cost types into. PSY cost types appear in some
+# function signatures for dispatch, but the formulations themselves are
+# generic over IS.InfrastructureSystemsComponent and IS.ValueCurve types.
+#
+# Device-specific overloads (e.g., ThermalMultiStart, ControllableLoad) are
+# in POM.
 #################################################################################
 
 #################################################################################
 # Section 1: Offer Curve Accessor Wrappers
-# Map MarketBidCost / ImportExportCost to a unified interface.
+# Map PSY cost types (MarketBidCost, ImportExportCost) to a unified interface.
 #################################################################################
 
 ####################### get_{output/input}_offer_curves #########################
@@ -519,12 +529,12 @@ function _get_pwl_data(
 end
 
 #################################################################################
-# Section 11: PWL Cost Terms + Variable Cost Objective (generic)
+# Section 11: PWL Objective Terms + Variable Objective Formulation (generic)
 # Load formulation overloads (AbstractControllablePowerLoadFormulation) are in POM.
 #################################################################################
 
 """
-Add PWL cost terms using the **delta (incremental/block-offer) formulation**.
+Add PWL objective terms using the **delta (incremental/block-offer) formulation**.
 
 Given an offer curve with breakpoints ``P_0, P_1, \\ldots, P_n`` and slopes
 ``m_1, m_2, \\ldots, m_n``, this function:
@@ -533,7 +543,7 @@ Given an offer curve with breakpoints ``P_0, P_1, \\ldots, P_n`` and slopes
    with no upper bound (block sizes are enforced by constraints).
 2. Adds linking and block-size constraints via [`_add_pwl_constraint!`](@ref):
    ``p = \\sum_k \\delta_k`` and ``\\delta_k \\leq P_{k+1} - P_k``.
-3. Builds the cost expression ``C = \\sum_k m_k \\, \\delta_k`` via [`get_pwl_cost_expression`](@ref).
+3. Builds the objective expression ``C = \\sum_k m_k \\, \\delta_k`` via [`get_pwl_cost_expression`](@ref).
 
 For convex offer curves (``m_1 \\leq m_2 \\leq \\cdots \\leq m_n``), no SOS2 or binary
 variables are needed — the optimizer fills cheap segments first automatically.
@@ -652,4 +662,104 @@ function _add_vom_cost_to_objective_helper!(
     cost_term = PSY.get_proportional_term(PSY.get_vom_cost(cost_data))
     add_proportional_cost_invariant!(container, T, component, cost_term, power_units)
     return
+end
+
+#################################################################################
+# Section 12: TimeSeriesValueCurve Objective Formulation
+# PSY-free delta PWL objective for CostCurve{TimeSeriesPiecewiseIncrementalCurve}.
+# Reads slopes/breakpoints from pre-populated parameter containers.
+#################################################################################
+
+"""
+    add_variable_cost_to_objective!(container, ::T, component, cost_function, ::U; dir)
+
+Objective function dispatch for `CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve}`.
+Routes to the PSY-free delta PWL formulation that reads from parameter containers.
+"""
+function add_variable_cost_to_objective!(
+    container::OptimizationContainer,
+    ::T,
+    component::C,
+    ::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve},
+    ::U;
+    dir::OfferDirection = IncrementalOffer(),
+) where {
+    T <: VariableType,
+    C <: IS.InfrastructureSystemsComponent,
+    U <: AbstractDeviceFormulation,
+}
+    _add_ts_incremental_pwl_cost!(dir, container, component, T(), U())
+    return
+end
+
+"""
+PSY-free delta PWL objective formulation for time-series-backed incremental
+value curves. Reads slopes/breakpoints from parameter containers populated
+externally. All parameter array lookups are hoisted before the time loop
+to avoid repeated dictionary lookups per time step.
+"""
+function _add_ts_incremental_pwl_cost!(
+    dir::D,
+    container::OptimizationContainer,
+    component::C,
+    ::T,
+    ::U,
+) where {
+    D <: OfferDirection,
+    C <: IS.InfrastructureSystemsComponent,
+    T <: VariableType,
+    U <: AbstractDeviceFormulation,
+}
+    W = _block_offer_var(dir)
+    X = _block_offer_constraint(dir)
+    name::String = get_name(component)
+    base_power::Float64 = get_base_power(component)
+    dt::Float64 = Dates.value(get_resolution(container)) / MILLISECONDS_IN_HOUR
+    sign_dt::Float64 = _objective_sign(dir) * dt
+    model_base_power::Float64 = get_model_base_power(container)
+
+    # Hoist parameter array lookups out of the time loop (4 dict lookups total, not 4*T)
+    SlopeParam = _slope_param(dir)
+    BPParam = _breakpoint_param(dir)
+    slope_arr = get_parameter_array(container, SlopeParam(), C)
+    slope_mult = get_parameter_multiplier_array(container, SlopeParam(), C)
+    bp_arr = get_parameter_array(container, BPParam(), C)
+    bp_mult = get_parameter_multiplier_array(container, BPParam(), C)
+
+    for t in get_time_steps(container)
+        breakpoints, slopes = _get_pwl_data_from_arrays(
+            slope_arr, slope_mult, bp_arr, bp_mult,
+            name, t, model_base_power, base_power)
+        pwl_vars::Vector{JuMP.VariableRef} = add_pwl_variables!(
+            container, W, C, name, t, length(slopes); upper_bound = Inf)
+        _add_pwl_constraint!(container, component, T(), U(), breakpoints, pwl_vars, t, X)
+        pwl_cost::JuMP.AffExpr = get_pwl_cost_expression(pwl_vars, slopes, sign_dt)
+        add_cost_to_expression!(container, ProductionCostExpression, pwl_cost, C, name, t)
+        add_to_objective_variant_expression!(container, pwl_cost)
+    end
+    return
+end
+
+"""
+Extract slopes and breakpoints from pre-fetched parameter arrays for a single time step.
+Uses `.data` to avoid an extra Vector copy from the DenseAxisArray broadcast result.
+Returns `(breakpoints::Vector{Float64}, slopes::Vector{Float64})` in system per-unit.
+"""
+function _get_pwl_data_from_arrays(
+    slope_arr::DenseAxisArray{Float64},
+    slope_mult::DenseAxisArray{Float64},
+    bp_arr::DenseAxisArray{Float64},
+    bp_mult::DenseAxisArray{Float64},
+    name::String,
+    time::Int,
+    model_base_power::Float64,
+    device_base_power::Float64,
+)::Tuple{Vector{Float64}, Vector{Float64}}
+    slopes = (slope_arr[name, :, time] .* slope_mult[name, :, time]).data
+    breakpoints = (bp_arr[name, :, time] .* bp_mult[name, :, time]).data
+
+    @assert_op length(slopes) == length(breakpoints) - 1
+    return get_piecewise_curve_per_system_unit(
+        breakpoints, slopes, IS.UnitSystem.NATURAL_UNITS,
+        model_base_power, device_base_power)
 end

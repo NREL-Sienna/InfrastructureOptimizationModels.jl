@@ -53,7 +53,7 @@ end
 ########## VOM Cost ##############
 ##################################
 
-# called in market bid cost and above in ActivePowerVariable cost.
+# called in value_curve_cost.jl and above in ActivePowerVariable cost.
 function _add_vom_cost_to_objective!(
     container::OptimizationContainer,
     ::T,

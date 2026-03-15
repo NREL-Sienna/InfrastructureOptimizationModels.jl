@@ -95,6 +95,107 @@ function add_test_parameter!(
 end
 
 """
+Add a 3D parameter container with specified values.
+`values` should be an Array{Float64, 3} of size
+(length(names), length(segments), length(time_steps)).
+"""
+function add_test_parameter!(
+    container::IOM.OptimizationContainer,
+    ::Type{P},
+    ::Type{C},
+    names::Vector{String},
+    segments::UnitRange{Int},
+    time_steps::UnitRange{Int},
+    values::Array{Float64, 3},
+) where {P <: IOM.ParameterType, C <: IS.InfrastructureSystemsComponent}
+    param_key = IOM.ParameterKey(P, C)
+    attributes = IOM.CostFunctionAttributes{Float64}(
+        (), IOM.SOSStatusVariable.NO_VARIABLE, false)
+    param_container = IOM.add_param_container_shared_axes!(
+        container, param_key, attributes, Float64, names, segments, time_steps)
+    jump_model = IOM.get_jump_model(container)
+    for (i, name) in enumerate(names)
+        for (j, seg) in enumerate(segments)
+            for t in time_steps
+                IOM.set_parameter!(
+                    param_container,
+                    jump_model,
+                    values[i, j, t],
+                    name,
+                    seg,
+                    t,
+                )
+                IOM.set_multiplier!(param_container, 1.0, name, seg, t)
+            end
+        end
+    end
+    return param_container
+end
+
+"""
+Populate slope + breakpoint parameter containers for delta PWL testing.
+
+# Arguments
+- `container`: OptimizationContainer
+- `C`: component type
+- `names`: device names
+- `slopes`: Matrix of slope Vectors, size (n_devices × n_times)
+- `breakpoints`: Matrix of breakpoint Vectors, size (n_devices × n_times)
+- `time_steps`: time step range
+- `dir`: OfferDirection (default IncrementalOffer)
+"""
+function setup_delta_pwl_parameters!(
+    container::IOM.OptimizationContainer,
+    ::Type{C},
+    names::Vector{String},
+    slopes::Matrix{Vector{Float64}},
+    breakpoints::Matrix{Vector{Float64}},
+    time_steps::UnitRange{Int};
+    dir::IOM.OfferDirection = IOM.IncrementalOffer(),
+) where {C <: IS.InfrastructureSystemsComponent}
+    n_segments::Int = length(slopes[1, 1])
+    n_points::Int = length(breakpoints[1, 1])
+    @assert n_points == n_segments + 1
+
+    SlopeParam = IOM._slope_param(dir)
+    BPParam = IOM._breakpoint_param(dir)
+
+    # Build 3D slope array: (names × segments × time)
+    slope_vals = Array{Float64, 3}(undef, length(names), n_segments, length(time_steps))
+    for (i, _name) in enumerate(names)
+        for t in time_steps
+            s = slopes[i, t]
+            for k in 1:n_segments
+                slope_vals[i, k, t] = s[k]
+            end
+        end
+    end
+    add_test_parameter!(
+        container,
+        SlopeParam,
+        C,
+        names,
+        1:n_segments,
+        time_steps,
+        slope_vals,
+    )
+
+    # Build 3D breakpoint array: (names × points × time)
+    bp_vals = Array{Float64, 3}(undef, length(names), n_points, length(time_steps))
+    for (i, _name) in enumerate(names)
+        for t in time_steps
+            bp = breakpoints[i, t]
+            for k in 1:n_points
+                bp_vals[i, k, t] = bp[k]
+            end
+        end
+    end
+    add_test_parameter!(container, BPParam, C, names, 1:n_points, time_steps, bp_vals)
+
+    return
+end
+
+"""
 Get the coefficient of a variable in the objective function's invariant terms.
 Returns 0.0 if the variable is not present.
 """
