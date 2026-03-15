@@ -66,8 +66,10 @@ end
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
         # Populate slope/breakpoint parameters
+        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
         setup_delta_pwl_parameters!(
-            container, MockThermalGen, names, breakpoints, slopes, time_steps)
+            container, MockThermalGen, names, slopes_mat, bp_mat, time_steps)
 
         cost_fn = _make_ts_incremental_cost_curve()
         device = make_mock_thermal("gen1")
@@ -139,9 +141,9 @@ end
         add_test_expression!(
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
         setup_delta_pwl_parameters!(
-            container, MockThermalGen, names, breakpoints, slopes_t1, time_steps;
-            time_varying_slopes = time_varying_slopes)
+            container, MockThermalGen, names, time_varying_slopes, bp_mat, time_steps)
 
         cost_fn = _make_ts_incremental_cost_curve()
         device = make_mock_thermal("gen1")
@@ -181,8 +183,10 @@ end
         add_test_expression!(
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
+        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
         setup_delta_pwl_parameters!(
-            container, MockThermalGen, names, breakpoints, slopes, time_steps)
+            container, MockThermalGen, names, slopes_mat, bp_mat, time_steps)
 
         cost_fn = _make_ts_incremental_cost_curve()
         device = make_mock_thermal("gen1")
@@ -219,8 +223,10 @@ end
         add_test_expression!(
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
+        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
         setup_delta_pwl_parameters!(
-            container, MockThermalGen, names, breakpoints, slopes, time_steps;
+            container, MockThermalGen, names, slopes_mat, bp_mat, time_steps;
             dir = IOM.DecrementalOffer())
 
         cost_fn = _make_ts_incremental_cost_curve()

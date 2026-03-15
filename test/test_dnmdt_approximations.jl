@@ -23,7 +23,8 @@ const DNMDT_HYBS_META = "HybSTest"
         @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
 
         xh = IOM.get_expression(
-            setup.container, IOM.DNMDTScaledVariableExpression(), MockThermalGen, DNMDT_META,
+            setup.container, IOM.DNMDTScaledVariableExpression(), MockThermalGen,
+            DNMDT_META,
         )
         beta = IOM.get_variable(
             setup.container, IOM.DNMDTBinaryVariable(), MockThermalGen, DNMDT_META,

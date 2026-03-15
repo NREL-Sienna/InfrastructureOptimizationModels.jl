@@ -1,11 +1,11 @@
 ##################################################
 # PWL Delta (Incremental/Block) Formulation
 #
-# Pure formulation math for the delta/incremental PWL method.
+# Pure objective function formulation for the delta/incremental PWL method.
 # Variables δ_k >= 0 with block width bounds,
-# P = Σ δ_k + offset, cost = Σ δ_k * slope_k.
+# P = Σ δ_k + offset, objective = Σ δ_k * slope_k.
 #
-# Cost-data-specific mapping (ValueCurve → slopes/breakpoints)
+# ValueCurve-specific mapping (ValueCurve → slopes/breakpoints)
 # stays in value_curve_cost.jl.
 #
 # Data type relationship:
@@ -81,20 +81,20 @@ end
 ##################################################
 
 """
-Compute PWL cost expression from delta variables and slopes.
+Compute PWL objective expression from delta variables and slopes.
 
-Returns the cost expression without adding it to the objective (caller decides
+Returns the objective expression without adding it to the objective (caller decides
 whether to use invariant or variant).
 
-    cost = Σ δ[i] * slope[i] * multiplier
+    objective_term = Σ δ[i] * slope[i] * multiplier
 
 # Arguments
 - `pwl_vars`: vector of PWL delta variables
-- `slopes`: vector of slope values (cost per segment, already normalized)
+- `slopes`: vector of slope values (rate per segment, already normalized)
 - `multiplier`: additional multiplier (e.g., dt for time resolution)
 
 # Returns
-JuMP affine expression representing the cost.
+JuMP affine expression representing the objective function term.
 """
 function get_pwl_cost_expression(
     pwl_vars::AbstractVector{JuMP.VariableRef},

@@ -1,12 +1,20 @@
 #################################################################################
-# Value Curve Cost: Delta PWL Formulation Infrastructure
+# Value Curve Objective Function: Delta PWL Formulation
 #
-# This file provides the generic (device-agnostic) infrastructure for
-# value-curve-based offer cost functions using the delta (incremental/block)
-# PWL formulation. Maps ValueCurve types (static and time-series-backed)
-# to slopes/breakpoints and routes to the delta formulation in
-# objective_function_pwl_delta.jl. Device-specific overloads
-# (e.g., for ThermalMultiStart, ControllableLoad formulations) are in POM.
+# Objective function formulations for ValueCurve-based offer curves using the
+# delta (incremental/block) PWL method. Maps ValueCurve types (static and
+# time-series-backed) to slopes/breakpoints and routes to the delta formulation
+# primitives in objective_function_pwl_delta.jl.
+#
+# IOM defines objective function formulations — the mathematical structure of
+# JuMP objective terms. "Costs" (production cost, fuel cost, etc.) are a
+# domain concept defined in POM. This file provides the formulation machinery
+# that POM routes specific cost types into. PSY cost types appear in some
+# function signatures for dispatch, but the formulations themselves are
+# generic over IS.InfrastructureSystemsComponent and IS.ValueCurve types.
+#
+# Device-specific overloads (e.g., ThermalMultiStart, ControllableLoad) are
+# in POM.
 #################################################################################
 
 #################################################################################
@@ -521,12 +529,12 @@ function _get_pwl_data(
 end
 
 #################################################################################
-# Section 11: PWL Cost Terms + Variable Cost Objective (generic)
+# Section 11: PWL Objective Terms + Variable Objective Formulation (generic)
 # Load formulation overloads (AbstractControllablePowerLoadFormulation) are in POM.
 #################################################################################
 
 """
-Add PWL cost terms using the **delta (incremental/block-offer) formulation**.
+Add PWL objective terms using the **delta (incremental/block-offer) formulation**.
 
 Given an offer curve with breakpoints ``P_0, P_1, \\ldots, P_n`` and slopes
 ``m_1, m_2, \\ldots, m_n``, this function:
@@ -535,7 +543,7 @@ Given an offer curve with breakpoints ``P_0, P_1, \\ldots, P_n`` and slopes
    with no upper bound (block sizes are enforced by constraints).
 2. Adds linking and block-size constraints via [`_add_pwl_constraint!`](@ref):
    ``p = \\sum_k \\delta_k`` and ``\\delta_k \\leq P_{k+1} - P_k``.
-3. Builds the cost expression ``C = \\sum_k m_k \\, \\delta_k`` via [`get_pwl_cost_expression`](@ref).
+3. Builds the objective expression ``C = \\sum_k m_k \\, \\delta_k`` via [`get_pwl_cost_expression`](@ref).
 
 For convex offer curves (``m_1 \\leq m_2 \\leq \\cdots \\leq m_n``), no SOS2 or binary
 variables are needed — the optimizer fills cheap segments first automatically.
@@ -657,16 +665,16 @@ function _add_vom_cost_to_objective_helper!(
 end
 
 #################################################################################
-# Section 12: TimeSeriesValueCurve Dispatch
-# PSY-free delta formulation for CostCurve{TimeSeriesPiecewiseIncrementalCurve}.
+# Section 12: TimeSeriesValueCurve Objective Formulation
+# PSY-free delta PWL objective for CostCurve{TimeSeriesPiecewiseIncrementalCurve}.
 # Reads slopes/breakpoints from pre-populated parameter containers.
 #################################################################################
 
 """
     add_variable_cost_to_objective!(container, ::T, component, cost_function, ::U; dir)
 
-Dispatch for `CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve}`.
-Routes to the PSY-free delta formulation that reads from parameter containers.
+Objective function dispatch for `CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve}`.
+Routes to the PSY-free delta PWL formulation that reads from parameter containers.
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
@@ -675,16 +683,20 @@ function add_variable_cost_to_objective!(
     ::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve},
     ::U;
     dir::OfferDirection = IncrementalOffer(),
-) where {T <: VariableType, C <: IS.InfrastructureSystemsComponent, U <: AbstractDeviceFormulation}
+) where {
+    T <: VariableType,
+    C <: IS.InfrastructureSystemsComponent,
+    U <: AbstractDeviceFormulation,
+}
     _add_ts_incremental_pwl_cost!(dir, container, component, T(), U())
     return
 end
 
 """
-PSY-free delta formulation for time-series-backed incremental cost curves.
-Reads slopes/breakpoints from parameter containers populated externally.
-All parameter array lookups are hoisted before the time loop to avoid
-repeated dictionary lookups per time step.
+PSY-free delta PWL objective formulation for time-series-backed incremental
+value curves. Reads slopes/breakpoints from parameter containers populated
+externally. All parameter array lookups are hoisted before the time loop
+to avoid repeated dictionary lookups per time step.
 """
 function _add_ts_incremental_pwl_cost!(
     dir::D,
@@ -734,10 +746,10 @@ Uses `.data` to avoid an extra Vector copy from the DenseAxisArray broadcast res
 Returns `(breakpoints::Vector{Float64}, slopes::Vector{Float64})` in system per-unit.
 """
 function _get_pwl_data_from_arrays(
-    slope_arr,
-    slope_mult,
-    bp_arr,
-    bp_mult,
+    slope_arr::DenseAxisArray{Float64},
+    slope_mult::DenseAxisArray{Float64},
+    bp_arr::DenseAxisArray{Float64},
+    bp_mult::DenseAxisArray{Float64},
     name::String,
     time::Int,
     model_base_power::Float64,

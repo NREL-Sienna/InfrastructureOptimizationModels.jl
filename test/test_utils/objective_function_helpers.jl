@@ -117,7 +117,14 @@ function add_test_parameter!(
     for (i, name) in enumerate(names)
         for (j, seg) in enumerate(segments)
             for t in time_steps
-                IOM.set_parameter!(param_container, jump_model, values[i, j, t], name, seg, t)
+                IOM.set_parameter!(
+                    param_container,
+                    jump_model,
+                    values[i, j, t],
+                    name,
+                    seg,
+                    t,
+                )
                 IOM.set_multiplier!(param_container, 1.0, name, seg, t)
             end
         end
@@ -132,26 +139,22 @@ Populate slope + breakpoint parameter containers for delta PWL testing.
 - `container`: OptimizationContainer
 - `C`: component type
 - `names`: device names
-- `breakpoints`: Vector of breakpoint values (length = n_segments + 1)
-- `slopes`: Vector of slope values (length = n_segments)
+- `slopes`: Matrix of slope Vectors, size (n_devices × n_times)
+- `breakpoints`: Matrix of breakpoint Vectors, size (n_devices × n_times)
 - `time_steps`: time step range
 - `dir`: OfferDirection (default IncrementalOffer)
-- `time_varying_slopes`: optional Matrix of slope Vectors, size (n_devices × n_times)
-- `time_varying_breakpoints`: optional Matrix of breakpoint Vectors, size (n_devices × n_times)
 """
 function setup_delta_pwl_parameters!(
     container::IOM.OptimizationContainer,
     ::Type{C},
     names::Vector{String},
-    breakpoints::Vector{Float64},
-    slopes::Vector{Float64},
+    slopes::Matrix{Vector{Float64}},
+    breakpoints::Matrix{Vector{Float64}},
     time_steps::UnitRange{Int};
     dir::IOM.OfferDirection = IOM.IncrementalOffer(),
-    time_varying_slopes::Union{Nothing, Matrix{Vector{Float64}}} = nothing,
-    time_varying_breakpoints::Union{Nothing, Matrix{Vector{Float64}}} = nothing,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    n_segments::Int = length(slopes)
-    n_points::Int = length(breakpoints)
+    n_segments::Int = length(slopes[1, 1])
+    n_points::Int = length(breakpoints[1, 1])
     @assert n_points == n_segments + 1
 
     SlopeParam = IOM._slope_param(dir)
@@ -161,21 +164,27 @@ function setup_delta_pwl_parameters!(
     slope_vals = Array{Float64, 3}(undef, length(names), n_segments, length(time_steps))
     for (i, _name) in enumerate(names)
         for t in time_steps
-            s::Vector{Float64} = isnothing(time_varying_slopes) ?
-                slopes : time_varying_slopes[i, t]
+            s = slopes[i, t]
             for k in 1:n_segments
                 slope_vals[i, k, t] = s[k]
             end
         end
     end
-    add_test_parameter!(container, SlopeParam, C, names, 1:n_segments, time_steps, slope_vals)
+    add_test_parameter!(
+        container,
+        SlopeParam,
+        C,
+        names,
+        1:n_segments,
+        time_steps,
+        slope_vals,
+    )
 
     # Build 3D breakpoint array: (names × points × time)
     bp_vals = Array{Float64, 3}(undef, length(names), n_points, length(time_steps))
     for (i, _name) in enumerate(names)
         for t in time_steps
-            bp::Vector{Float64} = isnothing(time_varying_breakpoints) ?
-                breakpoints : time_varying_breakpoints[i, t]
+            bp = breakpoints[i, t]
             for k in 1:n_points
                 bp_vals[i, k, t] = bp[k]
             end
