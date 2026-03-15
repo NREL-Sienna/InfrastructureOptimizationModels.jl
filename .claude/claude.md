@@ -64,7 +64,7 @@ src/
     quadratic_curve.jl        # QuadraticCurve objectives
     piecewise_linear.jl       # PiecewiseLinearCurve objectives
     proportional.jl           # Proportional cost objectives
-    market_bid.jl             # Market bid cost objectives
+    value_curve_cost.jl       # ValueCurve → delta PWL cost objectives
     offer_curve_types.jl      # Offer curve type handling
     start_up_shut_down.jl     # Start-up/shut-down cost terms
   operation/              # Operation model types and workflows
@@ -187,3 +187,154 @@ at the top of individual test files.
 
 **Use mocks over PSY types:** Tests should use mock components (`MockThermalGen`, `MockSystem`, etc.)
 rather than PowerSystems types when possible.
+
+## Time-Varying MarketBidCost Architecture (Cross-Repo)
+
+This section documents how time-varying offer curves flow through the Sienna stack.
+Relevant for any work on `src/objective_function/value_curve_cost.jl`, `offer_curve_types.jl`,
+`start_up_shut_down.jl`, or parameter update logic.
+
+### IS Type Hierarchy for Cost Curves
+
+IS provides two parallel type hierarchies — static (scalar data) and time-series-backed
+(data referenced by `TimeSeriesKey`). Both share abstract parents so `CostCurve`/`FuelCurve`
+accept either with zero code changes. See `IS/.claude/claude.md` → "Time-Varying Cost Curve
+Type Hierarchy" for the full tree and design rationale.
+
+**Key types for MarketBidCost:**
+
+```
+# Static path (current)
+CostCurve{PiecewiseIncrementalCurve}
+  where PiecewiseIncrementalCurve = IncrementalCurve{PiecewiseStepData}
+
+# Time-series path (new — enables typed cost curve fields)
+CostCurve{TimeSeriesPiecewiseIncrementalCurve}
+  where TimeSeriesPiecewiseIncrementalCurve = TimeSeriesIncrementalCurve{TimeSeriesPiecewiseStepData}
+```
+
+**Forwarding functions** work at every level of the hierarchy:
+- `IS.is_time_series_backed(cost_curve)` → `true`/`false` (delegates through ValueCurve → FunctionData)
+- `IS.get_time_series_key(cost_curve)` → the underlying `TimeSeriesKey`
+
+### MarketBidCost Struct — Current State (PowerSystems.jl)
+
+```julia
+mutable struct MarketBidCost <: OfferCurveCost
+    no_load_cost          ::Union{TimeSeriesKey, Nothing, Float64}
+    start_up              ::Union{TimeSeriesKey, StartUpStages}
+    shut_down             ::Union{TimeSeriesKey, Float64}
+    incremental_offer_curves   ::Union{Nothing, TimeSeriesKey, CostCurve{PiecewiseIncrementalCurve}}
+    decremental_offer_curves   ::Union{Nothing, TimeSeriesKey, CostCurve{PiecewiseIncrementalCurve}}
+    incremental_initial_input  ::Union{Nothing, TimeSeriesKey}
+    decremental_initial_input  ::Union{Nothing, TimeSeriesKey}
+    ancillary_service_offers   ::Vector{Service}
+end
+```
+
+Each field independently holds either a scalar/struct value (static) or a `TimeSeriesKey`
+(time-varying). When time-varying, the actual data (`PiecewiseStepData` elements for curves,
+`Float64` for initial_input/no_load) lives in the System's time series store.
+
+### MarketBidCost — Target State (Future Refactor)
+
+The new IS types enable replacing bare `TimeSeriesKey` unions with typed cost curves:
+
+```julia
+# BEFORE: incremental_offer_curves ::Union{Nothing, TimeSeriesKey, CostCurve{PiecewiseIncrementalCurve}}
+# AFTER:  incremental_offer_curves ::Union{Nothing, CostCurve{PiecewiseIncrementalCurve}, CostCurve{TimeSeriesPiecewiseIncrementalCurve}}
+```
+
+**Benefits of the target state:**
+- Unions stay at 3 elements (within Julia's union-splitting threshold)
+- `is_time_series_backed()` replaces `isa(field, TimeSeriesKey)` checks throughout IOM/POM
+- `initial_input` and `input_at_zero` move into the `TimeSeriesIncrementalCurve` struct,
+  eliminating the separate `incremental_initial_input` field
+- Type dispatch replaces runtime `if` branches for static vs time-varying paths
+
+**Migration path:**
+1. ~~Phase 1: `TimeSeriesFunctionData` types in IS~~ (done)
+2. ~~Phase 2: `TimeSeriesValueCurve` types + cost aliases in IS~~ (done)
+3. Phase 3: Update `MarketBidCost` field types in PSY
+4. Phase 4: Update IOM `value_curve_cost.jl` to dispatch on `is_time_series_backed` instead
+   of `isa(field, TimeSeriesKey)`. Simplify `_get_pwl_data` and `process_market_bid_parameters!`.
+5. Phase 5: Update POM dispatches (`proportional_cost`, `add_parameters!`)
+
+### Data Flow: Storage → Retrieval → Reconstruction (PowerSystems.jl)
+
+**Setting** (`cost_function_timeseries.jl`):
+1. `set_variable_cost!(sys, component, ts_data::Deterministic, power_units)` validates
+   `eltype(ts_data) <: PiecewiseStepData`, calls `add_time_series!(sys, component, ts_data)`,
+   stores the resulting `TimeSeriesKey` on `MarketBidCost.incremental_offer_curves`.
+2. `set_incremental_initial_input!`, `set_no_load_cost!` follow the same pattern.
+
+**Getting** (`cost_function_timeseries.jl`):
+1. `get_variable_cost(device, cost; start_time, len)` fetches three independent time series:
+   - `incremental_offer_curves` → `TimeArray{PiecewiseStepData}`
+   - `incremental_initial_input` → `TimeArray{Float64}` (or scalar/nothing)
+   - `no_load_cost` → `TimeArray{Float64}` (or scalar/nothing)
+2. Broadcasts scalars to match TimeArray timestamps.
+3. Zips and calls `_make_market_bid_curve(psd; initial_input=ii, input_at_zero=iaz)` per timestep.
+4. Returns `TimeArray{CostCurve{PiecewiseIncrementalCurve}}`.
+
+### Parameter Decomposition (this repo — IOM)
+
+`process_market_bid_parameters!()` in `src/objective_function/value_curve_cost.jl`:
+1. Filters devices with `_has_market_bid_cost()`.
+2. For each parameter type, checks `_has_parameter_time_series()` (calls `is_time_variant()`
+   which tests if the field is a `TimeSeriesKey`).
+3. Calls `add_parameters!(container, ParamType, ts_devices, model)` — **extension point
+   implemented in PowerOperationsModels (POM)**.
+
+POM decomposes each `PiecewiseStepData` into separate parameter arrays:
+
+| IOM Parameter Type | Stores | Array axes |
+|---|---|---|
+| `IncrementalPiecewiseLinearSlopeParameter` | y_coords (marginal rates) | `[device, segment, time]` |
+| `IncrementalPiecewiseLinearBreakpointParameter` | x_coords (power points) | `[device, point, time]` |
+| `IncrementalCostAtMinParameter` | initial_input scalar | `[device, time]` |
+| `StartupCostParameter` | start-up cost | `[device, time]` |
+| `ShutdownCostParameter` | shut-down cost | `[device, time]` |
+
+Decremental variants mirror the incremental ones.
+
+### Objective Construction (this repo — IOM)
+
+`add_pwl_term!(dir, container, component, ...)` in `src/objective_function/value_curve_cost.jl`:
+
+For each time step `t`:
+1. `_get_pwl_data(dir, container, component, t)` →
+   - **Time-varying**: reads slopes/breakpoints from ParameterContainers.
+   - **Static**: reads `PSY.get_x_coords` / `PSY.get_y_coords` directly from the CostCurve.
+2. Creates delta/block variables (`PiecewiseLinearBlockIncrementalOffer`) — one per segment.
+3. Adds linking constraint `p = Σ δ_k` and bound constraints `δ_k ≤ width_k`.
+4. Builds cost expression `Σ (slope_k × δ_k × dt)`.
+5. Routes to `add_to_objective_variant_expression!` (time-varying) or
+   `add_to_objective_invariant_expression!` (static).
+
+### Direction Dispatch
+
+`src/core/definitions.jl` defines `OfferDirection` with `IncrementalOffer` / `DecrementalOffer`.
+`value_curve_cost.jl` maps directions to accessors and parameter types:
+- `get_output_offer_curves(cost)` → `incremental_offer_curves`
+- `get_input_offer_curves(cost)` → `decremental_offer_curves`
+- `_slope_param(::IncrementalOffer)` → `IncrementalPiecewiseLinearSlopeParameter`
+- `_breakpoint_param(::IncrementalOffer)` → `IncrementalPiecewiseLinearBreakpointParameter`
+
+### Key Architectural Observations
+
+1. **Three-way split**: Offer curve, initial_input, and no_load_cost are stored as separate
+   time series with independent `TimeSeriesKey`s. The new `TimeSeriesIncrementalCurve`
+   unifies offer curve + initial_input + input_at_zero into a single typed object.
+2. **Two-level decomposition**: PSY stores `PiecewiseStepData` objects; IOM further splits
+   into separate slope and breakpoint parameter arrays for JuMP.
+3. **Static/dynamic is per-field**: Each MarketBidCost field independently decides whether
+   it's a scalar or `TimeSeriesKey`. Mixed cases must be handled.
+4. **Extension point pattern**: IOM orchestrates (`process_market_bid_parameters!`,
+   `_get_pwl_data`, `add_pwl_term!`); POM implements `add_parameters!` and
+   `proportional_cost` dispatches.
+5. **Variant vs invariant objective**: Time-varying costs → "variant" expressions rebuilt
+   each simulation step; static costs → "invariant" expressions computed once.
+6. **`is_time_series_backed` replaces `isa(_, TimeSeriesKey)`**: The new forwarding function
+   propagates through `CostCurve` → `ValueCurve` → `FunctionData`, making static-vs-TS
+   checks uniform across the stack.
