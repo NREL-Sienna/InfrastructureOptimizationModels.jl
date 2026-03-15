@@ -95,32 +95,26 @@ _objective_sign(::DecrementalOffer) = OBJECTIVE_FUNCTION_NEGATIVE
 # Maps parameter types to PSY getter functions.
 #################################################################################
 
-_get_parameter_field(::StartupCostParameter, args...; kwargs...) =
-    PSY.get_start_up(args...; kwargs...)
-_get_parameter_field(::ShutdownCostParameter, args...; kwargs...) =
-    PSY.get_shut_down(args...; kwargs...)
-_get_parameter_field(::IncrementalCostAtMinParameter, args...; kwargs...) =
-    PSY.get_incremental_initial_input(args...; kwargs...)
-_get_parameter_field(::DecrementalCostAtMinParameter, args...; kwargs...) =
-    PSY.get_decremental_initial_input(args...; kwargs...)
+_get_parameter_field(::StartupCostParameter, op_cost) = PSY.get_start_up(op_cost)
+_get_parameter_field(::ShutdownCostParameter, op_cost) = PSY.get_shut_down(op_cost)
+_get_parameter_field(::IncrementalCostAtMinParameter, op_cost) =
+    PSY.get_incremental_initial_input(op_cost)
+_get_parameter_field(::DecrementalCostAtMinParameter, op_cost) =
+    PSY.get_decremental_initial_input(op_cost)
 _get_parameter_field(
     ::Union{
         IncrementalPiecewiseLinearSlopeParameter,
         IncrementalPiecewiseLinearBreakpointParameter,
     },
-    args...;
-    kwargs...,
-) =
-    get_output_offer_curves(args...; kwargs...)
+    op_cost,
+) = get_output_offer_curves(op_cost)
 _get_parameter_field(
     ::Union{
         DecrementalPiecewiseLinearSlopeParameter,
         DecrementalPiecewiseLinearBreakpointParameter,
     },
-    args...;
-    kwargs...,
-) =
-    get_input_offer_curves(args...; kwargs...)
+    op_cost,
+) = get_input_offer_curves(op_cost)
 
 #################################################################################
 # Section 4: Device Cost Detection Predicates (generic)
@@ -569,6 +563,7 @@ function add_pwl_term!(
     resolution = get_resolution(container)
     dt = Dates.value(resolution) / MILLISECONDS_IN_HOUR
     time_steps = get_time_steps(container)
+    is_variant = is_time_variant(get_offer_curves(dir, component))
     for t in time_steps
         breakpoints, slopes = _get_pwl_data(dir, container, component, t)
         pwl_vars =
@@ -594,7 +589,7 @@ function add_pwl_term!(
             t,
         )
 
-        if is_time_variant(get_offer_curves(dir, component))
+        if is_variant
             add_to_objective_variant_expression!(container, pwl_cost)
         else
             add_to_objective_invariant_expression!(container, pwl_cost)
@@ -695,8 +690,8 @@ end
 """
 PSY-free delta PWL objective formulation for time-series-backed incremental
 value curves. Reads slopes/breakpoints from parameter containers populated
-externally. All parameter array lookups are hoisted before the time loop
-to avoid repeated dictionary lookups per time step.
+externally. All parameter array lookups and buffer allocations are hoisted
+before the time loop to avoid repeated dictionary lookups and allocations.
 """
 function _add_ts_incremental_pwl_cost!(
     dir::D,
@@ -713,7 +708,6 @@ function _add_ts_incremental_pwl_cost!(
     W = _block_offer_var(dir)
     X = _block_offer_constraint(dir)
     name::String = get_name(component)
-    base_power::Float64 = get_base_power(component)
     dt::Float64 = Dates.value(get_resolution(container)) / MILLISECONDS_IN_HOUR
     sign_dt::Float64 = _objective_sign(dir) * dt
     model_base_power::Float64 = get_model_base_power(container)
@@ -726,12 +720,24 @@ function _add_ts_incremental_pwl_cost!(
     bp_arr = get_parameter_array(container, BPParam(), C)
     bp_mult = get_parameter_multiplier_array(container, BPParam(), C)
 
+    # Pre-allocate buffers sized from the parameter array axes
+    seg_axis = axes(slope_arr)[2]
+    point_axis = axes(bp_arr)[2]
+    n_segments = length(seg_axis)
+    n_points = length(point_axis)
+    @assert_op n_segments == n_points - 1
+    slopes = Vector{Float64}(undef, n_segments)
+    breakpoints = Vector{Float64}(undef, n_points)
+
+    # NATURAL_UNITS conversion factors (slopes scale up, breakpoints scale down)
+    inv_base::Float64 = 1.0 / model_base_power
+
     for t in get_time_steps(container)
-        breakpoints, slopes = _get_pwl_data_from_arrays(
-            slope_arr, slope_mult, bp_arr, bp_mult,
-            name, t, model_base_power, base_power)
+        _fill_pwl_data_from_arrays!(
+            slopes, breakpoints, slope_arr, slope_mult, bp_arr, bp_mult,
+            seg_axis, point_axis, name, t, model_base_power, inv_base)
         pwl_vars::Vector{JuMP.VariableRef} = add_pwl_variables!(
-            container, W, C, name, t, length(slopes); upper_bound = Inf)
+            container, W, C, name, t, n_segments; upper_bound = Inf)
         _add_pwl_constraint!(container, component, T(), U(), breakpoints, pwl_vars, t, X)
         pwl_cost::JuMP.AffExpr = get_pwl_cost_expression(pwl_vars, slopes, sign_dt)
         add_cost_to_expression!(container, ProductionCostExpression, pwl_cost, C, name, t)
@@ -741,25 +747,30 @@ function _add_ts_incremental_pwl_cost!(
 end
 
 """
-Extract slopes and breakpoints from pre-fetched parameter arrays for a single time step.
-Uses `.data` to avoid an extra Vector copy from the DenseAxisArray broadcast result.
-Returns `(breakpoints::Vector{Float64}, slopes::Vector{Float64})` in system per-unit.
+Fill pre-allocated slope and breakpoint buffers from parameter arrays for a single
+time step. Applies NATURAL_UNITS conversion in-place (slopes × base_power,
+breakpoints / base_power), avoiding intermediate DenseAxisArray allocations.
 """
-function _get_pwl_data_from_arrays(
+function _fill_pwl_data_from_arrays!(
+    slopes::Vector{Float64},
+    breakpoints::Vector{Float64},
     slope_arr::DenseAxisArray{Float64},
     slope_mult::DenseAxisArray{Float64},
     bp_arr::DenseAxisArray{Float64},
     bp_mult::DenseAxisArray{Float64},
+    seg_axis::Vector,
+    point_axis::Vector,
     name::String,
     time::Int,
     model_base_power::Float64,
-    device_base_power::Float64,
-)::Tuple{Vector{Float64}, Vector{Float64}}
-    slopes = (slope_arr[name, :, time] .* slope_mult[name, :, time]).data
-    breakpoints = (bp_arr[name, :, time] .* bp_mult[name, :, time]).data
-
-    @assert_op length(slopes) == length(breakpoints) - 1
-    return get_piecewise_curve_per_system_unit(
-        breakpoints, slopes, IS.UnitSystem.NATURAL_UNITS,
-        model_base_power, device_base_power)
+    inv_base::Float64,
+)
+    for (i, seg) in enumerate(seg_axis)
+        slopes[i] = slope_arr[name, seg, time] * slope_mult[name, seg, time] *
+                     model_base_power
+    end
+    for (i, pt) in enumerate(point_axis)
+        breakpoints[i] = bp_arr[name, pt, time] * bp_mult[name, pt, time] * inv_base
+    end
+    return
 end
