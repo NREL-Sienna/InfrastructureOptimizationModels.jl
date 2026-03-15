@@ -446,7 +446,6 @@ export ActivePowerVariable, ActivePowerInVariable, ActivePowerOutVariable
 export PowerAboveMinimumVariable
 export OnVariable, StartVariable, StopVariable
 export ReservationVariable
-export ServiceRequirementVariable
 export PiecewiseLinearCostVariable
 export RateofChangeConstraintSlackUp, RateofChangeConstraintSlackDown
 export DCVoltage
