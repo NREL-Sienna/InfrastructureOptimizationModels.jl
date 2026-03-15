@@ -56,17 +56,17 @@ src/
     add_initial_condition.jl
     calculate_initial_condition.jl
     initialization.jl
-  objective_function/     # Objective function construction
-    common.jl                 # Shared objective utilities
-    cost_term_helpers.jl      # Cost curve → JuMP term conversion
-    import_export.jl          # Import/export cost handling
-    linear_curve.jl           # LinearCurve objectives
-    quadratic_curve.jl        # QuadraticCurve objectives
-    piecewise_linear.jl       # PiecewiseLinearCurve objectives
-    proportional.jl           # Proportional cost objectives
-    value_curve_cost.jl       # ValueCurve → delta PWL cost objectives
-    offer_curve_types.jl      # Offer curve type handling
-    start_up_shut_down.jl     # Start-up/shut-down cost terms
+  objective_function/     # Objective function formulations (see note below)
+    common.jl                 # Shared objective function utilities
+    cost_term_helpers.jl      # Generic objective term → JuMP expression builders
+    import_export.jl          # Import/export objective handling
+    linear_curve.jl           # LinearCurve objective formulation
+    quadratic_curve.jl        # QuadraticCurve objective formulation
+    piecewise_linear.jl       # PiecewiseLinearCurve → lambda PWL formulation
+    proportional.jl           # Proportional objective terms
+    value_curve_cost.jl       # ValueCurve → delta PWL formulation
+    offer_curve_types.jl      # Parameter/variable/constraint types for offer curves
+    start_up_shut_down.jl     # Start-up/shut-down objective terms
   operation/              # Operation model types and workflows
     decision_model.jl         # DecisionModel (single-period optimization)
     decision_model_store.jl   # DecisionModel output store
@@ -150,8 +150,14 @@ scripts/formatter/        # Code formatting (JuliaFormatter)
   `NetworkModel`, `ServiceModel`, `Settings`, etc.) that are used throughout the package.
 - **`src/common_models/`** provides reusable constraint/variable/expression builders that
   concrete formulations call into.
-- **`src/objective_function/`** translates cost curves into JuMP objective terms. Each cost
-  curve type has its own file.
+- **`src/objective_function/`** defines objective function formulations — generic methods
+  for translating IS `ValueCurve` types into JuMP objective terms. Each value curve type
+  has its own file. **IOM defines objective functions, not costs.** "Costs" (e.g.,
+  production cost, fuel cost, start-up cost) are domain concepts that belong to POM.
+  IOM provides the mathematical formulations (delta PWL, lambda PWL, proportional, quadratic)
+  that POM routes specific cost types into. Functions in this directory may reference
+  PSY cost types in their signatures (for dispatch), but their purpose is building
+  JuMP objective expressions, not defining what a "cost" means.
 - **`src/quadratic_approximations/`** implements PWL approximation methods for x²:
   SOS2 (solver and manual), sawtooth, epigraph, plus the incremental formulation
   and shared breakpoint utilities.

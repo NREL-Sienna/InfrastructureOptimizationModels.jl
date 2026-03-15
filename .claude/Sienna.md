@@ -80,6 +80,17 @@ Style guide: <https://nrel-sienna.github.io/InfrastructureSystems.jl/stable/styl
 
 Formatter (JuliaFormatter): Use the formatter script provided in each package.
 
+**IMPORTANT: Always run the formatter after completing each task.** Before considering
+any implementation task done, run:
+
+```sh
+julia scripts/formatter/formatter_code.jl
+```
+
+This applies after writing new code, modifying existing code, or any change to `.jl` files.
+The formatter enforces consistent style across the codebase and its output should be
+treated as authoritative. Do not manually revert formatter changes.
+
 Key rules:
 
 - Constructors: use `function Foo()` not `Foo() = ...`
@@ -147,6 +158,7 @@ Branch naming: `feature/description` or `fix/description`
 - Never edit auto-generated files directly
 - Verify type stability with `@code_warntype` for performance-critical code
 - Consider downstream package impact
+- **Always run `julia scripts/formatter/formatter_code.jl` after completing each task** — before reporting the task as done. This is not optional.
 
 ## Julia Environment Best Practices
 
