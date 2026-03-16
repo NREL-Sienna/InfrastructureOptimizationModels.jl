@@ -106,25 +106,25 @@ end
         )
     end
 
-    @testset "_set_model!" begin
+    @testset "set_model!" begin
         dict = Dict{Symbol, Any}()
         model = PSI.DeviceModel(MockThermalGen, TestDeviceFormulation)
 
-        PSI._set_model!(dict, model)
+        PSI.set_model!(dict, model)
 
         @test haskey(dict, :MockThermalGen)
         @test dict[:MockThermalGen] === model
     end
 
-    @testset "_set_model! warns on overwrite" begin
+    @testset "set_model! warns on overwrite" begin
         dict = Dict{Symbol, Any}()
         model1 = PSI.DeviceModel(MockThermalGen, TestDeviceFormulation)
         model2 = PSI.DeviceModel(MockThermalGen, TestDeviceFormulation)
 
-        PSI._set_model!(dict, model1)
+        PSI.set_model!(dict, model1)
 
         # Second call should warn about overwriting
-        @test_logs (:warn, r"Overwriting.*existing model") PSI._set_model!(dict, model2)
+        @test_logs (:warn, r"Overwriting.*existing model") PSI.set_model!(dict, model2)
         @test dict[:MockThermalGen] === model2
     end
 

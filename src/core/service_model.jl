@@ -120,7 +120,7 @@ function ServiceModel(
     )
 end
 
-function _set_model!(dict::Dict, key::Tuple{String, Symbol}, model::ServiceModel)
+function set_model!(dict::Dict, key::Tuple{String, Symbol}, model::ServiceModel)
     if haskey(dict, key)
         @warn "Overwriting $(key) existing model"
     end
@@ -128,10 +128,10 @@ function _set_model!(dict::Dict, key::Tuple{String, Symbol}, model::ServiceModel
     return
 end
 
-function _set_model!(
+function set_model!(
     dict::Dict,
     model::ServiceModel{D, B},
 ) where {D <: PSY.Service, B}
-    _set_model!(dict, (get_service_name(model), Symbol(D)), model)
+    set_model!(dict, (get_service_name(model), Symbol(D)), model)
     return
 end

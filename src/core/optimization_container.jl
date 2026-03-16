@@ -281,7 +281,7 @@ function supports_milp(container::OptimizationContainer)
     return supports_milp(jump_model)
 end
 
-function _validate_warm_start_support(JuMPmodel::JuMP.Model, warm_start_enabled::Bool)
+function validate_warm_start_support(JuMPmodel::JuMP.Model, warm_start_enabled::Bool)
     !warm_start_enabled && return warm_start_enabled
     solver_supports_warm_start =
         MOI.supports(JuMP.backend(JuMPmodel), MOI.VariablePrimalStart(), MOI.VariableIndex)
@@ -292,7 +292,7 @@ function _validate_warm_start_support(JuMPmodel::JuMP.Model, warm_start_enabled:
     return solver_supports_warm_start
 end
 
-function _finalize_jump_model!(container::OptimizationContainer, settings::Settings)
+function finalize_jump_model!(container::OptimizationContainer, settings::Settings)
     @debug "Instantiating the JuMP model" _group = LOG_GROUP_OPTIMIZATION_CONTAINER
     if built_for_recurrent_solves(container) && get_optimizer(settings) === nothing
         throw(
@@ -314,7 +314,7 @@ function _finalize_jump_model!(container::OptimizationContainer, settings::Setti
 
     JuMPmodel = get_jump_model(container)
     warm_start_enabled = get_warm_start(settings)
-    solver_supports_warm_start = _validate_warm_start_support(JuMPmodel, warm_start_enabled)
+    solver_supports_warm_start = validate_warm_start_support(JuMPmodel, warm_start_enabled)
     set_warm_start!(settings, solver_supports_warm_start)
 
     JuMP.set_string_names_on_creation(JuMPmodel, get_store_variable_names(settings))
