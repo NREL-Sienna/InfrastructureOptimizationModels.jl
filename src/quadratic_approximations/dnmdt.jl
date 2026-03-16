@@ -377,7 +377,7 @@ function _add_dnmdt_bilinear_approx!(
     depth::Int,
     meta::String;
     double::Bool = true,
-    add_mccormick::Bool = true,
+    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op y_max > y_min
@@ -518,14 +518,14 @@ function _add_dnmdt_bilinear_approx!(
 
         # Binary McCormick for u[j] and v[j]
         for j in 1:depth
-            u_j =
-                u_var[name, j, t] = JuMP.@variable(
-                    jump_model,
-                    base_name = "DNMDTu_$(C)_{$(name), $(j), $(t)}",
-                    lower_bound = 0.0,
-                    upper_bound = wu_hi,
-                )
             if double
+                u_j =
+                    u_var[name, j, t] = JuMP.@variable(
+                        jump_model,
+                        base_name = "DNMDTu_$(C)_{$(name), $(j), $(t)}",
+                        lower_bound = 0.0,
+                        upper_bound = wu_hi,
+                    )
                 v_j =
                     v_var[name, j, t] = JuMP.@variable(
                         jump_model,
@@ -545,6 +545,13 @@ function _add_dnmdt_bilinear_approx!(
                     0.0, wv_hi, 0.0, 1.0,
                 )
             else
+                u_j =
+                    u_var[name, j, t] = JuMP.@variable(
+                        jump_model,
+                        base_name = "DNMDTu_$(C)_{$(name), $(j), $(t)}",
+                        lower_bound = 0.0,
+                        upper_bound = 1.0,
+                    )
                 _add_mccormick_envelope!(
                     jump_model, bmc_cons, (name, j, t),
                     yh_expr[name, t], beta_x_var[name, j, t], u_j,

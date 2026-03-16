@@ -135,7 +135,7 @@ function _add_bilinear_approx_impl!(
 end
 
 """
-    _add_sos2_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, num_segments, meta)
+    _add_sos2_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, num_segments, meta; add_mccormick)
 
 Approximate x·y using Bin2 decomposition with solver-native SOS2 quadratic approximations.
 
@@ -156,6 +156,7 @@ function _add_sos2_bilinear_approx!(
     y_max::Float64,
     num_segments::Int,
     meta::String;
+    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
@@ -169,6 +170,7 @@ function _add_sos2_bilinear_approx!(
                 hi,
                 num_segments,
                 m;
+                add_mccormick,
             )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
@@ -178,7 +180,7 @@ function _add_sos2_bilinear_approx!(
 end
 
 """
-    _add_manual_sos2_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, num_segments, meta)
+    _add_manual_sos2_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, num_segments, meta; add_mccormick)
 
 Approximate x·y using Bin2 decomposition with manual SOS2 quadratic approximations.
 
@@ -199,6 +201,7 @@ function _add_manual_sos2_bilinear_approx!(
     y_max::Float64,
     num_segments::Int,
     meta::String;
+    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
@@ -212,6 +215,7 @@ function _add_manual_sos2_bilinear_approx!(
                 hi,
                 num_segments,
                 m;
+                add_mccormick,
             )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
@@ -221,7 +225,7 @@ function _add_manual_sos2_bilinear_approx!(
 end
 
 """
-    _add_sawtooth_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, depth, meta;)
+    _add_sawtooth_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, depth, meta; add_mccormick)
 
 Approximate x·y using Bin2 decomposition with sawtooth quadratic approximations.
 
@@ -243,6 +247,7 @@ function _add_sawtooth_bilinear_approx!(
     depth::Int,
     meta::String;
     tighten::Bool = false,
+    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
@@ -257,6 +262,7 @@ function _add_sawtooth_bilinear_approx!(
                 depth,
                 m;
                 tighten,
+                add_mccormick,
             )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
@@ -265,7 +271,7 @@ function _add_sawtooth_bilinear_approx!(
     )
 end
 
-function _add_dmndt_quadratic_bilinear_approx!(
+function _add_dnmdt_quadratic_bilinear_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -280,10 +286,11 @@ function _add_dmndt_quadratic_bilinear_approx!(
     meta::String;
     double::Bool = false,
     tighten::Bool = false,
+    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     quad_fn =
         (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_dnmdt_quadratic_approx!(
+            _add_dnmdt_univariate_approx!(
                 cont,
                 CT,
                 nms,
@@ -295,6 +302,7 @@ function _add_dmndt_quadratic_bilinear_approx!(
                 m;
                 double,
                 tighten,
+                add_mccormick,
             )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,

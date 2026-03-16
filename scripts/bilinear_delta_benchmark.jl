@@ -206,19 +206,19 @@ end
 # ─── MIP model using IOM bilinear approximations ─────────────────────────────
 
 bilinear_methods = (
-    # ("Bin2+sSOS", IOM._add_sos2_bilinear_approx!, ()),
-    # ("Bin2+mSOS+McQuad", IOM._add_manual_sos2_bilinear_approx!, (add_mccormick = true,)),
-    # ("Bin2+Saw", IOM._add_sawtooth_bilinear_approx!, ()),
-    # ("Bin2+DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true,)),
-    # ("Bin2+T-DNMDT", IOM._add_dmndt_bilinear_approx!, (double = true, tighten = true,)),
-    # ("Bin2+DNMDT+McQuad", IOM._add_dmndt_bilinear_approx!, (double = true, add_mccormick = true)),
-    # ("HybS+sSOS", IOM._add_hybs_sos2_bilinear_approx!, ()),
-    # ("HybS+sSOS+McAll", IOM._add_hybs_sos2_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
-    # ("HybS+Saw", IOM._add_hybs_sawtooth_bilinear_approx!, ()),
-    # ("HybS+Saw+McAll", IOM._add_hybs_sawtooth_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
-    # ("HybS+T-Saw", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true,)),
-    # ("HybS+T-Saw+McBil", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true, add_mccormick = true)),
-    ("NMDT", IOM._add_dnmdt_bilinear_approx!, ()),
+    ("Bin2+sSOS", IOM._add_sos2_bilinear_approx!, ()),
+    ("Bin2+mSOS+McQuad", IOM._add_manual_sos2_bilinear_approx!, (add_mccormick = true,)),
+    ("Bin2+Saw", IOM._add_sawtooth_bilinear_approx!, ()),
+    ("Bin2+DNMDT", IOM._add_dnmdt_quadratic_bilinear_approx!, (double = true,)),
+    ("Bin2+T-DNMDT", IOM._add_dnmdt_quadratic_bilinear_approx!, (double = true, tighten = true,)),
+    ("Bin2+DNMDT+McQuad", IOM._add_dnmdt_bilinear_approx!, (double = true, add_mccormick = true)),
+    ("HybS+sSOS", IOM._add_hybs_sos2_bilinear_approx!, ()),
+    ("HybS+sSOS+McAll", IOM._add_hybs_sos2_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
+    ("HybS+Saw", IOM._add_hybs_sawtooth_bilinear_approx!, ()),
+    ("HybS+Saw+McAll", IOM._add_hybs_sawtooth_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),
+    ("HybS+T-Saw", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true,)),
+    ("HybS+T-Saw+McBil", IOM._add_hybs_sawtooth_bilinear_approx!, (tighten = true, add_mccormick = true)),
+    ("NMDT", IOM._add_dnmdt_bilinear_approx!, (double = false,)),
     ("DNMDT", IOM._add_dnmdt_bilinear_approx!, (double = true,)),
     ("DNMDT+McBil", IOM._add_dnmdt_bilinear_approx!, (double = true, add_mccormick = true))
 )
@@ -381,8 +381,8 @@ function run_benchmark(;
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
-    segment_counts::Vector{Int} = [2],#, 4, 8],
-    sawtooth_depths::Vector{Int} = [2]#, 4, 8],
+    # segment_counts::Vector{Int} = [2, 4, 8],
+    # sawtooth_depths::Vector{Int} = [2, 4, 8],
 )
     net = generate_network(; N, K, seed)
     println("Network: $(net.N) nodes, $(length(net.edges)) edges, $(net.K) cost segments")
@@ -424,7 +424,7 @@ function run_benchmark(;
         "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
     println("-" ^ 100)
 
-    refinements = [2]
+    refinements = [2, 4,]
     for (label, fn, kw) in bilinear_methods, ref in refinements
         build_t = @elapsed begin
             result = build_mip_model(net, fn, kw, ref)
