@@ -380,7 +380,7 @@ function init_optimization_container!(
     stats = get_optimizer_stats(container)
     stats.detailed_stats = get_detailed_optimizer_stats(settings)
 
-    _finalize_jump_model!(container, settings)
+    finalize_jump_model!(container, settings)
     return
 end
 
