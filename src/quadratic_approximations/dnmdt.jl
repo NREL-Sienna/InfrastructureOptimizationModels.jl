@@ -52,7 +52,7 @@ function _scale!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     for name in names, t in time_steps
@@ -89,7 +89,7 @@ function _populate_binary_expansion!(
     xh_expr = _scale!(
         container, C, names, time_steps,
         x_var, x_min, lx,
-        meta
+        meta,
     )
     beta_var = add_variable_container!(
         container,
@@ -147,7 +147,8 @@ function _populate_binary_expansion!(
             JuMP.add_to_expression!(expansion, 2.0^(-j), beta_var[name, j, t])
         end
         JuMP.add_to_expression!(expansion, delta)
-        expansion_cons[name, t] = JuMP.@constraint(jump_model, xh_expr[name, t] == expansion)
+        expansion_cons[name, t] =
+            JuMP.@constraint(jump_model, xh_expr[name, t] == expansion)
     end
     return xh_expr, beta_var, delta_var
 end
@@ -343,7 +344,7 @@ function _add_dnmdt_univariate_approx!(
         _add_mccormick_envelope!(
             container, C, names, time_steps,
             x_var, y_var, result_expr,
-            x_min, x_max, y_min, y_max, meta
+            x_min, x_max, y_min, y_max, meta,
         )
     end
 
@@ -457,7 +458,7 @@ function _add_dnmdt_bilinear_approx!(
             meta,
         )
     end
-    
+
     dz_var = add_variable_container!(
         container,
         DNMDTResidualProductVariable(),
@@ -498,7 +499,7 @@ function _add_dnmdt_bilinear_approx!(
         yh_expr = _scale!(
             container, C, names, time_steps,
             y_var, y_min, ly,
-            meta * "_y"
+            meta * "_y",
         )
     end
 
