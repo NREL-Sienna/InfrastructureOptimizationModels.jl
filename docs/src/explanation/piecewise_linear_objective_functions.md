@@ -14,11 +14,11 @@ a series of straight-line segments between breakpoints.
 For example, a generator might have the following cost structure:
 
 | Power Output (MW) | Marginal Cost (\$/MWh) |
-|:------------------:|:---------------------:|
-| 50 (min)           | 20                    |
-| 100                | 25                    |
-| 150                | 35                    |
-| 200 (max)          | 50                    |
+|:-----------------:|:----------------------:|
+| 50 (min)          | 20                     |
+| 100               | 25                     |
+| 150               | 35                     |
+| 200 (max)         | 50                     |
 
 This means the first 50 MW above minimum costs \$20/MWh, the next 50 MW costs \$25/MWh,
 and so on. The total cost is the sum of the cost of each segment.
@@ -70,9 +70,10 @@ flowchart LR
 ```
 
 **In short:**
-- **POM decides** which formulation to use for each device and cost type.
-- **IOM builds** the JuMP variables, constraints, and objective expressions.
-- Cost data comes from **PSY** (PowerSystems.jl) components.
+
+  - **POM decides** which formulation to use for each device and cost type.
+  - **IOM builds** the JuMP variables, constraints, and objective expressions.
+  - Cost data comes from **PSY** (PowerSystems.jl) components.
 
 ## Lambda Formulation (Convex Combination)
 
@@ -153,12 +154,12 @@ include a ``P_{\min}`` offset:
 
 ### Public API
 
-| Function                                                              | Role                                                           |
-|:--------------------------------------------------------------------- |:-------------------------------------------------------------- |
-| [`add_pwl_linking_constraint!`](@ref)                                 | Links power variable to weighted breakpoints                   |
-| [`add_pwl_normalization_constraint!`](@ref)                           | Ensures ``\sum \lambda_i = u``                                 |
-| [`add_pwl_sos2_constraint!`](@ref)                                    | Adds SOS2 adjacency for non-convex curves                      |
-| [`add_variable_cost_to_objective!`](@ref)                             | Entry point — orchestrates variables, constraints, and cost    |
+| Function                                    | Role                                                        |
+|:------------------------------------------- |:----------------------------------------------------------- |
+| [`add_pwl_linking_constraint!`](@ref)       | Links power variable to weighted breakpoints                |
+| [`add_pwl_normalization_constraint!`](@ref) | Ensures ``\sum \lambda_i = u``                              |
+| [`add_pwl_sos2_constraint!`](@ref)          | Adds SOS2 adjacency for non-convex curves                   |
+| [`add_variable_cost_to_objective!`](@ref)   | Entry point — orchestrates variables, constraints, and cost |
 
 ## Delta Formulation (Incremental / Block Offers)
 
@@ -219,10 +220,10 @@ increasing.
 
 The delta formulation supports two directions:
 
-- **Incremental (supply):** Represents power *produced*. The generator fills segments
-  from low to high cost. Uses `PiecewiseLinearBlockIncrementalOffer` variables.
-- **Decremental (demand):** Represents power *consumed*. The load fills segments from
-  high to low willingness-to-pay. Uses `PiecewiseLinearBlockDecrementalOffer` variables.
+  - **Incremental (supply):** Represents power *produced*. The generator fills segments
+    from low to high cost. Uses `PiecewiseLinearBlockIncrementalOffer` variables.
+  - **Decremental (demand):** Represents power *consumed*. The load fills segments from
+    high to low willingness-to-pay. Uses `PiecewiseLinearBlockDecrementalOffer` variables.
 
 POM determines which direction to use based on the device type and formulation.
 
@@ -237,13 +238,13 @@ POM determines which direction to use based on the device type and formulation.
 
 ### Public API
 
-| Function                                                              | Role                                                     |
-|:--------------------------------------------------------------------- |:-------------------------------------------------------- |
-| [`add_pwl_variables!`](@ref)                                          | Creates ``n`` delta variables per time step              |
-| [`add_pwl_term!`](@ref)                                               | Orchestrates variables, constraints, and cost expression |
-| [`get_pwl_cost_expression`](@ref)                                     | Builds ``\sum m_k \, \delta_k`` cost expression          |
-| [`add_pwl_block_offer_constraints!`](@ref)                            | Low-level block-offer constraint builder                 |
-| [`add_variable_cost_to_objective!`](@ref)                             | Entry point for offer curve costs                        |
+| Function                                   | Role                                                     |
+|:------------------------------------------ |:-------------------------------------------------------- |
+| [`add_pwl_variables!`](@ref)               | Creates ``n`` delta variables per time step              |
+| [`add_pwl_term!`](@ref)                    | Orchestrates variables, constraints, and cost expression |
+| [`get_pwl_cost_expression`](@ref)          | Builds ``\sum m_k \, \delta_k`` cost expression          |
+| [`add_pwl_block_offer_constraints!`](@ref) | Low-level block-offer constraint builder                 |
+| [`add_variable_cost_to_objective!`](@ref)  | Entry point for offer curve costs                        |
 
 ## Comparison
 
@@ -272,15 +273,15 @@ the correct ordering. In that case the lambda formulation is the traditional cho
 
 The following table summarizes which cost data types route to which PWL formulation:
 
-| Cost Data Type                        | Formulation        | Notes                                      |
-|:--------------------------------------|:-------------------|:-------------------------------------------|
-| `CostCurve{PiecewisePointCurve}`      | Lambda             | Direct (x, y) breakpoints                  |
-| `FuelCurve{PiecewisePointCurve}`      | Lambda             | Fuel consumption curve x fuel price         |
-| `CostCurve{PiecewiseIncrementalCurve}`| Lambda (converted) | Converted to `PiecewisePointCurve` first   |
-| `CostCurve{PiecewiseAverageCurve}`    | Lambda (converted) | Converted to `PiecewisePointCurve` first   |
-| `MarketBidCost` (offer curves)        | Delta              | Slopes + breakpoints; supports time-varying |
-| `ImportExportCost` (offer curves)     | Delta              | Import/export block offers                  |
-| `CostCurve{TimeSeriesPiecewiseIncrementalCurve}` | Delta  | Time-series-backed; always time-varying     |
+| Cost Data Type                                   | Formulation        | Notes                                       |
+|:------------------------------------------------ |:------------------ |:------------------------------------------- |
+| `CostCurve{PiecewisePointCurve}`                 | Lambda             | Direct (x, y) breakpoints                   |
+| `FuelCurve{PiecewisePointCurve}`                 | Lambda             | Fuel consumption curve x fuel price         |
+| `CostCurve{PiecewiseIncrementalCurve}`           | Lambda (converted) | Converted to `PiecewisePointCurve` first    |
+| `CostCurve{PiecewiseAverageCurve}`               | Lambda (converted) | Converted to `PiecewisePointCurve` first    |
+| `MarketBidCost` (offer curves)                   | Delta              | Slopes + breakpoints; supports time-varying |
+| `ImportExportCost` (offer curves)                | Delta              | Import/export block offers                  |
+| `CostCurve{TimeSeriesPiecewiseIncrementalCurve}` | Delta              | Time-series-backed; always time-varying     |
 
 ```mermaid
 flowchart TD
@@ -333,16 +334,18 @@ flowchart TB
 ```
 
 **IOM provides:**
-- Mathematical formulations (lambda, delta)
-- PWL variable and constraint creation
-- Objective expression building
-- Parameter orchestration (`process_market_bid_parameters!`, `process_import_export_parameters!`)
+
+  - Mathematical formulations (lambda, delta)
+  - PWL variable and constraint creation
+  - Objective expression building
+  - Parameter orchestration (`process_market_bid_parameters!`, `process_import_export_parameters!`)
 
 **POM provides:**
-- Device-specific cost routing (`add_variable_cost_to_objective!` overloads)
-- Parameter population (`add_parameters!` implementations)
-- Cost term extraction (`proportional_cost` implementations)
-- Objective sign/multiplier overrides
+
+  - Device-specific cost routing (`add_variable_cost_to_objective!` overloads)
+  - Parameter population (`add_parameters!` implementations)
+  - Cost term extraction (`proportional_cost` implementations)
+  - Objective sign/multiplier overrides
 
 ## Incremental Interpolation (General PWL Approximation)
 
@@ -369,6 +372,6 @@ filled before ``\delta_2`` can begin.
 
 ### Public API
 
-| Function                                                              | Role                                        |
-|:--------------------------------------------------------------------- |:------------------------------------------- |
-| [`add_sparse_pwl_interpolation_variables!`](@ref)                     | Creates ``\delta`` and ``z`` variables      |
+| Function                                          | Role                                   |
+|:------------------------------------------------- |:-------------------------------------- |
+| [`add_sparse_pwl_interpolation_variables!`](@ref) | Creates ``\delta`` and ``z`` variables |

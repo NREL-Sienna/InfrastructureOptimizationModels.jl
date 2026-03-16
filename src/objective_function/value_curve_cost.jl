@@ -766,8 +766,9 @@ function _fill_pwl_data_from_arrays!(
     inv_base::Float64,
 )
     for (i, seg) in enumerate(seg_axis)
-        slopes[i] = slope_arr[name, seg, time] * slope_mult[name, seg, time] *
-                     model_base_power
+        slopes[i] =
+            slope_arr[name, seg, time] * slope_mult[name, seg, time] *
+            model_base_power
     end
     for (i, pt) in enumerate(point_axis)
         breakpoints[i] = bp_arr[name, pt, time] * bp_mult[name, pt, time] * inv_base
