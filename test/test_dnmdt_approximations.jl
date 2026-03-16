@@ -10,7 +10,7 @@ const DNMDT_HYBS_META = "HybSTest"
         JuMP.set_upper_bound(setup.var_container["gen1", 1], 1.0)
         JuMP.fix(setup.var_container["gen1", 1], 0.6; force = true)
 
-        IOM._add_dnmdt_quadratic_approx!(
+        IOM._add_dnmdt_univariate_approx!(
             setup.container, MockThermalGen, names, ts,
             setup.var_container, 0.0, 1.0, 4, DNMDT_META,
         )
@@ -47,7 +47,7 @@ const DNMDT_HYBS_META = "HybSTest"
                 setup = _setup_qa_test(["gen1"], 1:1)
                 JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
 
-                IOM._add_dnmdt_quadratic_approx!(
+                IOM._add_dnmdt_univariate_approx!(
                     setup.container, MockThermalGen, ["gen1"], 1:1,
                     setup.var_container, 0.0, 1.0, 3, DNMDT_META;
                     tighten = false,
@@ -79,7 +79,7 @@ const DNMDT_HYBS_META = "HybSTest"
                     setup = _setup_qa_test(["gen1"], 1:1)
                     JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
 
-                    IOM._add_dnmdt_quadratic_approx!(
+                    IOM._add_dnmdt_univariate_approx!(
                         setup.container, MockThermalGen, ["gen1"], 1:1,
                         setup.var_container, 0.0, 1.0, L, DNMDT_META;
                         tighten = false,
@@ -108,7 +108,7 @@ const DNMDT_HYBS_META = "HybSTest"
         setup = _setup_qa_test(["gen1"], 1:1)
         depth = 3
 
-        IOM._add_dnmdt_quadratic_approx!(
+        IOM._add_dnmdt_univariate_approx!(
             setup.container, MockThermalGen, ["gen1"], 1:1,
             setup.var_container, 0.0, 1.0, depth, DNMDT_META;
             tighten = false,
@@ -132,7 +132,7 @@ const DNMDT_HYBS_META = "HybSTest"
         ts = 1:3
         setup = _setup_qa_test(names, ts)
 
-        IOM._add_dnmdt_quadratic_approx!(
+        IOM._add_dnmdt_univariate_approx!(
             setup.container, MockThermalGen, names, ts,
             setup.var_container, 0.0, 1.0, 2, DNMDT_META;
             tighten = false,
@@ -157,7 +157,7 @@ end
                 setup = _setup_qa_test(["gen1"], 1:1)
                 JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
 
-                IOM._add_dnmdt_quadratic_approx!(
+                IOM._add_dnmdt_univariate_approx!(
                     setup.container, MockThermalGen, ["gen1"], 1:1,
                     setup.var_container, 0.0, 1.0, 2, DNMDT_META;
                     tighten = tighten,
@@ -194,7 +194,7 @@ end
             setup = _setup_qa_test(["gen1"], 1:1)
             JuMP.fix(setup.var_container["gen1", 1], 0.35; force = true)
 
-            IOM._add_dnmdt_quadratic_approx!(
+            IOM._add_dnmdt_univariate_approx!(
                 setup.container, MockThermalGen, ["gen1"], 1:1,
                 setup.var_container, 0.0, 1.0, L, DNMDT_META;
                 tighten = true,
@@ -429,7 +429,7 @@ end
             JuMP.fix(setup_h.x_var_container["dev1", 1], 0.4; force = true)
             JuMP.fix(setup_h.y_var_container["dev1", 1], 0.7; force = true)
 
-            IOM._add_hybs_bilinear_approx!(
+            IOM._add_hybs_sawtooth_bilinear_approx!(
                 setup_h.container, MockThermalGen, ["dev1"], 1:1,
                 setup_h.x_var_container, setup_h.y_var_container,
                 0.0, 1.0, 0.0, 1.0, depth, DNMDT_HYBS_META,
