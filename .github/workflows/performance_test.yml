@@ -49,7 +49,7 @@ jobs:
         if: steps.fc.outputs.comment-id == ''
         uses: peter-evans/create-or-update-comment@v5
         with:
-          issue-number: $${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event.pull_request.number }}
           body: |
             Performance Results
             Main
