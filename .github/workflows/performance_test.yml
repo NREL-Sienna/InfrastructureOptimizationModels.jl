@@ -57,7 +57,7 @@ jobs:
             This branch
             ${{ steps.branch_results}}
       - name: Update comment
-        if: steps.fc.outputs.comment-d != ''
+        if: steps.fc.outputs.comment-id != ''
         uses: peter-evans/create-or-update-comment@v5
         with:
           comment-id: ${{ steps.fc.outputs.comment-id }}
