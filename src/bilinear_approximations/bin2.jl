@@ -14,7 +14,7 @@ struct VariableDifferenceExpression <: ExpressionType end
 struct BilinearProductLinkingConstraint <: ConstraintType end
 
 """
-    _add_bilinear_approx_impl!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, quad_approx_fn, meta)
+    _add_bin2_bilinear_approx_impl!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, quad_approx_fn, meta)
 
 Internal implementation for Bin2 bilinear approximation using z = (1/2)((x+y)² − x² - y²).
 
@@ -36,7 +36,7 @@ approximating x·y in a `BilinearProductExpression` expression container.
 - `quad_approx_fn`: callable with signature (container, C, names, ts, var_cont, lo, hi, meta) → nothing
 - `meta::String`: identifier for container keys
 """
-function _add_bilinear_approx_impl!(
+function _add_bin2_bilinear_approx_impl!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -135,15 +135,15 @@ function _add_bilinear_approx_impl!(
 end
 
 """
-    _add_sos2_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, num_segments, meta; add_mccormick)
+    _add_bin2_sos2_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, num_segments, meta; add_mccormick)
 
 Approximate x·y using Bin2 decomposition with solver-native SOS2 quadratic approximations.
 
 # Arguments
-Same as `_add_bilinear_approx_impl!` plus:
+Same as `_add_bin2_bilinear_approx_impl!` plus:
 - `num_segments::Int`: number of PWL segments for each quadratic approximation
 """
-function _add_sos2_bilinear_approx!(
+function _add_bin2_sos2_bilinear_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -172,7 +172,7 @@ function _add_sos2_bilinear_approx!(
                 m;
                 add_mccormick,
             )
-    return _add_bilinear_approx_impl!(
+    return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
@@ -180,15 +180,15 @@ function _add_sos2_bilinear_approx!(
 end
 
 """
-    _add_manual_sos2_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, num_segments, meta; add_mccormick)
+    _add_bin2_manual_sos2_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, num_segments, meta; add_mccormick)
 
 Approximate x·y using Bin2 decomposition with manual SOS2 quadratic approximations.
 
 # Arguments
-Same as `_add_bilinear_approx_impl!` plus:
+Same as `_add_bin2_bilinear_approx_impl!` plus:
 - `num_segments::Int`: number of PWL segments for each quadratic approximation
 """
-function _add_manual_sos2_bilinear_approx!(
+function _add_bin2_manual_sos2_bilinear_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -217,7 +217,7 @@ function _add_manual_sos2_bilinear_approx!(
                 m;
                 add_mccormick,
             )
-    return _add_bilinear_approx_impl!(
+    return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
@@ -225,15 +225,15 @@ function _add_manual_sos2_bilinear_approx!(
 end
 
 """
-    _add_sawtooth_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, depth, meta; add_mccormick)
+    _add_bin2_sawtooth_bilinear_approx!(container, C, names, time_steps, x_var_container, y_var_container, x_min, x_max, y_min, y_max, depth, meta; add_mccormick)
 
 Approximate x·y using Bin2 decomposition with sawtooth quadratic approximations.
 
 # Arguments
-Same as `_add_bilinear_approx_impl!` plus:
+Same as `_add_bin2_bilinear_approx_impl!` plus:
 - `depth::Int`: sawtooth depth (number of binary variables per quadratic approximation)
 """
-function _add_sawtooth_bilinear_approx!(
+function _add_bin2_sawtooth_bilinear_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -264,14 +264,14 @@ function _add_sawtooth_bilinear_approx!(
                 tighten,
                 add_mccormick,
             )
-    return _add_bilinear_approx_impl!(
+    return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;
     )
 end
 
-function _add_dnmdt_quadratic_bilinear_approx!(
+function _add_bin2_dnmdt_bilinear_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -304,7 +304,7 @@ function _add_dnmdt_quadratic_bilinear_approx!(
                 tighten,
                 add_mccormick,
             )
-    return _add_bilinear_approx_impl!(
+    return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var_container, y_var_container,
         x_min, x_max, y_min, y_max, quad_fn, meta;

@@ -206,11 +206,11 @@ end
 # ─── MIP model using IOM bilinear approximations ─────────────────────────────
 
 bilinear_methods = (
-    ("Bin2+sSOS", IOM._add_sos2_bilinear_approx!, ()),
-    ("Bin2+mSOS+McQuad", IOM._add_manual_sos2_bilinear_approx!, (add_mccormick = true,)),
-    ("Bin2+Saw", IOM._add_sawtooth_bilinear_approx!, ()),
-    ("Bin2+DNMDT", IOM._add_dnmdt_quadratic_bilinear_approx!, (double = true,)),
-    ("Bin2+T-DNMDT", IOM._add_dnmdt_quadratic_bilinear_approx!, (double = true, tighten = true,)),
+    ("Bin2+sSOS", IOM._add_bin2_sos2_bilinear_approx!, ()),
+    ("Bin2+mSOS+McQuad", IOM._add_bin2_manual_sos2_bilinear_approx!, (add_mccormick = true,)),
+    ("Bin2+Saw", IOM._add_bin2_sawtooth_bilinear_approx!, ()),
+    ("Bin2+DNMDT", IOM._add_bin2_dnmdt_bilinear_approx!, (double = true,)),
+    ("Bin2+T-DNMDT", IOM._add_bin2_dnmdt_bilinear_approx!, (double = true, tighten = true,)),
     ("Bin2+DNMDT+McQuad", IOM._add_dnmdt_bilinear_approx!, (double = true, add_mccormick = true)),
     ("HybS+sSOS", IOM._add_hybs_sos2_bilinear_approx!, ()),
     ("HybS+sSOS+McAll", IOM._add_hybs_sos2_bilinear_approx!, (add_mccormick = true, add_quad_mccormick = true)),

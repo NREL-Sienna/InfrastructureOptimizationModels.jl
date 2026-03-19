@@ -270,19 +270,19 @@ function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
     # --- Dispatch to the chosen bilinear approximation method ---
     bilinear_fn! = if method === :sos2
         (cont, names, xc, yc, ylo, yhi, meta) ->
-            IOM._add_sos2_bilinear_approx!(
+            IOM._add_bin2_sos2_bilinear_approx!(
                 cont, NetworkNode, names, time_steps, xc, yc,
                 V_MIN, V_MAX, ylo, yhi, refinement, meta,
             )
     elseif method === :manual_sos2
         (cont, names, xc, yc, ylo, yhi, meta) ->
-            IOM._add_manual_sos2_bilinear_approx!(
+            IOM._add_bin2_manual_sos2_bilinear_approx!(
                 cont, NetworkNode, names, time_steps, xc, yc,
                 V_MIN, V_MAX, ylo, yhi, refinement, meta,
             )
     elseif method === :sawtooth
         (cont, names, xc, yc, ylo, yhi, meta) ->
-            IOM._add_sawtooth_bilinear_approx!(
+            IOM._add_bin2_sawtooth_bilinear_approx!(
                 cont, NetworkNode, names, time_steps, xc, yc,
                 V_MIN, V_MAX, ylo, yhi, refinement, meta,
             )

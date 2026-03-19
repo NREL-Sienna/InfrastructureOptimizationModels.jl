@@ -526,7 +526,7 @@ end
 
             # Bin2 (sawtooth)
             setup_b = _setup_bilinear_test(["dev1"], 1:1)
-            IOM._add_sawtooth_bilinear_approx!(
+            IOM._add_bin2_sawtooth_bilinear_approx!(
                 setup_b.container,
                 MockThermalGen,
                 ["dev1"],

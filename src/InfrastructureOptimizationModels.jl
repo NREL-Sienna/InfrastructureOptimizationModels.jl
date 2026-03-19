@@ -600,7 +600,7 @@ include("quadratic_approximations/epigraph.jl")
 
 # Bilinear approximations (x·y via Bin2/HybS decomposition)
 include("bilinear_approximations/mccormick.jl")
-include("bilinear_approximations/bilinear.jl")
+include("bilinear_approximations/bin2.jl")
 include("bilinear_approximations/hybs.jl")
 
 # DNMDT uses BilinearProductVariable from bilinear.jl — must come after bilinear_approximations
