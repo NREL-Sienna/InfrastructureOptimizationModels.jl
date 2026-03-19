@@ -32,22 +32,22 @@ get_input_offer_curves(cost::PSY.MarketBidCost) = PSY.get_decremental_offer_curv
 # these 2-argument getters return either a TimeArray of curves or a single curve, 
 # depending on whether the cost is time varying or not.
 get_output_offer_curves(
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     cost::PSY.ImportExportCost;
     kwargs...,
 ) = PSY.get_import_offer_curves(component, cost; kwargs...)
 get_output_offer_curves(
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     cost::PSY.MarketBidCost;
     kwargs...,
 ) = PSY.get_incremental_offer_curves(component, cost; kwargs...)
 get_input_offer_curves(
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     cost::PSY.ImportExportCost;
     kwargs...,
 ) = PSY.get_export_offer_curves(component, cost; kwargs...)
 get_input_offer_curves(
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     cost::PSY.MarketBidCost;
     kwargs...,
 ) = PSY.get_decremental_offer_curves(component, cost; kwargs...)
@@ -128,7 +128,7 @@ _has_import_export_cost(device::PSY.Source) =
     PSY.get_operation_cost(device) isa PSY.ImportExportCost
 _has_import_export_cost(::PSY.StaticInjection) = false
 
-_has_offer_curve_cost(device::PSY.Component) =
+_has_offer_curve_cost(device::IS.InfrastructureSystemsComponent) =
     _has_market_bid_cost(device) || _has_import_export_cost(device)
 
 _has_parameter_time_series(::StartupCostParameter, device::PSY.StaticInjection) =
@@ -479,7 +479,7 @@ function _get_pwl_data(
     container::OptimizationContainer,
     component::T,
     time::Int,
-) where {T <: PSY.Component}
+) where {T <: IS.InfrastructureSystemsComponent}
     cost_data = get_offer_curves(dir, component)
 
     if is_time_variant(cost_data)
@@ -555,7 +555,7 @@ function add_pwl_term!(
     ::PSY.OfferCurveCost,
     ::U,
     ::V,
-) where {T <: PSY.Component, U <: VariableType, V <: AbstractDeviceFormulation}
+) where {T <: IS.InfrastructureSystemsComponent, U <: VariableType, V <: AbstractDeviceFormulation}
     W = _block_offer_var(dir)
     X = _block_offer_constraint(dir)
 
@@ -604,7 +604,7 @@ Decremental-only overload for load formulations is in POM.
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     cost_function::PSY.OfferCurveCost,
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
@@ -630,7 +630,7 @@ _vom_offer_direction(::AbstractDeviceFormulation) = IncrementalOffer()
 function _add_vom_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     op_cost::PSY.OfferCurveCost,
     ::U,
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
@@ -648,7 +648,7 @@ end
 function _add_vom_cost_to_objective_helper!(
     container::OptimizationContainer,
     ::T,
-    component::PSY.Component,
+    component::IS.InfrastructureSystemsComponent,
     ::PSY.OfferCurveCost,
     cost_data::PSY.CostCurve{PSY.PiecewiseIncrementalCurve},
     ::U,

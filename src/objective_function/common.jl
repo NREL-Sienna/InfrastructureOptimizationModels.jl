@@ -149,7 +149,7 @@ end
 function _onvar_cost(
     ::OptimizationContainer,
     cost_function::PSY.CostCurve{T},
-    ::PSY.Component,
+    ::IS.InfrastructureSystemsComponent,
     ::Int,
 ) where {T <: IS.ValueCurve}
     return _onvar_cost(cost_function)

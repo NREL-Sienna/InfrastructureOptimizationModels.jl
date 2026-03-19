@@ -5,7 +5,6 @@ Verifies the PSY-free delta formulation path added in value_curve_cost.jl.
 
 # Formulation dispatch: multiplier and sos_status for test types
 IOM.objective_function_multiplier(::TestVariableType, ::TestDeviceFormulation) = 1.0
-IOM._sos_status(::Type, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
 
 # Helper to create a ForecastKey with sensible defaults
 function _make_forecast_key(name::String)
