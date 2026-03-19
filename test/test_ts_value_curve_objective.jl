@@ -65,8 +65,8 @@ end
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
         # Populate slope/breakpoint parameters
-        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
-        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
+        slopes_mat = fill(slopes, (length(names), time_steps))
+        bp_map = fill(breakpoints, (length(names), time_steps))
         setup_delta_pwl_parameters!(
             container, MockThermalGen, names, slopes_mat, bp_mat, time_steps)
 
@@ -182,8 +182,8 @@ end
         add_test_expression!(
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
-        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
-        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
+        slopes_mat = fill(slopes, (length(names), time_steps))
+        bp_map = fill(breakpoints, (length(names), time_steps))
         setup_delta_pwl_parameters!(
             container, MockThermalGen, names, slopes_mat, bp_mat, time_steps)
 
@@ -222,8 +222,8 @@ end
         add_test_expression!(
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
-        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
-        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
+        slopes_mat = fill(slopes, (length(names), time_steps))
+        bp_map = fill(breakpoints, (length(names), time_steps))
         setup_delta_pwl_parameters!(
             container, MockThermalGen, names, slopes_mat, bp_mat, time_steps;
             dir = IOM.DecrementalOffer())
