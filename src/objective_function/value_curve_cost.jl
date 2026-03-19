@@ -729,13 +729,10 @@ function _add_ts_incremental_pwl_cost!(
     slopes = Vector{Float64}(undef, n_segments)
     breakpoints = Vector{Float64}(undef, n_points)
 
-    # NATURAL_UNITS conversion factors (slopes scale up, breakpoints scale down)
-    inv_base = 1.0 / model_base_power
-
     for t in get_time_steps(container)
         _fill_pwl_data_from_arrays!(
             slopes, breakpoints, slope_arr, slope_mult, bp_arr, bp_mult,
-            seg_axis, point_axis, name, t, model_base_power, inv_base)
+            seg_axis, point_axis, name, t, model_base_power)
         pwl_vars = add_pwl_variables!(
             container, W, C, name, t, n_segments; upper_bound = Inf)
         _add_pwl_constraint!(container, component, T(), U(), breakpoints, pwl_vars, t, X)
@@ -763,7 +760,6 @@ function _fill_pwl_data_from_arrays!(
     name::String,
     time::Int,
     model_base_power::Float64,
-    inv_base::Float64,
 )
     for (i, seg) in enumerate(seg_axis)
         slopes[i] =
@@ -771,7 +767,7 @@ function _fill_pwl_data_from_arrays!(
             model_base_power
     end
     for (i, pt) in enumerate(point_axis)
-        breakpoints[i] = bp_arr[name, pt, time] * bp_mult[name, pt, time] * inv_base
+        breakpoints[i] = bp_arr[name, pt, time] * bp_mult[name, pt, time] * (1.0 / model_base_power)
     end
     return
 end
