@@ -891,3 +891,338 @@ end
         @test con_set.value ≈ -P_min
     end
 end
+
+# =========================================================================
+# Lambda PWL Formulation — _add_pwl_term! structure and coefficients
+# =========================================================================
+
+"""
+Set up container with power variables for multiple devices (lambda PWL tests).
+"""
+function setup_lambda_pwl_container(
+    time_steps::UnitRange{Int},
+    names::Vector{String};
+    base_power::Float64 = 100.0,
+    resolution::Dates.Period = Dates.Hour(1),
+)
+    sys = MockSystem(base_power)
+    settings = IOM.Settings(
+        sys;
+        horizon = Dates.Hour(length(time_steps)),
+        resolution = resolution,
+    )
+    container = IOM.OptimizationContainer(sys, settings, JuMP.Model(), MockDeterministic)
+    IOM.set_time_steps!(container, time_steps)
+    var_container = IOM.add_variable_container!(
+        container, TestPWLVariable(), MockThermalGen, names, time_steps)
+    jump_model = IOM.get_jump_model(container)
+    for name in names, t in time_steps
+        var_container[name, t] =
+            JuMP.@variable(jump_model, base_name = "p_$(name)_$t")
+    end
+    return container
+end
+
+@testset "Lambda PWL Formulation — _add_pwl_term! structure" begin
+    @testset "1 device, 3 time steps, 3 breakpoints" begin
+        # vars:    3 power + 3×3 lambda = 12
+        # equalto: 2×3 = 6  (linking + normalization per time step)
+        time_steps = 1:3
+        device = make_mock_thermal("gen1")
+        container = setup_lambda_pwl_container(time_steps, ["gen1"])
+        cost_curve = IS.CostCurve(
+            IS.InputOutputCurve(IS.PiecewiseLinearData(CONVEX_PWL_POINTS)),
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+        IOM._add_pwl_term!(
+            container,
+            device,
+            cost_curve,
+            TestPWLVariable(),
+            TestPWLFormulation(),
+        )
+
+        jump_model = IOM.get_jump_model(container)
+        @test JuMP.num_variables(jump_model) == 12
+        @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.EqualTo{Float64}) == 6
+        @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.LessThan{Float64}) == 0
+        @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.GreaterThan{Float64}) == 0
+        @test (
+            (JuMP.VariableRef, MOI.ZeroOne) in JuMP.list_of_constraint_types(jump_model)
+        ) ==
+              false
+    end
+
+    @testset "1 device, 2 time steps, 2 breakpoints — single segment" begin
+        # vars:    2 power + 2×2 lambda = 6
+        # equalto: 2×2 = 4
+        time_steps = 1:2
+        device = make_mock_thermal("gen1")
+        container = setup_lambda_pwl_container(time_steps, ["gen1"])
+        single_seg_points = [(x = 0.0, y = 0.0), (x = 1.0, y = 20.0)]
+        cost_curve = IS.CostCurve(
+            IS.InputOutputCurve(IS.PiecewiseLinearData(single_seg_points)),
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+        IOM._add_pwl_term!(
+            container,
+            device,
+            cost_curve,
+            TestPWLVariable(),
+            TestPWLFormulation(),
+        )
+
+        jump_model = IOM.get_jump_model(container)
+        @test JuMP.num_variables(jump_model) == 6
+        @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.EqualTo{Float64}) == 4
+    end
+
+    @testset "2 devices, 2 time steps, 3 breakpoints" begin
+        # vars:    4 power + 2×2×3 lambda = 16
+        # equalto: 2×2×2 = 8
+        time_steps = 1:2
+        names = ["gen1", "gen2"]
+        container = setup_lambda_pwl_container(time_steps, names)
+        cost_curve = IS.CostCurve(
+            IS.InputOutputCurve(IS.PiecewiseLinearData(CONVEX_PWL_POINTS)),
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+        for name in names
+            device = make_mock_thermal(name)
+            IOM._add_pwl_term!(
+                container, device, cost_curve, TestPWLVariable(), TestPWLFormulation())
+        end
+
+        jump_model = IOM.get_jump_model(container)
+        @test JuMP.num_variables(jump_model) == 16
+        @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.EqualTo{Float64}) == 8
+    end
+
+    @testset "non-convex curve adds SOS2 constraints" begin
+        # equalto: 2×1 = 2, SOS2: 1
+        time_steps = 1:1
+        device = make_mock_thermal("gen1")
+        container = setup_lambda_pwl_container(time_steps, ["gen1"])
+        cost_curve = IS.CostCurve(
+            IS.InputOutputCurve(IS.PiecewiseLinearData(NONCONVEX_PWL_POINTS)),
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+        @test_logs (:warn, r"not compatible with a linear PWL") IOM._add_pwl_term!(
+            container, device, cost_curve, TestPWLVariable(), TestPWLFormulation())
+
+        jump_model = IOM.get_jump_model(container)
+        @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.EqualTo{Float64}) == 2
+        @test JuMP.num_constraints(
+            jump_model, Vector{JuMP.VariableRef}, MOI.SOS2{Float64}) == 1
+    end
+
+    @testset "all-zero cost returns nothing — no vars or constraints added" begin
+        time_steps = 1:2
+        device = make_mock_thermal("gen1")
+        container = setup_lambda_pwl_container(time_steps, ["gen1"])
+        zero_points = [(x = 0.0, y = 0.0), (x = 0.5, y = 0.0), (x = 1.0, y = 0.0)]
+        cost_curve = IS.CostCurve(
+            IS.InputOutputCurve(IS.PiecewiseLinearData(zero_points)),
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+        result = IOM._add_pwl_term!(
+            container, device, cost_curve, TestPWLVariable(), TestPWLFormulation())
+        @test isnothing(result)
+
+        jump_model = IOM.get_jump_model(container)
+        @test JuMP.num_variables(jump_model) == 2  # only power vars
+        @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.EqualTo{Float64}) == 0
+    end
+end
+
+@testset "Lambda PWL Formulation — objective coefficients" begin
+    @testset "y_coords become invariant objective coefficients (hourly, NATURAL_UNITS)" begin
+        # CONVEX_PWL_POINTS: (0,0), (0.5,10), (1.0,25); y_coords unchanged by unit normalization
+        # dt = 1.0; coefficient for λ_i = y_i * dt
+        time_steps = 1:1
+        device = make_mock_thermal("gen1")
+        container = setup_lambda_pwl_container(time_steps, ["gen1"])
+        cost_curve = IS.CostCurve(
+            IS.InputOutputCurve(IS.PiecewiseLinearData(CONVEX_PWL_POINTS)),
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+        IOM.add_variable_cost_to_objective!(
+            container, TestPWLVariable(), device, cost_curve, TestPWLFormulation())
+
+        obj = IOM.get_objective_expression(container)
+        invariant = IOM.get_invariant_terms(obj)
+        pwl_vars =
+            IOM.get_variable(container, IOM.PiecewiseLinearCostVariable(), MockThermalGen)
+
+        # y_coords: [0.0, 10.0, 25.0]; coefficients = y * 1.0 (dt=1h)
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 1, 1]) ≈ 0.0 atol = 1e-10
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 2, 1]) ≈ 10.0 atol = 1e-10
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 3, 1]) ≈ 25.0 atol = 1e-10
+    end
+
+    @testset "multiple time steps — each time step adds lambda vars to invariant" begin
+        # Static CostCurve: all time steps contribute to invariant (not variant)
+        # Each time step has distinct lambda variables with the same coefficients
+        time_steps = 1:3
+        device = make_mock_thermal("gen1")
+        container = setup_lambda_pwl_container(time_steps, ["gen1"])
+        cost_curve = IS.CostCurve(
+            IS.InputOutputCurve(IS.PiecewiseLinearData(CONVEX_PWL_POINTS)),
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+        IOM.add_variable_cost_to_objective!(
+            container, TestPWLVariable(), device, cost_curve, TestPWLFormulation())
+
+        @test count_objective_terms(container; variant = true) == 0
+        pwl_vars =
+            IOM.get_variable(container, IOM.PiecewiseLinearCostVariable(), MockThermalGen)
+        obj = IOM.get_objective_expression(container)
+        invariant = IOM.get_invariant_terms(obj)
+        for t in time_steps
+            @test JuMP.coefficient(invariant, pwl_vars["gen1", 2, t]) ≈ 10.0 atol = 1e-10
+            @test JuMP.coefficient(invariant, pwl_vars["gen1", 3, t]) ≈ 25.0 atol = 1e-10
+        end
+    end
+
+    @testset "15-min resolution scales coefficients by dt = 0.25" begin
+        time_steps = 1:1
+        device = make_mock_thermal("gen1")
+        container = setup_lambda_pwl_container(
+            time_steps, ["gen1"]; resolution = Dates.Minute(15))
+        cost_curve = IS.CostCurve(
+            IS.InputOutputCurve(IS.PiecewiseLinearData(CONVEX_PWL_POINTS)),
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+        IOM.add_variable_cost_to_objective!(
+            container, TestPWLVariable(), device, cost_curve, TestPWLFormulation())
+
+        obj = IOM.get_objective_expression(container)
+        invariant = IOM.get_invariant_terms(obj)
+        pwl_vars =
+            IOM.get_variable(container, IOM.PiecewiseLinearCostVariable(), MockThermalGen)
+
+        dt = 15.0 / 60.0  # 0.25
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 2, 1]) ≈ 10.0 * dt atol = 1e-10
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 3, 1]) ≈ 25.0 * dt atol = 1e-10
+    end
+
+    @testset "FuelCurve: coefficients scaled by fuel_cost" begin
+        # FuelCurve: heat rate y_i * fuel_cost * dt gives objective coefficient
+        fuel_cost = 5.0
+        (; container, device, cost_curve) = setup_pwl_test(;
+            time_steps = 1:1,
+            points = CONVEX_PWL_POINTS,
+            fuel_cost = fuel_cost,
+        )
+        IOM.add_variable_cost_to_objective!(
+            container, TestPWLVariable(), device, cost_curve, TestPWLFormulation())
+
+        obj = IOM.get_objective_expression(container)
+        invariant = IOM.get_invariant_terms(obj)
+        pwl_vars =
+            IOM.get_variable(container, IOM.PiecewiseLinearCostVariable(), MockThermalGen)
+
+        # y_coords [0,10,25] * fuel_cost=5 * dt=1
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 2, 1]) ≈ 10.0 * fuel_cost atol =
+            1e-10
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 3, 1]) ≈ 25.0 * fuel_cost atol =
+            1e-10
+    end
+end
+
+@testset "Lambda PWL — PiecewiseAverageCurve dispatch" begin
+    @testset "CostCurve{PiecewiseAverageCurve} produces same objective as equivalent PiecewisePointCurve" begin
+        # PiecewiseAverageCurve(0.0, [0,50,100], [20,30]):
+        #   at x=50:  total = 50*20 = 1000
+        #   at x=100: total = 100*30 = 3000
+        # This should match CostCurve{PiecewisePointCurve} with points (0,0),(50,1000),(100,3000)
+        avg_curve = IS.PiecewiseAverageCurve(0.0, [0.0, 50.0, 100.0], [20.0, 30.0])
+        cost_curve_avg = IS.CostCurve(avg_curve, IS.UnitSystem.NATURAL_UNITS)
+
+        equivalent_points = [
+            (x = 0.0, y = 0.0), (x = 50.0, y = 1000.0), (x = 100.0, y = 3000.0)]
+        cost_curve_pts = IS.CostCurve(
+            IS.InputOutputCurve(IS.PiecewiseLinearData(equivalent_points)),
+            IS.UnitSystem.NATURAL_UNITS,
+        )
+
+        time_steps = 1:1
+        device = make_mock_thermal("gen1")
+
+        container_avg = setup_lambda_pwl_container(time_steps, ["gen1"])
+        IOM.add_variable_cost_to_objective!(
+            container_avg, TestPWLVariable(), device, cost_curve_avg, TestPWLFormulation())
+
+        container_pts = setup_lambda_pwl_container(time_steps, ["gen1"])
+        IOM.add_variable_cost_to_objective!(
+            container_pts, TestPWLVariable(), device, cost_curve_pts, TestPWLFormulation())
+
+        obj_avg = IOM.get_objective_expression(container_avg)
+        obj_pts = IOM.get_objective_expression(container_pts)
+        inv_avg = IOM.get_invariant_terms(obj_avg)
+        inv_pts = IOM.get_invariant_terms(obj_pts)
+
+        pwl_avg = IOM.get_variable(
+            container_avg,
+            IOM.PiecewiseLinearCostVariable(),
+            MockThermalGen,
+        )
+        pwl_pts = IOM.get_variable(
+            container_pts,
+            IOM.PiecewiseLinearCostVariable(),
+            MockThermalGen,
+        )
+
+        for i in 1:3
+            @test JuMP.coefficient(inv_avg, pwl_avg["gen1", i, 1]) ≈
+                  JuMP.coefficient(inv_pts, pwl_pts["gen1", i, 1]) atol = 1e-10
+        end
+    end
+
+    @testset "CostCurve{PiecewiseAverageCurve} creates lambda variables and constraints" begin
+        avg_curve = IS.PiecewiseAverageCurve(0.0, [0.0, 50.0, 100.0], [20.0, 30.0])
+        cost_curve = IS.CostCurve(avg_curve, IS.UnitSystem.NATURAL_UNITS)
+
+        time_steps = 1:2
+        device = make_mock_thermal("gen1")
+        container = setup_lambda_pwl_container(time_steps, ["gen1"])
+        IOM.add_variable_cost_to_objective!(
+            container, TestPWLVariable(), device, cost_curve, TestPWLFormulation())
+
+        # vars: 2 power + 2*3 lambda = 8; equalto: 2*2 = 4
+        jump_model = IOM.get_jump_model(container)
+        @test JuMP.num_variables(jump_model) == 8
+        @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.EqualTo{Float64}) == 4
+        @test IOM.has_container_key(
+            container,
+            IOM.PiecewiseLinearCostVariable,
+            MockThermalGen,
+        )
+    end
+
+    @testset "FuelCurve{PiecewiseAverageCurve} produces correct objective" begin
+        # Average heat rate curve: [8, 10] MMBTU/MWh at [0,50,100] MW
+        # Total heat rate: at x=50 → 400, at x=100 → 1000
+        # With fuel_cost=5.0: coefficients = [0, 2000, 5000]
+        avg_fuel = IS.PiecewiseAverageCurve(0.0, [0.0, 50.0, 100.0], [8.0, 10.0])
+        fuel_cost = 5.0
+        fuel_curve = IS.FuelCurve(avg_fuel, IS.UnitSystem.NATURAL_UNITS, fuel_cost)
+
+        op_cost = MockOperationCost(0.0, false, fuel_cost)
+        device = make_mock_thermal("gen1"; operation_cost = op_cost)
+        time_steps = 1:1
+        container = setup_lambda_pwl_container(time_steps, ["gen1"])
+        IOM.add_variable_cost_to_objective!(
+            container, TestPWLVariable(), device, fuel_curve, TestPWLFormulation())
+
+        obj = IOM.get_objective_expression(container)
+        invariant = IOM.get_invariant_terms(obj)
+        pwl_vars =
+            IOM.get_variable(container, IOM.PiecewiseLinearCostVariable(), MockThermalGen)
+
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 1, 1]) ≈ 0.0 atol = 1e-10
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 2, 1]) ≈ 400.0 * 5.0 atol = 1e-10
+        @test JuMP.coefficient(invariant, pwl_vars["gen1", 3, 1]) ≈ 1000.0 * 5.0 atol =
+            1e-10
+    end
+end

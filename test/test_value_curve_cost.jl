@@ -11,9 +11,6 @@ add_variable_cost_to_objective! dispatch for
 CostCurve{TimeSeriesPiecewiseIncrementalCurve}.
 """
 
-const GAEVF = JuMP.GenericAffExpr{Float64, VariableRef}
-const GQEVF = JuMP.GenericQuadExpr{Float64, VariableRef}
-
 function moi_tests(
     container::IOM.OptimizationContainer,
     vars::Int,
@@ -24,22 +21,23 @@ function moi_tests(
     binary::Bool,
     lessthan_quadratic::Union{Int, Nothing} = nothing,
 )
-    jump_model = PSI.get_jump_model(container)
+    jump_model = IOM.get_jump_model(container)
     @test JuMP.num_variables(jump_model) == vars
-    @test JuMP.num_constraints(jump_model, GAEVF, MOI.Interval{Float64}) == interval
-    @test JuMP.num_constraints(jump_model, GAEVF, MOI.LessThan{Float64}) == lessthan
-    @test JuMP.num_constraints(jump_model, GAEVF, MOI.GreaterThan{Float64}) == greaterthan
-    @test JuMP.num_constraints(jump_model, GAEVF, MOI.EqualTo{Float64}) == equalto
+    @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.Interval{Float64}) == interval
+    @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.LessThan{Float64}) == lessthan
+    @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.GreaterThan{Float64}) == greaterthan
+    @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.EqualTo{Float64}) == equalto
     @test ((JuMP.VariableRef, MOI.ZeroOne) in JuMP.list_of_constraint_types(jump_model)) ==
           binary
     !isnothing(lessthan_quadratic) &&
-        @test JuMP.num_constraints(jump_model, GQEVF, MOI.LessThan{Float64}) ==
+        @test JuMP.num_constraints(
+            jump_model,
+            JuMP.GenericQuadExpr{Float64, VariableRef},
+            MOI.LessThan{Float64},
+        ) ==
               lessthan_quadratic
     return
 end
-
-# Alias for readability in this file
-const PSI = IOM
 
 """
 Helper: set up a container with a power variable for delta PWL offer tests.
@@ -103,7 +101,8 @@ end
             jump_model = IOM.get_jump_model(container)
             vars = [JuMP.@variable(jump_model), JuMP.@variable(jump_model)]
             slopes = [8.0, 16.0]
-            expr = IOM.get_pwl_cost_expression(vars, slopes, IOM.OBJECTIVE_FUNCTION_NEGATIVE)
+            expr =
+                IOM.get_pwl_cost_expression(vars, slopes, IOM.OBJECTIVE_FUNCTION_NEGATIVE)
             @test JuMP.coefficient(expr, vars[1]) ≈ -8.0 atol = 1e-10
             @test JuMP.coefficient(expr, vars[2]) ≈ -16.0 atol = 1e-10
         end
@@ -216,8 +215,8 @@ end
                 jump_model, con_container, "gen1", 1,
                 power_var, pwl_vars, breakpoints)
 
-            @test JuMP.num_constraints(jump_model, GAEVF, MOI.EqualTo{Float64}) == 1
-            @test JuMP.num_constraints(jump_model, GAEVF, MOI.LessThan{Float64}) == 2
+            @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.EqualTo{Float64}) == 1
+            @test JuMP.num_constraints(jump_model, IOM.GAE, MOI.LessThan{Float64}) == 2
         end
 
         @testset "linking constraint rhs is zero (standard form)" begin
@@ -261,7 +260,7 @@ end
             # Width constraints are stored as upper bounds on the variables
             # Block 1: delta_1 <= 0.3 - 0.0 = 0.3
             # Block 2: delta_2 <= 1.0 - 0.3 = 0.7
-            lessthan_cons = JuMP.all_constraints(jump_model, GAEVF, MOI.LessThan{Float64})
+            lessthan_cons = JuMP.all_constraints(jump_model, IOM.GAE, MOI.LessThan{Float64})
             rhs_values = sort([
                 JuMP.constraint_object(c).set.upper for c in lessthan_cons])
             @test rhs_values[1] ≈ 0.3 atol = 1e-10
@@ -531,18 +530,23 @@ end
             variant = IOM.get_variant_terms(obj)
 
             # t=1: [10, 20] * 100 * 1.0
-            @test JuMP.coefficient(variant, delta_container[("gen1", 1, 1)]) ≈ 1000.0 atol = 1e-10
-            @test JuMP.coefficient(variant, delta_container[("gen1", 2, 1)]) ≈ 2000.0 atol = 1e-10
+            @test JuMP.coefficient(variant, delta_container[("gen1", 1, 1)]) ≈ 1000.0 atol =
+                1e-10
+            @test JuMP.coefficient(variant, delta_container[("gen1", 2, 1)]) ≈ 2000.0 atol =
+                1e-10
             # t=2: [15, 25] * 100 * 1.0
-            @test JuMP.coefficient(variant, delta_container[("gen1", 1, 2)]) ≈ 1500.0 atol = 1e-10
-            @test JuMP.coefficient(variant, delta_container[("gen1", 2, 2)]) ≈ 2500.0 atol = 1e-10
+            @test JuMP.coefficient(variant, delta_container[("gen1", 1, 2)]) ≈ 1500.0 atol =
+                1e-10
+            @test JuMP.coefficient(variant, delta_container[("gen1", 2, 2)]) ≈ 2500.0 atol =
+                1e-10
         end
 
         @testset "non-default base_power correctly scales coefficients" begin
             time_steps = 1:1
             names = ["gen1"]
             base_power = 200.0
-            container = setup_offer_pwl_container(time_steps, names; base_power = base_power)
+            container =
+                setup_offer_pwl_container(time_steps, names; base_power = base_power)
 
             slopes_mat = Matrix{Vector{Float64}}(undef, 1, 1)
             bp_mat = Matrix{Vector{Float64}}(undef, 1, 1)
@@ -563,8 +567,10 @@ end
             variant = IOM.get_variant_terms(obj)
 
             # 0.05 * 200 * 1.0 = 10.0 and 0.1 * 200 * 1.0 = 20.0
-            @test JuMP.coefficient(variant, delta_container[("gen1", 1, 1)]) ≈ 10.0 atol = 1e-10
-            @test JuMP.coefficient(variant, delta_container[("gen1", 2, 1)]) ≈ 20.0 atol = 1e-10
+            @test JuMP.coefficient(variant, delta_container[("gen1", 1, 1)]) ≈ 10.0 atol =
+                1e-10
+            @test JuMP.coefficient(variant, delta_container[("gen1", 2, 1)]) ≈ 20.0 atol =
+                1e-10
         end
     end
 
@@ -592,7 +598,8 @@ end
             @test IOM.has_container_key(
                 container, IOM.PiecewiseLinearBlockIncrementalOffer, MockThermalGen)
             @test IOM.has_container_key(
-                container, IOM.PiecewiseLinearBlockIncrementalOfferConstraint, MockThermalGen)
+                container, IOM.PiecewiseLinearBlockIncrementalOfferConstraint,
+                MockThermalGen)
             # Decremental keys must NOT be created
             @test !IOM.has_container_key(
                 container, IOM.PiecewiseLinearBlockDecrementalOffer, MockThermalGen)
@@ -619,7 +626,8 @@ end
             @test IOM.has_container_key(
                 container, IOM.PiecewiseLinearBlockDecrementalOffer, MockThermalGen)
             @test IOM.has_container_key(
-                container, IOM.PiecewiseLinearBlockDecrementalOfferConstraint, MockThermalGen)
+                container, IOM.PiecewiseLinearBlockDecrementalOfferConstraint,
+                MockThermalGen)
             @test !IOM.has_container_key(
                 container, IOM.PiecewiseLinearBlockIncrementalOffer, MockThermalGen)
         end
