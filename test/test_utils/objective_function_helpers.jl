@@ -153,8 +153,8 @@ function setup_delta_pwl_parameters!(
     time_steps::UnitRange{Int};
     dir::IOM.OfferDirection = IOM.IncrementalOffer(),
 ) where {C <: IS.InfrastructureSystemsComponent}
-    n_segments::Int = length(slopes[1, 1])
-    n_points::Int = length(breakpoints[1, 1])
+    n_segments = length(slopes[1, 1])
+    n_points = length(breakpoints[1, 1])
     @assert n_points == n_segments + 1
 
     SlopeParam = IOM._slope_param(dir)

@@ -707,10 +707,10 @@ function _add_ts_incremental_pwl_cost!(
 }
     W = _block_offer_var(dir)
     X = _block_offer_constraint(dir)
-    name::String = get_name(component)
-    dt::Float64 = Dates.value(get_resolution(container)) / MILLISECONDS_IN_HOUR
-    sign_dt::Float64 = _objective_sign(dir) * dt
-    model_base_power::Float64 = get_model_base_power(container)
+    name = get_name(component)
+    dt = Dates.value(get_resolution(container)) / MILLISECONDS_IN_HOUR
+    sign_dt = _objective_sign(dir) * dt
+    model_base_power = get_model_base_power(container)
 
     # Hoist parameter array lookups out of the time loop (4 dict lookups total, not 4*T)
     SlopeParam = _slope_param(dir)
@@ -730,16 +730,16 @@ function _add_ts_incremental_pwl_cost!(
     breakpoints = Vector{Float64}(undef, n_points)
 
     # NATURAL_UNITS conversion factors (slopes scale up, breakpoints scale down)
-    inv_base::Float64 = 1.0 / model_base_power
+    inv_base = 1.0 / model_base_power
 
     for t in get_time_steps(container)
         _fill_pwl_data_from_arrays!(
             slopes, breakpoints, slope_arr, slope_mult, bp_arr, bp_mult,
             seg_axis, point_axis, name, t, model_base_power, inv_base)
-        pwl_vars::Vector{JuMP.VariableRef} = add_pwl_variables!(
+        pwl_vars = add_pwl_variables!(
             container, W, C, name, t, n_segments; upper_bound = Inf)
         _add_pwl_constraint!(container, component, T(), U(), breakpoints, pwl_vars, t, X)
-        pwl_cost::JuMP.AffExpr = get_pwl_cost_expression(pwl_vars, slopes, sign_dt)
+        pwl_cost = get_pwl_cost_expression(pwl_vars, slopes, sign_dt)
         add_cost_to_expression!(container, ProductionCostExpression, pwl_cost, C, name, t)
         add_to_objective_variant_expression!(container, pwl_cost)
     end
