@@ -25,13 +25,13 @@ Creates `n_points` variables with specified bounds.
 - `name`: component name
 - `t`: time period
 - `n_points`: number of PWL points (= number of delta variables)
-- `upper_bound`: upper bound for variables (default 1.0 for convex combination formulation;
-   use `Inf` for block offer formulation)
+- `upper_bound`: upper bound for variables (default 1.0; use `Inf` for block offer
+   formulation where segment capacity is enforced by constraints instead)
 
 # Returns
 Vector of the created JuMP variables.
 """
-function add_pwl_variables!(
+function add_pwl_variables_delta!(
     container::OptimizationContainer,
     ::Type{V},
     ::Type{C},
@@ -86,7 +86,7 @@ whether to use invariant or variant).
 # Returns
 JuMP affine expression representing the cost.
 """
-function get_pwl_cost_expression(
+function get_pwl_cost_expression_delta(
     pwl_vars::AbstractVector{JuMP.VariableRef},
     slopes::AbstractVector{Float64},
     multiplier::Float64,
@@ -168,7 +168,7 @@ Implement the constraints for PWL Block Offer variables. That is:
 \\sum_{k\\in\\mathcal{K}} \\delta_{k,t} \\leq P_{k+1,t}^{max} - P_{k,t}^{max}
 ```
 """
-function _add_pwl_constraint!(
+function add_pwl_constraint_delta!(
     container::OptimizationContainer,
     component::T,
     ::U,

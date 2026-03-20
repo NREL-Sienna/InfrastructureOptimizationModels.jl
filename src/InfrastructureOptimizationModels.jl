@@ -218,11 +218,11 @@ export add_linear_to_jump_expression!
 # Cost term helpers (generic objective function building blocks)
 export add_cost_term_invariant!
 export add_cost_term_variant!
-export add_pwl_variables!
+export add_pwl_variables_delta!
 export add_pwl_linking_constraint!
 export add_pwl_normalization_constraint!
 export add_pwl_sos2_constraint!
-export get_pwl_cost_expression
+export get_pwl_cost_expression_delta
 export process_market_bid_parameters!
 
 ## Outputs interfaces
@@ -342,7 +342,7 @@ export add_reserve_bound_range_constraints!
 export add_semicontinuous_range_constraints!, add_semicontinuous_ramp_constraints!
 # Cost helpers
 export add_shut_down_cost!, add_start_up_cost!
-export _add_pwl_term!, _get_sos_value, _onvar_cost
+export add_pwl_term_lambda!, _get_sos_value, _onvar_cost
 export uses_commitment_variables
 export add_cost_to_expression!
 # Duration constraint helpers
@@ -412,6 +412,10 @@ export get_services, get_contributing_devices, get_contributing_devices_map
 export set_resolution!, finalize_template!
 # JuMP access
 export get_jump_model
+# FIXME used in POM despite the underscore
+export _validate_warm_start_support
+export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
+export _add_services_to_device_model!
 # Cost utilities
 export get_proportional_cost_per_system_unit
 # Output writing/conversion
