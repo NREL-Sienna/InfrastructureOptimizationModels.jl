@@ -25,8 +25,8 @@ Creates `n_points` variables with specified bounds.
 - `name`: component name
 - `t`: time period
 - `n_points`: number of PWL points (= number of delta variables)
-- `upper_bound`: upper bound for variables (default 1.0 for convex combination formulation;
-   use `Inf` for block offer formulation)
+- `upper_bound`: upper bound for variables (default 1.0; use `Inf` for block offer
+   formulation where segment capacity is enforced by constraints instead)
 
 # Returns
 Vector of the created JuMP variables.
