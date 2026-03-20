@@ -597,14 +597,15 @@ include("quadratic_approximations/solver_sos2.jl")
 include("quadratic_approximations/manual_sos2.jl")
 include("quadratic_approximations/sawtooth.jl")
 include("quadratic_approximations/epigraph.jl")
+include("quadratic_approximations/nmdt.jl")
 
 # Bilinear approximations (x·y via Bin2/HybS decomposition)
 include("bilinear_approximations/mccormick.jl")
 include("bilinear_approximations/bin2.jl")
 include("bilinear_approximations/hybs.jl")
+include("bilinear_approximations/nmdt.jl")
 
-# DNMDT uses BilinearProductVariable from bilinear.jl — must come after bilinear_approximations
-include("quadratic_approximations/dnmdt.jl")
+# NMDT uses BilinearProductVariable from bilinear.jl — must come after bilinear_approximations
 
 # add_param_container! wrappers — must come after piecewise_linear.jl
 # (which defines VariableValueParameter and FixValueParameter)
