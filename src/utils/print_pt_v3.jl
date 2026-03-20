@@ -159,7 +159,6 @@ function _show_method(io::IO, model::OperationModel, backend::Symbol; kwargs...)
     _show_method(io, model.template, backend; kwargs...)
 end
 
-
 function Base.show(io::IO, ::MIME"text/plain", input::SimulationModels)
     _show_method(io, input, :auto)
 end
