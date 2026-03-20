@@ -137,7 +137,7 @@ function _add_nmdt_approx!(
         container, C, names, time_steps,
         [bx_y_expr], dz,
         x_disc, x_disc, meta;
-        result_type = BilinearExpression,
+        result_type = BilinearProductExpression,
     )
 end
 
@@ -161,7 +161,7 @@ function _add_nmdt_approx!(
     )
     yh_expr = _normed_variable!(
         container, C, names, time_steps,
-        y_var, y_min, y_max, depth, meta,
+        y_var, y_min, y_max, meta,
     )
 
     return _add_nmdt_approx!(
