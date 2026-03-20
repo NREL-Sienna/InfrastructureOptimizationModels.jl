@@ -156,7 +156,7 @@ using DocStringExtensions
 # Base Models
 export DecisionModel
 export EmulationModel
-export ProblemTemplate
+export AbstractProblemTemplate
 export ServicesModelContainer, DevicesModelContainer, BranchModelContainer
 export InitialCondition
 
@@ -412,10 +412,7 @@ export get_services, get_contributing_devices, get_contributing_devices_map
 export set_resolution!, finalize_template!
 # JuMP access
 export get_jump_model
-# FIXME used in POM despite the underscore
-export _validate_warm_start_support
 export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
-export _add_services_to_device_model!
 # Cost utilities
 export get_proportional_cost_per_system_unit
 # Output writing/conversion
@@ -630,14 +627,7 @@ include("initial_conditions/calculate_initial_condition.jl")
 
 # Utils
 include("utils/indexing.jl")
-@static if pkgversion(PrettyTables).major == 2
-    # When PrettyTables v3 is more widely adopted in the ecosystem, we can remove this file.
-    # In this case, we should also update the compat bounds in Project.toml to list only
-    # PrettyTables v3.
-    include("utils/print_pt_v2.jl")
-else
-    include("utils/print_pt_v3.jl")
-end
+include("utils/print_pt_v3.jl")
 include("utils/file_utils.jl")
 include("utils/logging.jl")
 include("utils/dataframes_utils.jl")

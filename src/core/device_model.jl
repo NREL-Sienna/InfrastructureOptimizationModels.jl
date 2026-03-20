@@ -102,7 +102,7 @@ get_subsystem(m::DeviceModel) = m.subsystem
 
 set_subsystem!(m::DeviceModel, id::String) = m.subsystem = id
 
-function _set_model!(
+function set_model!(
     dict::Dict,
     model::DeviceModel{D, B},
 ) where {D <: IS.InfrastructureSystemsComponent, B <: AbstractDeviceFormulation}
