@@ -412,10 +412,7 @@ export get_services, get_contributing_devices, get_contributing_devices_map
 export set_resolution!, finalize_template!
 # JuMP access
 export get_jump_model
-# FIXME used in POM despite the underscore
-export _validate_warm_start_support
 export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
-export _add_services_to_device_model!
 # Cost utilities
 export get_proportional_cost_per_system_unit
 # Output writing/conversion
