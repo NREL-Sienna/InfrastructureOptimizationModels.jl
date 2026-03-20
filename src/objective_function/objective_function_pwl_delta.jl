@@ -180,7 +180,7 @@ function add_pwl_constraint_delta!(
 ) where {T <: PSY.Component, U <: VariableType,
     D <: AbstractDeviceFormulation,
     W <: AbstractPiecewiseLinearBlockOfferConstraint}
-    variables = get_variable(container, U(), T)
+    variables = get_variable(container, U, T)
     const_container = lazy_container_addition!(
         container,
         W(),
@@ -193,7 +193,7 @@ function add_pwl_constraint_delta!(
         jump_fixed_value(first(break_points))::Float64
     elseif _include_min_gen_power_in_constraint(T, U(), D())
         p1::Float64 = jump_fixed_value(first(break_points))
-        on_vars = get_variable(container, OnVariable(), T)
+        on_vars = get_variable(container, OnVariable, T)
         p1 * on_vars[name, period]
     else
         0.0

@@ -47,7 +47,7 @@ function add_test_variable!(
         time_steps = IOM.get_time_steps(container)
         IOM.add_variable_container!(container, V(), C, [name], time_steps)
     end
-    var_container = IOM.get_variable(container, V(), C)
+    var_container = IOM.get_variable(container, V, C)
     jump_model = IOM.get_jump_model(container)
     var = JuMP.@variable(jump_model, base_name = "$(V)_$(name)_$(t)")
     var_container[name, t] = var

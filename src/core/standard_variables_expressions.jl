@@ -86,15 +86,10 @@ function add_expression_container!(
     sparse = false,
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: ProductionCostExpression, U <: Union{PSY.Component, PSY.System}}
-    expr_key = ExpressionKey(T, U, meta)
-    expr_type = JuMP.QuadExpr
-    return _add_expression_container!(
-        container,
-        expr_key,
-        expr_type,
-        axs...;
-        sparse = sparse,
-    )
+    expr_container =
+        _add_container!(container, T, U, JuMP.QuadExpr, sparse, axs...; meta = meta)
+    remove_undef!(expr_container)
+    return expr_container
 end
 
 #################################################################################

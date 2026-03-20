@@ -27,7 +27,7 @@ function add_proportional_cost!(
         name = get_name(d)
         rate = cost_term * multiplier
         for t in get_time_steps(container)
-            variable = get_variable(container, U(), T)[name, t]
+            variable = get_variable(container, U, T)[name, t]
             add_cost_term_invariant!(
                 container,
                 variable,
@@ -77,7 +77,7 @@ function add_proportional_cost_maybe_time_variant!(
                     t,
                 )
             else
-                variable = get_variable(container, U(), T)[name, t]
+                variable = get_variable(container, U, T)[name, t]
                 add_as_time_variant =
                     is_time_variant_term(container, op_cost_data, U(), T, V(), t)
                 if add_as_time_variant

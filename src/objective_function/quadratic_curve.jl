@@ -10,7 +10,7 @@ function _add_quadraticcurve_variable_term_to_model!(
     resolution = get_resolution(container)
     dt = Dates.value(resolution) / MILLISECONDS_IN_HOUR
     name = get_name(component)
-    var = get_variable(container, T(), V)[name, time_period]
+    var = get_variable(container, T, V)[name, time_period]
 
     cost = if quadratic_term_per_unit >= eps()
         @debug "$name Quadratic Variable Cost" _group = LOG_GROUP_COST_FUNCTIONS name
@@ -27,7 +27,7 @@ function _add_quadraticcurve_variable_term_to_model!(
     # For quadratic case, still need to add to expression (linear case handled by helper)
     if quadratic_term_per_unit >= eps() &&
        has_container_key(container, ProductionCostExpression, V)
-        expr = get_expression(container, ProductionCostExpression(), V)
+        expr = get_expression(container, ProductionCostExpression, V)
         JuMP.add_to_expression!(expr[name, time_period], cost)
     end
     return
