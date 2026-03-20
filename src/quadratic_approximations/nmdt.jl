@@ -11,6 +11,8 @@ struct NMDTEDiscretizationConstraint <: ConstraintType end
 struct NMDTBinaryContinuousProductConstraint <: ConstraintType end
 struct NMDTTightenConstraint <: ConstraintType end
 
+struct NormedVariableExpression <: ExpressionType end
+
 struct NMDTDiscretization
     norm_expr
     beta_var
@@ -18,249 +20,6 @@ struct NMDTDiscretization
     min::Float64
     max::Float64
     depth::Int
-end
-
-function _assemble_product!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    bc_prods,
-    dz_var,
-    x_disc::NMDTDiscretization,
-    y_disc::NMDTDIscretization,
-    meta::String,
-)
-    x_min, x_max = x_disc.min, x_disc.max
-    y_min, y_max = y_disc.min, y_disc.max
-    lx = x_max - x_min
-    ly = y_max - y_min
-
-    result_expr = add_expression_container!(
-        container,
-        NMDTResultExpression(),
-        C,
-        names,
-        time_steps;
-        meta
-    )
-
-    for name in names, t in time_steps
-        result = result[name, t] = JuMP.AffExpr(0.0)
-        zh = JuMP.AffExpr(0.0)
-        for term in terms
-            JuMP.add_to_expression!(zh, term)
-        end
-        JuMP.add_to_expression!(zh, dz_var)
-    
-        JuMP.add_to_expression!(result, lx * ly, zh)
-        JuMP.add_to_expression!(result, lx * y_min, xh_expr[name, t])
-        JuMP.add_to_expression!(result, ly * x_min, yh_expr[name, t])
-        JuMP.add_to_expression!(result, x_min * y_min)
-    end
-
-    return result_expr
-end
-
-function _add_dmndt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    bx_yh_expr,
-    by_dx_expr,
-    by_xh_expr,
-    bx_dy_expr,
-    x_disc::NMDTDiscretization,
-    y_disc::NMDTDiscretization,
-    meta::String,
-)
-    dz = _residual_product(
-
-    )
-    z1_expr = _assemble_product!(
-        container, C, names, time_steps
-        [bx_yh_expr, by_dx_expr], dz,
-        x_disc, y_disc, meta
-    )
-    z2_expr = _assemble_product!(
-        [by_xh_expr, bx_dy_expr],
-        y_disc, x_disc, meta
-    )
-
-    for name in names, t in time_steps
-        result = result_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(result, lambda, z1_expr)
-        JuMP.add_to_expression!(result, 1.0 - lambda, z2_expr)
-    end
-
-    return result
-end
-
-function _add_dmndt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_disc::NMDTDiscretization,
-    y_disc::NMDTDIscretization,
-    meta::String,
-)
-    bx_yh_expr = _binary_continuous_product!(
-        x_disc.beta, y_disc.norm_expr, 0.0, 1.0
-    )
-    by_dx_expr = _binary_continuous_product!(
-        y_disc.beta, x_disc.delta, 0.0, 2.0^(-x_disc.depth)
-    )
-    by_xh_expr = _binary_continuous_product!(
-        y_disc.beta, x_disc.norm_expr, 0.0, 1.0
-    )
-    bx_dy_expr = _binary_continuous_product!(
-        x_disc.beta, y_disc.delta, 0.0, 2.0^(-y_disc.depth)
-    )
-
-    return _add_dmndt_approx!(
-        container, C, names, time_steps,
-        bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr,
-        x_disc, y_disc, meta
-    )
-end
-
-function _add_dmndt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_var,
-    y_var,
-    x_min::Float64,
-    x_max::Float64,
-    y_min::Float64,
-    y_max::Float64,
-    meta::String
-)
-    x_disc = _discretize(
-        container, C, names, time_steps,
-        x_var, x_min, x_max, meta * "_x"
-    )
-    y_disc = _discretize(
-        container, C, names, time_steps,    
-        y_var, y_min, y_max, meta * "_y"
-    )
-
-    return _add_dmndt_approx!(
-        container, C, names, time_steps,
-        x_disc, y_disc, meta
-    )
-end
-
-function _add_dmndt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_disc::NMDTDiscretization,
-    meta::String,
-)
-    bx_xh_expr = _binary_continuous_product!(
-        x_disc.beta, x_disc.norm_expr, 0.0, 1.0
-    )
-    bx_dx_expr = _binary_continuous_product!(
-        x_disc.beta, x_disc.delta, 0.0, 2.0^(-x_disc.depth)
-    )
-
-    return _add_dmndt_approx!(
-        container, C, names, time_steps,
-        bx_xh_expr, bx_dx_expr, bx_xh_expr, bx_dx_expr,
-        x_disc, x_disc, meta
-    )
-end
-
-function _add_dmndt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_var,
-    x_min::Float64,
-    x_max::Float64,
-    meta::String,
-)
-    x_disc = _discretize(
-        container, C, names, time_steps
-        x_var, x_min, x_max, meta
-    )
-
-    return _add_dmndt_approx!(
-        container, C, names, time_steps,
-        x_disc, meta
-    )
-end
-
-function add_nmdt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_disc::NMDTDiscretization,
-    y_var,
-    y_min::Float64,
-    y_max::Float64,
-    meta::String,
-)
-    bx_y_expr = _binary_continuous_product!(
-        container, C, names, time_steps,
-        x_disc.beta, yh_expr, 0.0, 1.0,
-        meta
-    )
-    dz = _residual_product!(
-        x_disc, yh_expr
-    )
-    return _assemble_product!(
-        [bx_y_expr],
-        dz
-    )
-end
-
-function add_nmdt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_var,
-    y_var,
-    x_min::Float64,,
-    x_max::Float64,,
-    y_min::Float64,,
-    y_max::Float64,
-    meta::String,
-)
-    x_disc = _discretize(
-        container, C, names, time_steps,
-        x_var, x_min, x_max, meta
-    )
-
-    return add_nmdt_approx!(
-        container, C, names, time_steps,
-        x_disc, y_var, y_min, y_max, meta
-    )        
-end
-
-function add_nmdt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_var,
-    x_min::Float64,
-    x_max::Float64,
-    meta::String,
-)
-    return add_nmdt_approx!(
-        container, C, names, time_steps,
-        x_var, x_var, x_min, x_max, x_min, x_max,
-        meta
-    )
 end
 
 function _normed_variable!(
@@ -272,11 +31,11 @@ function _normed_variable!(
     x_min::Float64,
     x_max::Float64,
     meta::String
-)
+) where {C <: IS.InfrastructureSystemsComponent}
     lx = x_max - x_min
     result_expr = add_expression_container!(
         container,
-        DNMDTScaledVariableExpression(),
+        NormedVariableExpression(),
         C,
         names,
         time_steps;
@@ -295,7 +54,9 @@ function _discretize!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    xh_expr,
+    x_var,
+    x_min::Float64,
+    x_max::Float64,
     depth::Int,
     meta::String;
 ) where {C <: IS.InfrastructureSystemsComponent}
@@ -371,15 +132,14 @@ function _binary_continuous_product!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    bin_var,
+    bin_disc,
     cont_var,
     cont_min::Float64,
     cont_max::Float64,
-    depth::Int,
     meta::String;
     tighten::Bool = false,
-    scale::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    depth = bin_disc.depth
     jump_model = get_jump_model(container)
 
     u_var = add_variable_container!(
@@ -412,7 +172,7 @@ function _binary_continuous_product!(
 
     for name in names, t in time_steps
         result = result_expr[name, t] = JuMP.AffExpr(0.0)
-        for i=1:x_disc.depth
+        for i=1:depth
             u_i = u_var[name, i, t] = JuMP.@variable(
                 jump_model,
                 base_name = "NMDTBinContProd_$(C)_{$(name), $(i), $(t)}",
@@ -421,7 +181,7 @@ function _binary_continuous_product!(
             )
             _add_mccormick_envelope!(
                 jump_model, u_cons, (name, i, t),
-                cont_var[name, t], bin_var[name, i, t], u_i,
+                cont_var[name, t], bin_disc.beta_var[name, i, t], u_i,
                 cont_min, cont_max, 0.0, 1.0;
                 lower_bounds = !tighten
             )
@@ -432,23 +192,21 @@ function _binary_continuous_product!(
     return result_expr
 end
 
-function _tighten!(
+function _tighten_lower_bounds!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    z_expr,
-    x_var,
-    x_min::Float64,
-    x_max::Float64,
-    epigraph_depth::Int,
+    result_expr,
+    x_disc,
     meta::String;
 ) where {C <: IS.InfrastructureSystemsComponent}
     jump_model = get_jump_model(container)
 
+    epigraph_depth = max(2, ceil(Int, 1.5 * x_disc.depth))
     epi_expr = _add_epigraph_quadratic_approx!(
         container, C, names, time_steps,
-        x_var, x_min, x_max,
+        x_disc.norm_expr, 0.0, 1.0,
         epigraph_depth, meta * "_epi",
     )
     epi_cons = add_constraints_container!(
@@ -457,12 +215,12 @@ function _tighten!(
         C,
         names,
         time_steps;
-        meta = meta * "_epi_lb",
+        meta
     )
     for name in names, t in time_steps
         epi_cons[name, t] = JuMP.@constraint(
             jump_model,
-            z_expr[name, t] >= epi_expr[name, t],
+            result_expr[name, t] >= epi_expr[name, t],
         )
     end
 end
@@ -472,15 +230,13 @@ function _residual_product!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var,
+    x_disc,
     y_var,
-    x_min::Float64,
-    x_max::Float64,
-    y_min::Float64,
     y_max::Float64,
     meta::String;
     tighten::Bool = true,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    x_max = 2.0^(-x_disc.depth)
     jump_model = get_jump_model(container)
 
     z_var = add_variable_container!(
@@ -492,82 +248,41 @@ function _residual_product!(
         meta
     )
     
-    corners = (x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
     for name in names, t in time_steps
-        dz_var[name, t] = JuMP.@variable(
+        z_var[name, t] = JuMP.@variable(
             jump_model,
             base_name = "NMDTResidualProduct_$(C)_{$(name), $(t)}",
-            lower_bound = min(corners),
-            upper_bound = max(corners),
+            lower_bound = 0.0,
+            upper_bound = x_max * y_max,
         )
     end
 
     _add_mccormick_envelope!(
         container, C, names, time_steps,
-        x_var, y_var, z_var,
-        x_min, x_max, y_min, y_max,
+        x_disc.delta_var, y_var, z_var,
+        0.0, x_max, 0.0, y_max,
         meta; lower_bounds = !tighten
     )
 
-    return dz_var
+    return z_var
 end
 
-function _residual_product!(
+function _assemble_product!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
+    terms,
+    dz_var,
     x_disc::NMDTDiscretization,
     y_disc::NMDTDiscretization,
     meta::String;
-    tighten::Bool = true
-)
-    return _residual_product!(
-        container, C, names, time_steps,
-        x_disc.delta, y_disc.delta,
-        x_disc.dmin, x_disc.dmax,
-        y_disc.dmin, y_disc.dmax,
-        meta; tighten
-    )
-end
-
-function _residual_product!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_disc::NMDTDiscretization,
-    yh_expr,
-    meta::String;
-    tighten::Bool = true
-)
-    return _residual_product!(
-        container, C, names, time_steps,
-        x_disc.delta, yh_expr,
-        x_disc.dmin, x_disc.dmax,
-        0.0, 1.0,
-        meta; tighten
-    )
-end
-
-function _discretized_continuous_product!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    bx_yh_expr,
-    yh_expr,
-    dx_var,
-    x_min::Float64,
-    x_max::Float64,
-    y_min::Float64,
-    y_max::Float64,
-    depth::Int,
-    meta::String;
-    result_type::Type = NMDTResultExpression,
-    tighten::Bool = false
+    result_type = NMDTResultExpression
 ) where {C <: IS.InfrastructureSystemsComponent}
+    x_min, x_max = x_disc.min, x_disc.max
+    y_min, y_max = y_disc.min, y_disc.max
     lx = x_max - x_min
+    ly = y_max - y_min
 
     result_expr = add_expression_container!(
         container,
@@ -578,146 +293,108 @@ function _discretized_continuous_product!(
         meta
     )
 
-    # $\Delta_z=\Delta_xy$
-    dz_var = _residual_product(
-        container, C, names, time_steps,
-        dx_var, y_var, y_min, y_max,
-        depth, meta; tighten
-    )
-
     for name in names, t in time_steps
-        # $\hat{z}=\sum_{i=1}\beta_i^xy+\Delta_z
-        zh = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(zh, bx_y_expr[name, t])
-        JuMP.add_to_expression!(zh, dz_var[name, t])
-
-        # $z=xy=(l_x\hat{x}+\underline{x})y=l_x\hat{z}+\underline{x}y$
         result = result_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(result, lx, bx_y_expr[name, t])
-        JuMP.add_to_expression!(result, x_min, y_var[name, t])
+        zh = JuMP.AffExpr(0.0)
+        for term in terms
+            JuMP.add_to_expression!(zh, term[name, t])
+        end
+        JuMP.add_to_expression!(zh, dz_var[name, t])
+    
+        JuMP.add_to_expression!(result, lx * ly, zh)
+        JuMP.add_to_expression!(result, lx * y_min, x_disc.norm_expr[name, t])
+        JuMP.add_to_expression!(result, ly * x_min, y_disc.norm_expr[name, t])
+        JuMP.add_to_expression!(result, x_min * y_min)
     end
 
     return result_expr
 end
 
-# Compute the product between two discretized variables, where the individual
-# binary * continuous and continuous * continuous expressions have been
-# predetermined.
 function _add_dnmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    xh_expr,
     bx_yh_expr,
     by_dx_expr,
-    yh_expr,
     by_xh_expr,
     bx_dy_expr,
-    dx_var,
-    dy_var,
-    x_min::Float64,
-    x_max::Float64,
-    y_min::Float64,
-    y_max::Float64,
-    depth::Int,
+    x_disc::NMDTDiscretization,
+    y_disc::NMDTDiscretization,
     meta::String;
-    tighten::Bool = false,
-    result_type::Type = NMDTResultExpression,
-    lambda::Float64 = DNMDT_LAMBDA
+    lambda::Float64 = DNMDT_LAMBDA,
+    result_type::Type = DNMDTResultExpression
 ) where {C <: IS.InfrastructureSystemsComponent}
     result_expr = add_expression_container!(
         container,
-        DNMDTProductExpression(),
+        result_type(),
         C,
         names,
         time_steps;
         meta
     )
 
-    dnmdt1 = _assemble_product(
+    dz = _residual_product!(
         container, C, names, time_steps,
-        [bx_yh_expr, by_dx_expr],
-        xh_expr, yh_expr, dz_var,
-        x_min, x_max, y_min, y_max,
-        meta * "_nmdt1"
+        x_disc, y_disc.delta_var, 2.0^(-y_disc.depth),
+        meta
     )
-    dnmdt2 = _assemble_product!(
+    z1_expr = _assemble_product!(
         container, C, names, time_steps,
-        [by_xh_expr, bx_dy_expr],
-        yh_expr, xh_expr, dz_var,
-        y_min, y_max, x_min, x_max,
-        meta * "_nmdt2"
+        [bx_yh_expr, by_dx_expr], dz,
+        x_disc, y_disc, meta * "_nmdt1"
+    )
+    z2_expr = _assemble_product!(
+        container, C, names, time_steps,
+        [by_xh_expr, bx_dy_expr], dz,
+        y_disc, x_disc, meta * "_nmdt2"
     )
 
     for name in names, t in time_steps
         result = result_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(result, lambda, dnmdt1[name t])
-        JuMP.add_to_expression!(result, 1.0 - lambda, dnmdt2[name, t])
+        JuMP.add_to_expression!(result, lambda, z1_expr[name, t])
+        JuMP.add_to_expression!(result, 1.0 - lambda, z2_expr[name, t])
     end
 
     return result_expr
 end
-
 
 function _add_dnmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    xh_expr,
-    beta_x_var,
-    dx_var,
-    yh_expr,
-    beta_y_var,
-    dy_var,
-    x_min::Float64,
-    x_max::Float64,
-    y_min::Float64,
-    y_max::Float64,
-    depth::Int,
-    meta::String;
-    add_mccormick::Bool = false
+    x_disc::NMDTDiscretization,
+    y_disc::NMDTDiscretization,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    eps_L = 2.0^(-depth)
     bx_yh_expr = _binary_continuous_product!(
         container, C, names, time_steps,
-        beta_x_var, yh_expr, y_min, y_max,
-        depth, meta * "_bx_y"
+        x_disc, y_disc.norm_expr, 0.0, 1.0,
+        meta * "_bx_yh"
     )
     by_dx_expr = _binary_continuous_product!(
         container, C, names, time_steps,
-        beta_y_var, dx_var, 0.0, eps_L,
-        depth, meta * "_by_dx"
+        y_disc, x_disc.delta_var, 0.0, 2.0^(-x_disc.depth),
+        meta * "_by_dx"
     )
     by_xh_expr = _binary_continuous_product!(
         container, C, names, time_steps,
-        beta_y_var, xh_expr, x_min, x_max,
-        depth, meta * "_by_x"
+        y_disc, x_disc.norm_expr, 0.0, 1.0,
+        meta * "_by_xh"
     )
     bx_dy_expr = _binary_continuous_product!(
         container, C, names, time_steps,
-        beta_x_var, dy_var, 0.0, eps_L,
-        depth, meta * "_bx_dy"
+        x_disc, y_disc.delta_var, 0.0, 2.0^(-y_disc.depth),
+        meta * "_bx_dy"
     )
 
-    result_expr = _add_dnmdt_approx!(
+    return _add_dnmdt_approx!(
         container, C, names, time_steps,
-        xh_expr, bx_yh_expr, by_dx_expr,
-        yh_expr, by_xh_expr, bx_dy_expr,
-        dz_var, x_min, x_max, y_min, y_max,
-        depth, meta;
+        bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr,
+        x_disc, y_disc, meta,
+        result_type = BilinearProductExpression
     )
-
-    if add_mccormick
-        _add_mccormick_envelope!(
-            container, C, names, time_steps,
-            x_var, y_var, result_expr,
-            x_min, x_max, y_min, y_max,
-            meta
-        )
-    end
-    return result_expr
 end
 
 function _add_dnmdt_approx!(
@@ -732,36 +409,20 @@ function _add_dnmdt_approx!(
     y_min::Float64,
     y_max::Float64,
     depth::Int,
-    meta::String;
-    add_mccormick::Bool = false
+    meta::String
 ) where {C <: IS.InfrastructureSystemsComponent}
-    meta_x = meta * "_x"
-    meta_y = meta * "_y"
-
-    xh_expr = _normed_variable!(
+    x_disc = _discretize!(
         container, C, names, time_steps,
-        x_var, x_min, x_max, meta_x
+        x_var, x_min, x_max, depth, meta * "_x"
     )
-    yh_expr = _normed_variable!(
-        container, C, names, time_steps,
-        y_var, y_min, y_max, meta_y
-    )
-
-    beta_x_var, dx_var = _discretize!(
-        container, C, names, time_steps,
-        x_var, x_min, x_max, depth, meta_x
-    )
-    beta_y_var, dy_var = _discretize!(
-        container, C, names, time_steps,
-        y_var, y_min, y_max, depth, meta_y
+    y_disc = _discretize!(
+        container, C, names, time_steps,    
+        y_var, y_min, y_max, depth, meta * "_y"
     )
 
     return _add_dnmdt_approx!(
         container, C, names, time_steps,
-        xh_expr, beta_x_var, dx_var,
-        yh_expr, beta_y_var, dy_var,
-        x_min, x_max, y_min, y_max,
-        depth, meta
+        x_disc, y_disc, meta
     )
 end
 
@@ -770,42 +431,35 @@ function _add_dnmdt_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    beta_x_var,
-    dx_var,
-    xh_expr,
-    x_min::Float64,
-    x_max::Float64,
-    depth::Int,
+    x_disc::NMDTDiscretization,
     meta::String;
-    tighten::Bool = false,
-    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth))
+    tighten::Bool = false
 ) where {C <: IS.InfrastructureSystemsComponent}
-    eps_L = 2.0^(-depth)
     bx_xh_expr = _binary_continuous_product!(
         container, C, names, time_steps,
-        beta_x_var, xh_expr, x_min, x_max,
-        depth, meta * "_bx_x"; tighten
+        x_disc, x_disc.norm_expr, 0.0, 1.0,
+        meta * "_bx_xh"
     )
     bx_dx_expr = _binary_continuous_product!(
         container, C, names, time_steps,
-        beta_x_var, dx_var, 0.0, eps_L,
-        depth, meta * "_bx_dx"; tighten
+        x_disc, x_disc.delta_var, 0.0, 2.0^(-x_disc.depth),
+        meta * "_bx_dx"
     )
 
     result_expr = _add_dnmdt_approx!(
         container, C, names, time_steps,
         bx_xh_expr, bx_dx_expr, bx_xh_expr, bx_dx_expr,
-        dx_var, dx_var, xh_expr, xh_expr,
-        x_min, x_max, x_min, x_max,
-        depth, meta; tighten, result_type = QuadraticExpression
+        x_disc, x_disc, meta,
+        result_type = QuadraticExpression
     )
+
     if tighten
-        _tighten!(
+        _tighten_lower_bounds!(
             container, C, names, time_steps,
-            result_expr, x_var, x_min, x_max,
-            epigraph_depth, meta
+            result_expr, x_disc, meta
         )
     end
+
     return result_expr
 end
 
@@ -819,99 +473,16 @@ function _add_dnmdt_approx!(
     x_max::Float64,
     depth::Int,
     meta::String;
-    tighten::Bool = false,
-    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth))
+    tighten::Bool = false
 ) where {C <: IS.InfrastructureSystemsComponent}
-    xh_expr = _normed_variable!(
-        container, C, names, time_steps,
-        x_var, x_min, x_max, meta
-
-    )
-    beta_x_var, dx_var = _discretize!(
-        container, C, names, time_steps,
-        xh_expr, depth, meta
-    )
-
-    return _add_dnmdt_quadratic_approx!(
-        container, C, names, time_steps,
-        beta_x_var, dx_var, xh_expr,
-        x_min, x_max, depth, meta;
-        tighten, epigraph_depth
-    )
-end
-
-# Approximate the product between two continuous variables by discretizing
-# one variable and solving the simpler binary * continuous products.
-function _add_nmdt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_var,
-    y_var,
-    x_min::Float64,
-    x_max::Float64,
-    y_min::Float64,
-    y_max::Float64,
-    depth::Int,
-    meta::String;
-) where {C <: IS.InfrastructureSystemsComponent}
-    beta_x_var, dx_var = _discretize!(
+    x_disc = _discretize!(
         container, C, names, time_steps,
         x_var, x_min, x_max, depth, meta
     )
 
-    bx_y_expr = _binary_continuous_product!(
+    return _add_dnmdt_approx!(
         container, C, names, time_steps,
-        beta_x_var, y_var, y_min, y_max,
-        depth, meta
-    )
-
-    return _discretized_continuous_product!(
-        container, C, names, time_steps,
-        bx_y_expr, y_var, dx_var,
-        x_min, x_max, y_min, y_max,
-        depth, meta;
-        result_type = BilinearProductExpression
-    )
-end
-
-function _add_nmdt_approx!(
-
-)   
-    container, C, names, time_steps,
-    [bx_xh_expr], xh_expr, xh_expr, dz_var,
-    x_min, x_max, x_min, x_max,
-    meta
-)
-end
-
-function _add_nmdt_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    xh_expr,
-    beta_x_var,
-    dx_var,
-    x_min::Float64,
-    x_max::Float64,
-    depth::Int,
-    meta::String;
-    tighten::Bool = false,
-    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth))
-)
-    bx_xh_expr = _binary_continuous_product!(
-        container, C, names, time_steps,
-        beta_x_var, xh_expr, x_min, x_max,
-        depth, meta; tighten
-    )
-
-    return _assemble_product!(
-        container, C, names, time_steps,
-        [bx_xh_expr], xh_expr, xh_expr, dz_var,
-        x_min, x_max, x_min, x_max,
-        meta
+        x_disc, meta; tighten
     )
 end
 
@@ -921,12 +492,89 @@ function _add_nmdt_approx!(
     names::Vector{String},
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
-    meta
-)
-    bx_xh_expr = _binary_continuous_product(
+    yh_expr,
+    meta::String;
+) where {C <: IS.InfrastructureSystemsComponent}
+    bx_y_expr = _binary_continuous_product!(
         container, C, names, time_steps,
-        x_disc, x_disc.norm_expr, meta
+        x_disc, yh_expr, 0.0, 1.0,
+        meta
     )
+    dz = _residual_product!(
+        container, C, names, time_steps,
+        x_disc, yh_expr, 1.0, meta
+    )
+
+    return _assemble_product!(
+        container, C, names, time_steps,
+        [bx_y_expr], dz,
+        x_disc, x_disc, meta;
+        result_type = BilinearExpression
+    )
+end
+
+function _add_nmdt_approx!(
+    container::OptimizationContainer,
+    ::Type{C},
+    names::Vector{String},
+    time_steps::UnitRange{Int},
+    x_disc::NMDTDiscretization,
+    meta::String;
+    tighten::Bool = false,
+) where {C <: IS.InfrastructureSystemsComponent}
+    bx_y_expr = _binary_continuous_product!(
+        container, C, names, time_steps,
+        x_disc, x_disc.norm_expr, 0.0, 1.0,
+        meta
+    )
+    dz = _residual_product!(
+        container, C, names, time_steps,
+        x_disc, x_disc.norm_expr, 1.0, meta
+    )
+
+    result_expr = _assemble_product!(
+        container, C, names, time_steps,
+        [bx_y_expr], dz,
+        x_disc, x_disc, meta;
+        result_type = QuadraticExpression
+    )
+
+    if tighten
+        _tighten_lower_bounds!(
+            container, C, names, time_steps,
+            result_expr, x_disc, meta
+        )
+    end
+end
+
+
+function _add_nmdt_approx!(
+    container::OptimizationContainer,
+    ::Type{C},
+    names::Vector{String},
+    time_steps::UnitRange{Int},
+    x_var,
+    y_var,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
+    depth::Int,
+    meta::String,
+) where {C <: IS.InfrastructureSystemsComponent}
+    x_disc = _discretize!(
+        container, C, names, time_steps,
+        x_var, x_min, x_max, depth, meta
+    )
+    yh_expr = _normed_variable!(
+        container, C, names, time_steps,
+        y_var, y_min, y_max, depth, meta
+    )
+
+    return _add_nmdt_approx!(
+        container, C, names, time_steps,
+        x_disc, yh_expr, meta
+    )        
 end
 
 function _add_nmdt_approx!(
@@ -939,14 +587,13 @@ function _add_nmdt_approx!(
     x_max::Float64,
     depth::Int,
     meta::String;
-    tighten::Bool = false,
-    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth))
+    tighten::Bool = false
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_disc = _discretize!(
         container, C, names, time_steps,
         x_var, x_min, x_max, depth, meta
     )
-
+    
     return _add_nmdt_approx!(
         container, C, names, time_steps,
         x_disc, meta; tighten
