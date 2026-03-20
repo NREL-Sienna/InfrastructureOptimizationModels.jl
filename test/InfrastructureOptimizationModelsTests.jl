@@ -102,50 +102,50 @@ function run_tests()
 
                     # --- core/ subfolder ---
                     # abstract_model_store.jl: not worth testing - abstract type only
-                    # include(joinpath(TEST_DIR, "test_dataset_container.jl"))
-                    # # TODO dataset.jl
-                    # # definitions.jl: no need for tests
-                    # include(joinpath(TEST_DIR, "test_device_model.jl"))
-                    # # TODO: initial_conditions.jl
-                    # include(joinpath(TEST_DIR, "test_model_internal.jl"))
-                    # # model_store_params.jl: low-complexity
-                    # # TODO: network_model.jl
-                    # # TODO: network_reductions.jl
-                    # # operation_model_abstract_types.jl: low complexity
-                    # include(joinpath(TEST_DIR, "test_optimization_container_keys.jl"))
-                    # include(joinpath(TEST_DIR, "test_optimization_container_metadata.jl"))
-                    # # optimization_container_types.jl: no need for tests
-                    # include(joinpath(TEST_DIR, "test_optimization_container.jl"))
-                    # # optimization_problem_outputs_export.jl: low-complexity
-                    # include(joinpath(TEST_DIR, "test_optimization_outputs.jl"))
-                    # include(joinpath(TEST_DIR, "test_optimizer_stats.jl"))
-                    # # parameter_container.jl: low-complexity
-                    # # TODO outputs_by_time.jl
-                    # # TODO service_model.jl
-                    # include(joinpath(TEST_DIR, "test_settings.jl"))
-                    # # standard_variables_expressions.jl: low complexity
-                    # # time_series_parameter_types.jl: low complexity
+                    include(joinpath(TEST_DIR, "test_dataset_container.jl"))
+                    # TODO dataset.jl
+                    # definitions.jl: no need for tests
+                    include(joinpath(TEST_DIR, "test_device_model.jl"))
+                    # TODO: initial_conditions.jl
+                    include(joinpath(TEST_DIR, "test_model_internal.jl"))
+                    # model_store_params.jl: low-complexity
+                    # TODO: network_model.jl
+                    # TODO: network_reductions.jl
+                    # operation_model_abstract_types.jl: low complexity
+                    include(joinpath(TEST_DIR, "test_optimization_container_keys.jl"))
+                    include(joinpath(TEST_DIR, "test_optimization_container_metadata.jl"))
+                    # optimization_container_types.jl: no need for tests
+                    include(joinpath(TEST_DIR, "test_optimization_container.jl"))
+                    # optimization_problem_outputs_export.jl: low-complexity
+                    include(joinpath(TEST_DIR, "test_optimization_outputs.jl"))
+                    include(joinpath(TEST_DIR, "test_optimizer_stats.jl"))
+                    # parameter_container.jl: low-complexity
+                    # TODO outputs_by_time.jl
+                    # TODO service_model.jl
+                    include(joinpath(TEST_DIR, "test_settings.jl"))
+                    # standard_variables_expressions.jl: low complexity
+                    # time_series_parameter_types.jl: low complexity
 
-                    # # --- objective_function/ subfolder ---
-                    # # import_export.jl: commented out
-                    # include(joinpath(TEST_DIR, "test_cost_term_helpers.jl"))
-                    # include(joinpath(TEST_DIR, "test_linear_curve.jl"))
-                    # # market_bid.jl: needs more work
-                    # include(joinpath(TEST_DIR, "test_piecewise_linear.jl"))
-                    # include(joinpath(TEST_DIR, "test_proportional.jl"))
-                    # include(joinpath(TEST_DIR, "test_quadratic_curve.jl"))
-                    # include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
+                    # --- objective_function/ subfolder ---
+                    # import_export.jl: commented out
+                    include(joinpath(TEST_DIR, "test_cost_term_helpers.jl"))
+                    include(joinpath(TEST_DIR, "test_linear_curve.jl"))
+                    # market_bid.jl: needs more work
+                    include(joinpath(TEST_DIR, "test_piecewise_linear.jl"))
+                    include(joinpath(TEST_DIR, "test_proportional.jl"))
+                    include(joinpath(TEST_DIR, "test_quadratic_curve.jl"))
+                    include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
 
-                    # # --- common_models/, utils/, initial_conditions/ ---
-                    # # TODO tests?
-                    # include(joinpath(TEST_DIR, "test_jump_utils.jl"))
-                    # include(joinpath(TEST_DIR, "test_pwl_methods.jl"))
+                    # --- common_models/, utils/, initial_conditions/ ---
+                    # TODO tests?
+                    include(joinpath(TEST_DIR, "test_jump_utils.jl"))
+                    include(joinpath(TEST_DIR, "test_pwl_methods.jl"))
 
                     # --- quadratic_approximations/ subfolder ---
                     include(joinpath(TEST_DIR, "test_quadratic_approximations.jl"))
                     include(joinpath(TEST_DIR, "test_bilinear_approximations.jl"))
                     include(joinpath(TEST_DIR, "test_hybs_approximations.jl"))
-                    include(joinpath(TEST_DIR, "test_dnmdt_approximations.jl"))
+                    include(joinpath(TEST_DIR, "test_nmdt_approximations.jl"))
                 end
 
                 #=

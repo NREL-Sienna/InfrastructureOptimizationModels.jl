@@ -201,13 +201,13 @@ function _add_hybs_sos2_bilinear_approx!(
         container, C, names, time_steps,
         x_var, x_min, x_max,
         depth, meta * "_x";
-        add_mccormick = add_quad_mccormick
+        add_mccormick = add_quad_mccormick,
     )
     ysq_expr = _add_sos2_quadratic_approx!(
         container, C, names, time_steps,
         y_var, y_min, y_max,
         depth, meta * "_y";
-        add_mccormick = add_quad_mccormick
+        add_mccormick = add_quad_mccormick,
     )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
@@ -239,13 +239,13 @@ function _add_hybs_manual_sos2_bilinear_approx!(
         container, C, names, time_steps,
         x_var, x_min, x_max,
         depth, meta * "_x";
-        add_mccormick = add_quad_mccormick
+        add_mccormick = add_quad_mccormick,
     )
     ysq_expr = _add_manual_sos2_quadratic_approx!(
         container, C, names, time_steps,
         y_var, y_min, y_max,
         depth, meta * "_y";
-        add_mccormick = add_quad_mccormick
+        add_mccormick = add_quad_mccormick,
     )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
@@ -279,14 +279,14 @@ function _add_hybs_sawtooth_bilinear_approx!(
         x_var, x_min, x_max,
         depth, meta * "_x";
         add_mccormick = add_quad_mccormick,
-        tighten
+        tighten,
     )
     ysq_expr = _add_sawtooth_quadratic_approx!(
         container, C, names, time_steps,
         y_var, y_min, y_max,
         depth, meta * "_y";
         add_mccormick = add_quad_mccormick,
-        tighten
+        tighten,
     )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,

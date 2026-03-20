@@ -73,7 +73,7 @@ function _add_bin2_bilinear_approx_impl!(
     psq_expr = quad_approx_fn!(
         container, C, names, time_steps,
         p_expr, p_min, p_max, depth,
-        meta * "_plus"
+        meta * "_plus",
     )
 
     result_expr = add_expression_container!(
@@ -123,17 +123,17 @@ function _add_bin2_sos2_bilinear_approx!(
     xsq_expr = _add_sos2_quadratic_approx!(
         container, C, names, time_steps,
         x_var, x_min, x_max, depth,
-        meta * "_x"; add_mccormick
+        meta * "_x"; add_mccormick,
     )
     ysq_expr = _add_sos2_quadratic_approx!(
         container, C, names, time_steps,
         y_var, y_min, y_max, depth,
-        meta * "_x"; add_mccormick
+        meta * "_x"; add_mccormick,
     )
     return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
         xsq_expr, ysq_expr, _add_sos2_quadratic_approx!,
-        depth, meta
+        depth, meta,
     )
 end
 
@@ -164,17 +164,17 @@ function _add_bin2_manual_sos2_bilinear_approx!(
     xsq_expr = _add_manual_sos2_quadratic_approx!(
         container, C, names, time_steps,
         x_var, x_min, x_max, depth,
-        meta * "_x"; add_mccormick
+        meta * "_x"; add_mccormick,
     )
     ysq_expr = _add_manual_sos2_quadratic_approx!(
         container, C, names, time_steps,
         y_var, y_min, y_max, depth,
-        meta * "_x"; add_mccormick
+        meta * "_x"; add_mccormick,
     )
     return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
         xsq_expr, ysq_expr, _add_manual_sos2_quadratic_approx!,
-        depth, meta
+        depth, meta,
     )
 end
 
@@ -207,19 +207,19 @@ function _add_bin2_sawtooth_bilinear_approx!(
         container, C, names, time_steps,
         x_var, x_min, x_max, depth,
         meta * "_x"; tighten,
-        add_mccormick
+        add_mccormick,
     )
     ysq_expr = _add_sawtooth_quadratic_approx!(
         container, C, names, time_steps,
         y_var, y_min, y_max, depth,
         meta * "_x"; tighten,
-        add_mccormick
+        add_mccormick,
     )
     quad_fn = (args...) -> _add_sawtooth_quadratic_approx!(args...; tighten)
     return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
         xsq_expr, ysq_expr, quad_fn,
-        depth, meta
+        depth, meta,
     )
 end
 

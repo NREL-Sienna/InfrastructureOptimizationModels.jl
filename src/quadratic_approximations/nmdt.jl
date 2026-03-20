@@ -14,9 +14,9 @@ struct NMDTTightenConstraint <: ConstraintType end
 struct NormedVariableExpression <: ExpressionType end
 
 struct NMDTDiscretization
-    norm_expr
-    beta_var
-    delta_var
+    norm_expr::Any
+    beta_var::Any
+    delta_var::Any
     min::Float64
     max::Float64
     depth::Int
@@ -30,7 +30,7 @@ function _normed_variable!(
     x_var,
     x_min::Float64,
     x_max::Float64,
-    meta::String
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     lx = x_max - x_min
     result_expr = add_expression_container!(
@@ -69,7 +69,7 @@ function _discretize!(
         names,
         1:depth,
         time_steps;
-        meta
+        meta,
     )
     delta_var = add_variable_container!(
         container,
@@ -77,7 +77,7 @@ function _discretize!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     disc_expr = add_expression_container!(
         container,
@@ -85,7 +85,7 @@ function _discretize!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     disc_cons = add_constraints_container!(
         container,
@@ -93,30 +93,32 @@ function _discretize!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     xh_expr = _normed_variable!(
         container, C, names, time_steps,
-        x_var, x_min, x_max, meta
+        x_var, x_min, x_max, meta,
     )
 
     for name in names, t in time_steps
         disc = disc_expr[name, t] = JuMP.AffExpr(0.0)
         for i in 1:depth
-            beta = beta_var[name, i, t] = JuMP.@variable(
-                jump_model,
-                base_name = "NMDTBinary_$(C)_{$(name), $(t)}",
-                binary = true
-            )
+            beta =
+                beta_var[name, i, t] = JuMP.@variable(
+                    jump_model,
+                    base_name = "NMDTBinary_$(C)_{$(name), $(t)}",
+                    binary = true
+                )
             JuMP.add_to_expression!(disc, 2.0^(-i), beta)
         end
-        delta = delta_var[name, t] = JuMP.@variable(
-            jump_model,
-            base_name = "NMDTResidual_$(C)_{$(name), $(t)}",
-            lower_bound = 0.0,
-            upper_bound = 2.0^(-depth)
-        )
+        delta =
+            delta_var[name, t] = JuMP.@variable(
+                jump_model,
+                base_name = "NMDTResidual_$(C)_{$(name), $(t)}",
+                lower_bound = 0.0,
+                upper_bound = 2.0^(-depth)
+            )
         JuMP.add_to_expression!(disc, delta)
         disc_cons[name, t] = JuMP.@constraint(
             jump_model,
@@ -149,7 +151,7 @@ function _binary_continuous_product!(
         names,
         1:depth,
         time_steps;
-        meta
+        meta,
     )
     u_cons = add_constraints_container!(
         container,
@@ -159,7 +161,7 @@ function _binary_continuous_product!(
         1:depth,
         1:4,
         time_steps;
-        meta
+        meta,
     )
     result_expr = add_expression_container!(
         container,
@@ -167,23 +169,24 @@ function _binary_continuous_product!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     for name in names, t in time_steps
         result = result_expr[name, t] = JuMP.AffExpr(0.0)
-        for i=1:depth
-            u_i = u_var[name, i, t] = JuMP.@variable(
-                jump_model,
-                base_name = "NMDTBinContProd_$(C)_{$(name), $(i), $(t)}",
-                lower_bound = cont_min,
-                upper_bound = cont_max
-            )
+        for i in 1:depth
+            u_i =
+                u_var[name, i, t] = JuMP.@variable(
+                    jump_model,
+                    base_name = "NMDTBinContProd_$(C)_{$(name), $(i), $(t)}",
+                    lower_bound = cont_min,
+                    upper_bound = cont_max
+                )
             _add_mccormick_envelope!(
                 jump_model, u_cons, (name, i, t),
                 cont_var[name, t], bin_disc.beta_var[name, i, t], u_i,
                 cont_min, cont_max, 0.0, 1.0;
-                lower_bounds = !tighten
+                lower_bounds = !tighten,
             )
             JuMP.add_to_expression!(result, 2.0^(-i), u_i)
         end
@@ -215,7 +218,7 @@ function _tighten_lower_bounds!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
     for name in names, t in time_steps
         epi_cons[name, t] = JuMP.@constraint(
@@ -245,9 +248,9 @@ function _residual_product!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
-    
+
     for name in names, t in time_steps
         z_var[name, t] = JuMP.@variable(
             jump_model,
@@ -261,7 +264,7 @@ function _residual_product!(
         container, C, names, time_steps,
         x_disc.delta_var, y_var, z_var,
         0.0, x_max, 0.0, y_max,
-        meta; lower_bounds = !tighten
+        meta; lower_bounds = !tighten,
     )
 
     return z_var
@@ -277,7 +280,7 @@ function _assemble_product!(
     x_disc::NMDTDiscretization,
     y_disc::NMDTDiscretization,
     meta::String;
-    result_type = NMDTResultExpression
+    result_type = NMDTResultExpression,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_min, x_max = x_disc.min, x_disc.max
     y_min, y_max = y_disc.min, y_disc.max
@@ -290,7 +293,7 @@ function _assemble_product!(
         C,
         names,
         time_steps;
-        meta
+        meta,
     )
 
     for name in names, t in time_steps
@@ -300,7 +303,7 @@ function _assemble_product!(
             JuMP.add_to_expression!(zh, term[name, t])
         end
         JuMP.add_to_expression!(zh, dz_var[name, t])
-    
+
         JuMP.add_to_expression!(result, lx * ly, zh)
         JuMP.add_to_expression!(result, lx * y_min, x_disc.norm_expr[name, t])
         JuMP.add_to_expression!(result, ly * x_min, y_disc.norm_expr[name, t])
@@ -317,30 +320,30 @@ function _add_dnmdt_approx!(
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
     meta::String;
-    tighten::Bool = false
+    tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     bx_xh_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, x_disc.norm_expr, 0.0, 1.0,
-        meta * "_bx_xh"
+        meta * "_bx_xh",
     )
     bx_dx_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, x_disc.delta_var, 0.0, 2.0^(-x_disc.depth),
-        meta * "_bx_dx"
+        meta * "_bx_dx",
     )
 
     result_expr = _add_dnmdt_approx!(
         container, C, names, time_steps,
         bx_xh_expr, bx_dx_expr, bx_xh_expr, bx_dx_expr,
-        x_disc, x_disc, meta,
-        result_type = QuadraticExpression
+        x_disc, x_disc, meta;
+        result_type = QuadraticExpression,
     )
 
     if tighten
         _tighten_lower_bounds!(
             container, C, names, time_steps,
-            result_expr, x_disc, meta
+            result_expr, x_disc, meta,
         )
     end
 
@@ -357,16 +360,16 @@ function _add_dnmdt_approx!(
     x_max::Float64,
     depth::Int,
     meta::String;
-    tighten::Bool = false
+    tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_disc = _discretize!(
         container, C, names, time_steps,
-        x_var, x_min, x_max, depth, meta
+        x_var, x_min, x_max, depth, meta,
     )
 
     return _add_dnmdt_approx!(
         container, C, names, time_steps,
-        x_disc, meta; tighten
+        x_disc, meta; tighten,
     )
 end
 
@@ -382,24 +385,24 @@ function _add_nmdt_approx!(
     bx_y_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, x_disc.norm_expr, 0.0, 1.0,
-        meta
+        meta,
     )
     dz = _residual_product!(
         container, C, names, time_steps,
-        x_disc, x_disc.norm_expr, 1.0, meta
+        x_disc, x_disc.norm_expr, 1.0, meta,
     )
 
     result_expr = _assemble_product!(
         container, C, names, time_steps,
         [bx_y_expr], dz,
         x_disc, x_disc, meta;
-        result_type = QuadraticExpression
+        result_type = QuadraticExpression,
     )
 
     if tighten
         _tighten_lower_bounds!(
             container, C, names, time_steps,
-            result_expr, x_disc, meta
+            result_expr, x_disc, meta,
         )
     end
 end
@@ -414,16 +417,16 @@ function _add_nmdt_approx!(
     x_max::Float64,
     depth::Int,
     meta::String;
-    tighten::Bool = false
+    tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_disc = _discretize!(
         container, C, names, time_steps,
-        x_var, x_min, x_max, depth, meta
+        x_var, x_min, x_max, depth, meta,
     )
-    
+
     return _add_nmdt_approx!(
         container, C, names, time_steps,
-        x_disc, meta; tighten
+        x_disc, meta; tighten,
     )
 end
 
