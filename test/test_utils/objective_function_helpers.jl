@@ -153,8 +153,8 @@ function setup_delta_pwl_parameters!(
     time_steps::UnitRange{Int};
     dir::IOM.OfferDirection = IOM.IncrementalOffer(),
 ) where {C <: IS.InfrastructureSystemsComponent}
-    n_segments = length(slopes[1, 1])
-    n_points = length(breakpoints[1, 1])
+    n_segments::Int = length(slopes[1, 1])
+    n_points::Int = length(breakpoints[1, 1])
     @assert n_points == n_segments + 1
 
     SlopeParam = IOM._slope_param(dir)
@@ -200,15 +200,15 @@ Get the coefficient of a variable in the objective function's invariant terms.
 Returns 0.0 if the variable is not present.
 """
 function get_objective_coefficient(
-    container::IOM.OptimizationContainer,
-    var_type::IOM.VariableType,
+    container::PSI.OptimizationContainer,
+    var_type::PSI.VariableType,
     ::Type{T},
     name::String,
     t::Int,
 ) where {T}
-    obj = IOM.get_objective_expression(container)
-    invariant = IOM.get_invariant_terms(obj)
-    var = IOM.get_variable(container, var_type, T)[name, t]
+    obj = PSI.get_objective_expression(container)
+    invariant = PSI.get_invariant_terms(obj)
+    var = PSI.get_variable(container, var_type, T)[name, t]
     return JuMP.coefficient(invariant, var)
 end
 
@@ -217,15 +217,15 @@ Get the coefficient of a variable in the objective function's variant terms.
 Returns 0.0 if the variable is not present.
 """
 function get_objective_variant_coefficient(
-    container::IOM.OptimizationContainer,
-    var_type::IOM.VariableType,
+    container::PSI.OptimizationContainer,
+    var_type::PSI.VariableType,
     ::Type{T},
     name::String,
     t::Int,
 ) where {T}
-    obj = IOM.get_objective_expression(container)
-    variant = IOM.get_variant_terms(obj)
-    var = IOM.get_variable(container, var_type, T)[name, t]
+    obj = PSI.get_objective_expression(container)
+    variant = PSI.get_variant_terms(obj)
+    var = PSI.get_variable(container, var_type, T)[name, t]
     return JuMP.coefficient(variant, var)
 end
 
@@ -245,15 +245,15 @@ Checks invariant terms by default.
 Returns true if all coefficients match within tolerance.
 """
 function verify_objective_coefficients(
-    container::IOM.OptimizationContainer,
-    var_type::IOM.VariableType,
+    container::PSI.OptimizationContainer,
+    var_type::PSI.VariableType,
     ::Type{T},
     name::String,
     expected::Union{Float64, Vector{Float64}};
     atol = 1e-10,
     variant = false,
 ) where {T}
-    time_steps = IOM.get_time_steps(container)
+    time_steps = PSI.get_time_steps(container)
     get_coef = variant ? get_objective_variant_coefficient : get_objective_coefficient
 
     for t in time_steps
@@ -271,9 +271,9 @@ end
 Get the total number of terms in the objective function's invariant expression.
 Useful for verifying that the expected number of cost terms were added.
 """
-function count_objective_terms(container::IOM.OptimizationContainer; variant = false)
-    obj = IOM.get_objective_expression(container)
-    expr = variant ? IOM.get_variant_terms(obj) : IOM.get_invariant_terms(obj)
+function count_objective_terms(container::PSI.OptimizationContainer; variant = false)
+    obj = PSI.get_objective_expression(container)
+    expr = variant ? PSI.get_variant_terms(obj) : PSI.get_invariant_terms(obj)
     if expr isa JuMP.GenericAffExpr
         return length(expr.terms)
     elseif expr isa JuMP.GenericQuadExpr
@@ -288,15 +288,15 @@ Get the quadratic coefficient of a variable (coefficient of var^2) in the object
 Returns 0.0 if the variable is not present in quadratic terms.
 """
 function get_objective_quadratic_coefficient(
-    container::IOM.OptimizationContainer,
-    var_type::IOM.VariableType,
+    container::PSI.OptimizationContainer,
+    var_type::PSI.VariableType,
     ::Type{T},
     name::String,
     t::Int,
 ) where {T}
-    obj = IOM.get_objective_expression(container)
-    invariant = IOM.get_invariant_terms(obj)
-    var = IOM.get_variable(container, var_type, T)[name, t]
+    obj = PSI.get_objective_expression(container)
+    invariant = PSI.get_invariant_terms(obj)
+    var = PSI.get_variable(container, var_type, T)[name, t]
     # JuMP.coefficient(expr, var, var) gets the coefficient of var^2
     return JuMP.coefficient(invariant, var, var)
 end
@@ -317,15 +317,15 @@ Checks both linear and quadratic coefficients.
 Returns true if all coefficients match within tolerance.
 """
 function verify_quadratic_objective_coefficients(
-    container::IOM.OptimizationContainer,
-    var_type::IOM.VariableType,
+    container::PSI.OptimizationContainer,
+    var_type::PSI.VariableType,
     ::Type{T},
     name::String,
     expected_linear::Union{Float64, Vector{Float64}},
     expected_quadratic::Union{Float64, Vector{Float64}};
     atol = 1e-10,
 ) where {T}
-    time_steps = IOM.get_time_steps(container)
+    time_steps = PSI.get_time_steps(container)
 
     for t in time_steps
         exp_lin = expected_linear isa Vector ? expected_linear[t] : expected_linear

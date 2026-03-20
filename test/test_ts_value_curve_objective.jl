@@ -5,6 +5,7 @@ Verifies the PSY-free delta formulation path added in value_curve_cost.jl.
 
 # Formulation dispatch: multiplier and sos_status for test types
 IOM.objective_function_multiplier(::TestVariableType, ::TestDeviceFormulation) = 1.0
+IOM._sos_status(::Type, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
 
 # Helper to create a ForecastKey with sensible defaults
 function _make_forecast_key(name::String)
@@ -65,8 +66,8 @@ end
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
         # Populate slope/breakpoint parameters
-        slopes_mat = fill(slopes, (length(names), time_steps))
-        bp_map = fill(breakpoints, (length(names), time_steps))
+        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
         setup_delta_pwl_parameters!(
             container, MockThermalGen, names, slopes_mat, bp_mat, time_steps)
 
@@ -182,8 +183,8 @@ end
         add_test_expression!(
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
-        slopes_mat = fill(slopes, (length(names), time_steps))
-        bp_map = fill(breakpoints, (length(names), time_steps))
+        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
         setup_delta_pwl_parameters!(
             container, MockThermalGen, names, slopes_mat, bp_mat, time_steps)
 
@@ -222,8 +223,8 @@ end
         add_test_expression!(
             container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
 
-        slopes_mat = fill(slopes, (length(names), time_steps))
-        bp_map = fill(breakpoints, (length(names), time_steps))
+        slopes_mat = [slopes for _ in 1:length(names), _ in time_steps]
+        bp_mat = [breakpoints for _ in 1:length(names), _ in time_steps]
         setup_delta_pwl_parameters!(
             container, MockThermalGen, names, slopes_mat, bp_mat, time_steps;
             dir = IOM.DecrementalOffer())

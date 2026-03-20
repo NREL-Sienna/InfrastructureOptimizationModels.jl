@@ -135,7 +135,7 @@ function adjacency_list(net::NetworkData)
         adj[n] = Tuple{String, Float64}[]
     end
     for (a, b) in net.edges
-        g = net.conductances[a, b]
+        g = net.conductances[(a, b)]
         push!(adj[a], (b, g))
         push!(adj[b], (a, g))
     end
@@ -293,63 +293,25 @@ function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
         Pg[g] = JuMP.@variable(jump_model, base_name = "Pg_$(g)",
             lower_bound = 0.0, upper_bound = P_MAX)
         for k in 1:(net.K)
-            delta[g, k] = JuMP.@variable(jump_model, base_name = "delta_$(g)_$(k)",
+            delta[(g, k)] = JuMP.@variable(jump_model, base_name = "delta_$(g)_$(k)",
                 lower_bound = 0.0, upper_bound = net.segment_widths[g][k])
         end
     end
 
-    pwl_link_constraints = IOM.lazy_container_addition!(
-        container,
-        IOM.PiecewiseLinearBlockIncrementalOfferConstraint(),
-        NetworkNode,
-        net.gen_nodes,
-        time_steps,
-    )
-
-    for g in net.gen_nodes
-        Pg[g] = JuMP.@variable(jump_model, base_name = "Pg_$(g)",
-            lower_bound = 0.0, upper_bound = P_MAX)
-
-        breakpoints = vcat(0.0, cumsum(net.segment_widths[g]))
-        pwl_vars = IOM.add_pwl_variables!(
-            container,
-            IOM.PiecewiseLinearBlockIncrementalOffer,
-            NetworkNode,
-            g,
-            1,
-            net.K;
-            upper_bound = Inf,
-        )
-        IOM.add_pwl_block_offer_constraints!(
-            jump_model,
-            pwl_link_constraints,
-            g,
-            1,
-            Pg[g],
-            pwl_vars,
-            breakpoints,
-        )
-
-        pwl_cost = IOM.get_pwl_cost_expression(
-            pwl_vars,
-            net.marginal_costs[g],
-            1.0,
-        )
-        IOM.add_to_objective_invariant_expression!(container, pwl_cost)
-    end
-
-    # Objective: min Σ m_{i,k} · δ_{i,k}, assembled via IOM's delta-PWL helper.
-    # With a 1-hour benchmark resolution, the formulation multiplier is dt = 1.0.
-    IOM.update_objective_function!(container)
+    # Objective: min Σ m_{i,k} · δ_{i,k}
+    JuMP.@objective(jump_model, Min, sum(
+        net.marginal_costs[g][k] * delta[(g, k)]
+        for g in net.gen_nodes, k in 1:(net.K)
+    ))
 
     # Pg == bilinear approx of V·I (generators)
     for g in net.gen_nodes
-        JuMP.@constraint(jump_model, Pg[g] == z_gen[g, 1])
+        JuMP.@constraint(jump_model, Pg[g] == z_gen[(g, 1)])
     end
 
     # V·I == -d (demands)
     for d in net.dem_nodes
-        JuMP.@constraint(jump_model, z_dem[d, 1] == -net.demands[d])
+        JuMP.@constraint(jump_model, z_dem[(d, 1)] == -net.demands[d])
     end
 
     # KCL: I_i = Σ g_{ij}(V_i - V_j)
@@ -364,7 +326,7 @@ function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
     # Delta link: Pg = Σ δ_{g,k}
     for g in net.gen_nodes
         JuMP.@constraint(jump_model,
-            Pg[g] == sum(delta[g, k] for k in 1:(net.K)))
+            Pg[g] == sum(delta[(g, k)] for k in 1:(net.K)))
     end
 
     return (; container, jump_model, V_container, I_container, z_gen, z_dem)
@@ -379,13 +341,13 @@ function compute_bilinear_residuals(result, net)
     for g in net.gen_nodes
         v_val = JuMP.value(V[g, 1])
         i_val = JuMP.value(I[g, 1])
-        z_val = JuMP.value(result.z_gen[g, 1])
+        z_val = JuMP.value(result.z_gen[(g, 1)])
         push!(residuals, abs(v_val * i_val - z_val))
     end
     for d in net.dem_nodes
         v_val = JuMP.value(V[d, 1])
         i_val = JuMP.value(I[d, 1])
-        z_val = JuMP.value(result.z_dem[d, 1])
+        z_val = JuMP.value(result.z_dem[(d, 1)])
         push!(residuals, abs(v_val * i_val - z_val))
     end
     return residuals
