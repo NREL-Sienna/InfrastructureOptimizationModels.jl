@@ -137,7 +137,7 @@ function setup_pwl_constraint_test(;
         time_steps, device_name, points, kw...,
     )
     for t in time_steps
-        IOM._add_pwl_variables!(container, MockThermalGen, device_name, t, pwl_data)
+        IOM.add_pwl_variables_lambda!(container, MockThermalGen, device_name, t, pwl_data)
     end
     break_points = IS.get_x_coords(pwl_data)
     power_var = IOM.get_variable(
@@ -150,11 +150,11 @@ function setup_pwl_constraint_test(;
 end
 
 @testset "Piecewise Linear Objective Functions" begin
-    @testset "_add_pwl_variables!" begin
+    @testset "add_pwl_variables_lambda!" begin
         (; container, pwl_data) = setup_pwl_test()
 
         # Add PWL variables for time period 1
-        pwl_vars = InfrastructureOptimizationModels._add_pwl_variables!(
+        pwl_vars = InfrastructureOptimizationModels.add_pwl_variables_lambda!(
             container,
             MockThermalGen,
             "gen1",
@@ -214,10 +214,10 @@ end
         @test norm_container["gen1", 1] isa JuMP.ConstraintRef
     end
 
-    @testset "_get_pwl_cost_expression computes correct expression" begin
+    @testset "get_pwl_cost_expression_lambda computes correct expression" begin
         (; container, pwl_data) = setup_pwl_constraint_test(; time_steps = 1:1)
 
-        cost_expr = InfrastructureOptimizationModels._get_pwl_cost_expression(
+        cost_expr = InfrastructureOptimizationModels.get_pwl_cost_expression_lambda(
             container,
             MockThermalGen,
             "gen1",
@@ -241,11 +241,11 @@ end
         end
     end
 
-    @testset "_get_pwl_cost_expression with multiplier" begin
+    @testset "get_pwl_cost_expression_lambda with multiplier" begin
         (; container, pwl_data) = setup_pwl_constraint_test(; time_steps = 1:1)
 
         multiplier = 2.5
-        cost_expr = InfrastructureOptimizationModels._get_pwl_cost_expression(
+        cost_expr = InfrastructureOptimizationModels.get_pwl_cost_expression_lambda(
             container,
             MockThermalGen,
             "gen1",

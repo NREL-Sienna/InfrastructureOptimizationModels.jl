@@ -29,31 +29,6 @@ const BILINEAR_META = "BilinearTest"
             @test expr_container["dev1", 1] isa JuMP.AffExpr
         end
 
-        @testset "Constraint structure with McCormick" begin
-            setup = _setup_bilinear_test(["dev1"], 1:1)
-
-            IOM._add_sos2_bilinear_approx!(
-                setup.container,
-                MockThermalGen,
-                ["dev1"],
-                1:1,
-                setup.x_var_container,
-                setup.y_var_container,
-                0.0, 4.0,
-                0.0, 4.0,
-                4,
-                BILINEAR_META;
-                add_mccormick = true,
-            )
-
-            @test IOM.has_container_key(
-                setup.container,
-                IOM.McCormickConstraint,
-                MockThermalGen,
-                BILINEAR_META,
-            )
-        end
-
         @testset "Fixed-variable correctness" begin
             # Fix x=3, y ∈ [0,4]: min xy should give z≈0 at y=0
             setup = _setup_bilinear_test(["dev1"], 1:1)

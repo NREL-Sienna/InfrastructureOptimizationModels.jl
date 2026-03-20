@@ -156,7 +156,7 @@ using DocStringExtensions
 # Base Models
 export DecisionModel
 export EmulationModel
-export ProblemTemplate
+export AbstractProblemTemplate
 export ServicesModelContainer, DevicesModelContainer, BranchModelContainer
 export InitialCondition
 
@@ -218,11 +218,11 @@ export add_linear_to_jump_expression!
 # Cost term helpers (generic objective function building blocks)
 export add_cost_term_invariant!
 export add_cost_term_variant!
-export add_pwl_variables!
+export add_pwl_variables_delta!
 export add_pwl_linking_constraint!
 export add_pwl_normalization_constraint!
 export add_pwl_sos2_constraint!
-export get_pwl_cost_expression
+export get_pwl_cost_expression_delta
 export process_market_bid_parameters!
 
 ## Outputs interfaces
@@ -342,7 +342,7 @@ export add_reserve_bound_range_constraints!
 export add_semicontinuous_range_constraints!, add_semicontinuous_ramp_constraints!
 # Cost helpers
 export add_shut_down_cost!, add_start_up_cost!
-export _add_pwl_term!, _get_sos_value, _onvar_cost
+export add_pwl_term_lambda!, _get_sos_value, _onvar_cost
 export uses_commitment_variables
 export add_cost_to_expression!
 # Duration constraint helpers
@@ -412,6 +412,7 @@ export get_services, get_contributing_devices, get_contributing_devices_map
 export set_resolution!, finalize_template!
 # JuMP access
 export get_jump_model
+export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
 # Cost utilities
 export get_proportional_cost_per_system_unit
 # Output writing/conversion
@@ -627,14 +628,7 @@ include("initial_conditions/calculate_initial_condition.jl")
 
 # Utils
 include("utils/indexing.jl")
-@static if pkgversion(PrettyTables).major == 2
-    # When PrettyTables v3 is more widely adopted in the ecosystem, we can remove this file.
-    # In this case, we should also update the compat bounds in Project.toml to list only
-    # PrettyTables v3.
-    include("utils/print_pt_v2.jl")
-else
-    include("utils/print_pt_v3.jl")
-end
+include("utils/print_pt_v3.jl")
 include("utils/file_utils.jl")
 include("utils/logging.jl")
 include("utils/dataframes_utils.jl")

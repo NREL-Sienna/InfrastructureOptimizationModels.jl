@@ -23,7 +23,8 @@ const DNMDT_HYBS_META = "HybSTest"
         @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
 
         xh = IOM.get_expression(
-            setup.container, IOM.DNMDTScaledVariableExpression(), MockThermalGen, DNMDT_META,
+            setup.container, IOM.DNMDTScaledVariableExpression(), MockThermalGen,
+            DNMDT_META,
         )
         beta = IOM.get_variable(
             setup.container, IOM.DNMDTBinaryVariable(), MockThermalGen, DNMDT_META,
@@ -429,7 +430,7 @@ end
             JuMP.fix(setup_h.x_var_container["dev1", 1], 0.4; force = true)
             JuMP.fix(setup_h.y_var_container["dev1", 1], 0.7; force = true)
 
-            IOM._add_hybs_bilinear_approx!(
+            IOM._add_hybs_sawtooth_bilinear_approx!(
                 setup_h.container, MockThermalGen, ["dev1"], 1:1,
                 setup_h.x_var_container, setup_h.y_var_container,
                 0.0, 1.0, 0.0, 1.0, depth, DNMDT_HYBS_META,
