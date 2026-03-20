@@ -42,6 +42,8 @@ function _add_hybs_bilinear_approx_impl!(
     time_steps::UnitRange{Int},
     xsq_expr,
     ysq_expr,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -210,7 +212,7 @@ function _add_hybs_sos2_bilinear_approx!(
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         xsq_expr, ysq_expr,
-        x_min, x_max, y_min, y_max,
+        x_var, y_var, x_min, x_max, y_min, y_max,
         epigraph_depth, meta;
         add_mccormick,
     )
@@ -248,7 +250,7 @@ function _add_hybs_manual_sos2_bilinear_approx!(
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         xsq_expr, ysq_expr,
-        x_min, x_max, y_min, y_max,
+        x_var, y_var, x_min, x_max, y_min, y_max,
         epigraph_depth, meta;
         add_mccormick,
     )
@@ -289,7 +291,7 @@ function _add_hybs_sawtooth_bilinear_approx!(
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         xsq_expr, ysq_expr,
-        x_min, x_max, y_min, y_max,
+        x_var, y_var, x_min, x_max, y_min, y_max,
         epigraph_depth, meta;
         add_mccormick,
     )
