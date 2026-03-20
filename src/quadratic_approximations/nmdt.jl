@@ -1,18 +1,49 @@
+# NMDT (Normalized Multiparametric Disaggregation Technique) quadratic approximation of x².
+# Normalizes x to [0,1], discretizes using L binary variables β₁,…,β_L plus a
+# residual δ ∈ [0, 2^{−L}], then replaces each binary-continuous product β_i·xh
+# with a McCormick-linearized auxiliary variable. Assembles the result via the
+# separable identity x² = (lx·xh + x_min)². Optionally tightens with an epigraph
+# lower bound on xh².
+# NMDT Reference: Teles, Castro, Matos (2013), Multiparametric disaggregation
+# technique for global optimization of polynomial programming problems.
+
+"Binary discretization variables β_i ∈ {0,1} in the NMDT decomposition of xh."
 struct NMDTBinaryVariable <: VariableType end
+"Residual variable δ ∈ [0, 2^{−L}] capturing the NMDT discretization error."
 struct NMDTResidualVariable <: VariableType end
+"McCormick linearization variables u_i ≈ β_i · y in NMDT binary-continuous products."
 struct NMDTBinaryContinuousProductVariable <: VariableType end
+"Variable z ≈ δ · y linearizing the residual-continuous product in NMDT."
 struct NMDTResidualProductVariable <: VariableType end
 
+"Expression container for the NMDT binary discretization: Σ 2^{−i}·β_i + δ ≈ xh."
 struct NMDTDiscretizationExpression <: ExpressionType end
+"Expression container for the NMDT binary-continuous product: Σ 2^{−i}·u_i ≈ β·y."
 struct NMDTBinaryContinuousProductExpression <: ExpressionType end
+"Expression container for the final NMDT quadratic approximation result."
 struct NMDTResultExpression <: ExpressionType end
 
+"Constraint enforcing xh = Σ 2^{−i}·β_i + δ in the NMDT discretization."
 struct NMDTEDiscretizationConstraint <: ConstraintType end
+"McCormick envelope constraints for binary-continuous products u_i ≈ β_i·y in NMDT."
 struct NMDTBinaryContinuousProductConstraint <: ConstraintType end
+"Epigraph lower-bound tightening constraint on the NMDT quadratic result."
 struct NMDTTightenConstraint <: ConstraintType end
 
+"Expression container for the normalized variable xh = (x − x_min) / (x_max − x_min) ∈ [0,1]."
 struct NormedVariableExpression <: ExpressionType end
 
+"""
+Stores the result of discretizing a normalized variable for use in NMDT products.
+
+Fields:
+- `norm_expr`: affine expression for xh = (x − x_min)/(x_max − x_min) ∈ [0,1]
+- `beta_var`: binary variables β_i ∈ {0,1} indexed by (name, i, t)
+- `delta_var`: residual variables δ ∈ [0, 2^{−depth}] indexed by (name, t)
+- `min`: original lower bound x_min
+- `max`: original upper bound x_max
+- `depth`: number of binary discretization levels L
+"""
 struct NMDTDiscretization
     norm_expr::Any
     beta_var::Any
@@ -22,6 +53,23 @@ struct NMDTDiscretization
     depth::Int
 end
 
+"""
+    _normed_variable!(container, C, names, time_steps, x_var, x_min, x_max, meta)
+
+Create an affine expression for the normalized variable xh = (x − x_min) / (x_max − x_min) ∈ [0,1].
+
+Stores results in a `NormedVariableExpression` expression container.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_var`: container of variables indexed by (name, t)
+- `x_min::Float64`: lower bound of x domain
+- `x_max::Float64`: upper bound of x domain
+- `meta::String`: identifier encoding the original variable type being approximated
+"""
 function _normed_variable!(
     container::OptimizationContainer,
     ::Type{C},
@@ -49,6 +97,26 @@ function _normed_variable!(
     return result_expr
 end
 
+"""
+    _discretize!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
+
+Discretize the normalized variable xh = (x − x_min)/(x_max − x_min) using L binary variables.
+
+Creates L binary variables β₁,…,β_L and one residual δ ∈ [0, 2^{−L}] such that
+xh = Σᵢ 2^{−i}·β_i + δ. Enforces this via a `NMDTEDiscretizationConstraint` and
+returns an `NMDTDiscretization` struct holding all components.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_var`: container of variables indexed by (name, t)
+- `x_min::Float64`: lower bound of x domain
+- `x_max::Float64`: upper bound of x domain
+- `depth::Int`: number of binary discretization levels L
+- `meta::String`: identifier encoding the original variable type being approximated
+"""
 function _discretize!(
     container::OptimizationContainer,
     ::Type{C},
@@ -129,6 +197,27 @@ function _discretize!(
     return NMDTDiscretization(xh_expr, beta_var, delta_var, x_min, x_max, depth)
 end
 
+"""
+    _binary_continuous_product!(container, C, names, time_steps, bin_disc, cont_var, cont_min, cont_max, meta; tighten)
+
+Linearize each binary-continuous product β_i·y using McCormick envelopes.
+
+For each depth level i, creates a variable u_i ≈ β_i·y with bounds [cont_min, cont_max]
+and adds 4 McCormick constraints via `_add_mccormick_envelope!`. Assembles the weighted sum
+Σᵢ 2^{−i}·u_i into a `NMDTBinaryContinuousProductExpression`.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `bin_disc`: `NMDTDiscretization` providing β_i variables and depth
+- `cont_var`: container of continuous variables y indexed by (name, t)
+- `cont_min::Float64`: lower bound of y
+- `cont_max::Float64`: upper bound of y
+- `meta::String`: identifier encoding the original variable type being approximated
+- `tighten::Bool`: if true, omit McCormick lower bounds (for use when a tighter bound is applied elsewhere)
+"""
 function _binary_continuous_product!(
     container::OptimizationContainer,
     ::Type{C},
@@ -195,6 +284,24 @@ function _binary_continuous_product!(
     return result_expr
 end
 
+"""
+    _tighten_lower_bounds!(container, C, names, time_steps, result_expr, x_disc, meta)
+
+Add epigraph lower-bound constraints to tighten an NMDT quadratic approximation.
+
+Computes an epigraph Q^{L1} lower bound on xh² using depth `ceil(1.5 * x_disc.depth)`
+and adds a `NMDTTightenConstraint` enforcing `result_expr[name,t] ≥ epi_expr[name,t]`
+for each (name, t). This improves the lower bound quality of NMDT without adding binaries.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `result_expr`: expression container for the NMDT quadratic result to be tightened
+- `x_disc`: `NMDTDiscretization` for x, providing `norm_expr` and `depth`
+- `meta::String`: identifier encoding the original variable type being approximated
+"""
 function _tighten_lower_bounds!(
     container::OptimizationContainer,
     ::Type{C},
@@ -228,6 +335,26 @@ function _tighten_lower_bounds!(
     end
 end
 
+"""
+    _residual_product!(container, C, names, time_steps, x_disc, y_var, y_max, meta; tighten)
+
+Linearize the residual-continuous product z ≈ δ·y using McCormick envelopes.
+
+Creates a variable z ∈ [0, 2^{−L}·y_max] for each (name, t) and bounds it with
+McCormick constraints on (δ, y) where δ ∈ [0, 2^{−L}]. Stores results in a
+`NMDTResidualProductVariable` container.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_disc`: `NMDTDiscretization` for x, providing `delta_var` and `depth`
+- `y_var`: container of continuous variables y indexed by (name, t)
+- `y_max::Float64`: upper bound of y (lower bound assumed 0)
+- `meta::String`: identifier encoding the original variable type being approximated
+- `tighten::Bool`: if true, omit McCormick lower bounds (default: true)
+"""
 function _residual_product!(
     container::OptimizationContainer,
     ::Type{C},
@@ -270,6 +397,32 @@ function _residual_product!(
     return z_var
 end
 
+"""
+    _assemble_product!(container, C, names, time_steps, terms, dz_var, x_disc, y_disc, meta; result_type)
+
+Reconstruct the bilinear product x·y from normalized NMDT components.
+
+Applies the affine rescaling:
+```
+x·y = lx·ly·zh + lx·y_min·xh + ly·x_min·yh + x_min·y_min
+```
+where `zh = Σ terms[name,t] + dz_var[name,t]` collects the binary-continuous and
+residual product contributions, lx = x_max − x_min, ly = y_max − y_min.
+
+Stores results in an expression container of type `result_type`.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `terms`: iterable of expression containers indexed by (name, t) for the binary-continuous products
+- `dz_var`: variable container for the residual product δ·y
+- `x_disc::NMDTDiscretization`: discretization for x
+- `y_disc::NMDTDiscretization`: discretization for y (provides y_min, y_max, norm_expr)
+- `meta::String`: identifier encoding the original variable type being approximated
+- `result_type`: expression type to store results in (default: `NMDTResultExpression`)
+"""
 function _assemble_product!(
     container::OptimizationContainer,
     ::Type{C},
@@ -313,6 +466,24 @@ function _assemble_product!(
     return result_expr
 end
 
+"""
+    _add_dnmdt_approx!(container, C, names, time_steps, x_disc, meta; tighten)
+
+Approximate x² using the Double NMDT (DNMDT) method from a pre-built discretization.
+
+Constructs two binary-continuous products (β·xh and β·δ) and delegates to the core
+DNMDT assembler, storing results in a `QuadraticExpression` container. Optionally
+tightens lower bounds with an epigraph relaxation via `_tighten_lower_bounds!`.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_disc::NMDTDiscretization`: pre-built discretization for x
+- `meta::String`: identifier encoding the original variable type being approximated
+- `tighten::Bool`: if true, add epigraph lower-bound tightening (default: false)
+"""
 function _add_dnmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
@@ -350,6 +521,26 @@ function _add_dnmdt_approx!(
     return result_expr
 end
 
+"""
+    _add_dnmdt_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta; tighten)
+
+Approximate x² using the Double NMDT (DNMDT) method from raw variable inputs.
+
+Discretizes x via `_discretize!` then delegates to the `NMDTDiscretization` overload.
+Stores results in a `QuadraticExpression` container.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_var`: container of variables indexed by (name, t)
+- `x_min::Float64`: lower bound of x domain
+- `x_max::Float64`: upper bound of x domain
+- `depth::Int`: number of binary discretization levels L
+- `meta::String`: identifier encoding the original variable type being approximated
+- `tighten::Bool`: if true, add epigraph lower-bound tightening (default: false)
+"""
 function _add_dnmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
@@ -373,6 +564,24 @@ function _add_dnmdt_approx!(
     )
 end
 
+"""
+    _add_nmdt_approx!(container, C, names, time_steps, x_disc, meta; tighten)
+
+Approximate x² using the NMDT method from a pre-built discretization.
+
+Computes the binary-continuous product β·xh and residual product δ·xh, then
+assembles x² via `_assemble_product!`. Stores results in a `QuadraticExpression`
+container. Optionally tightens lower bounds with an epigraph relaxation.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_disc::NMDTDiscretization`: pre-built discretization for x
+- `meta::String`: identifier encoding the original variable type being approximated
+- `tighten::Bool`: if true, add epigraph lower-bound tightening (default: false)
+"""
 function _add_nmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
@@ -407,6 +616,26 @@ function _add_nmdt_approx!(
     end
 end
 
+"""
+    _add_nmdt_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta; tighten)
+
+Approximate x² using the NMDT method from raw variable inputs.
+
+Discretizes x via `_discretize!` then delegates to the `NMDTDiscretization` overload.
+Stores results in a `QuadraticExpression` container.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_var`: container of variables indexed by (name, t)
+- `x_min::Float64`: lower bound of x domain
+- `x_max::Float64`: upper bound of x domain
+- `depth::Int`: number of binary discretization levels L
+- `meta::String`: identifier encoding the original variable type being approximated
+- `tighten::Bool`: if true, add epigraph lower-bound tightening (default: false)
+"""
 function _add_nmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
@@ -430,6 +659,8 @@ function _add_nmdt_approx!(
     )
 end
 
+# Aliases used by the quadratic and bilinear approximation dispatch layers.
+# Both quadratic (x²) and bilinear (x·y with x=y) cases share the same implementation.
 _add_nmdt_quadratic_approx! = _add_nmdt_approx!
 _add_nmdt_bilinear_approx! = _add_nmdt_approx!
 _add_dnmdt_quadratic_approx! = _add_dnmdt_approx!

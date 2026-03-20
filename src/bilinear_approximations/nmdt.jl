@@ -1,3 +1,38 @@
+# DNMDT (Double Normalized Multiparametric Disaggregation Technique) bilinear approximation of x·y.
+# Independently discretizes both x and y, forms four cross binary-continuous products, then
+# combines two NMDT estimates with a convex weighting λ (default 0.5). Reduces to the NMDT
+# formulation when applied to x·x (quadratic case).
+# Reference: Teles, Castro, Matos (2013), Multiparametric disaggregation technique for global
+# optimization of polynomial programming problems.
+
+"""
+    _add_dnmdt_approx!(container, C, names, time_steps, bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr, x_disc, y_disc, meta; lambda, result_type)
+
+Core assembler for the DNMDT bilinear approximation of x·y from pre-computed cross products.
+
+Builds two NMDT product estimates from opposite discretization pairings and combines them:
+- z₁ = assemble(bx·yh + by·δx + δx·δy, x_disc, y_disc)
+- z₂ = assemble(by·xh + bx·δy + δx·δy, y_disc, x_disc)
+- result = λ·z₁ + (1−λ)·z₂
+
+The shared residual product δx·δy is computed internally. Stores results in an expression
+container of type `result_type`.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `bx_yh_expr`: expression for β_x·yh binary-continuous products
+- `by_dx_expr`: expression for β_y·δx binary-continuous products
+- `by_xh_expr`: expression for β_y·xh binary-continuous products
+- `bx_dy_expr`: expression for β_x·δy binary-continuous products
+- `x_disc::NMDTDiscretization`: discretization for x
+- `y_disc::NMDTDiscretization`: discretization for y
+- `meta::String`: identifier encoding the original variable type being approximated
+- `lambda::Float64`: convex combination weight for the two NMDT estimates (default: `DNMDT_LAMBDA` = 0.5)
+- `result_type`: expression type to store results in (default: `DNMDTResultExpression`)
+"""
 function _add_dnmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
@@ -47,6 +82,24 @@ function _add_dnmdt_approx!(
     return result_expr
 end
 
+"""
+    _add_dnmdt_approx!(container, C, names, time_steps, x_disc, y_disc, meta)
+
+Approximate x·y using the DNMDT method from pre-built discretizations.
+
+Constructs all four cross binary-continuous products (β_x·yh, β_y·δx, β_y·xh, β_x·δy)
+then delegates to the core DNMDT assembler. Stores results in a `BilinearProductExpression`
+container.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_disc::NMDTDiscretization`: pre-built discretization for x
+- `y_disc::NMDTDiscretization`: pre-built discretization for y
+- `meta::String`: identifier encoding the original variable type being approximated
+"""
 function _add_dnmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
@@ -85,6 +138,28 @@ function _add_dnmdt_approx!(
     )
 end
 
+"""
+    _add_dnmdt_approx!(container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
+
+Approximate x·y using the DNMDT method from raw variable inputs.
+
+Discretizes both x and y independently via `_discretize!` then delegates to the
+two-discretization overload. Stores results in a `BilinearProductExpression` container.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_var`: container of x variables indexed by (name, t)
+- `y_var`: container of y variables indexed by (name, t)
+- `x_min::Float64`: lower bound of x
+- `x_max::Float64`: upper bound of x
+- `y_min::Float64`: lower bound of y
+- `y_max::Float64`: upper bound of y
+- `depth::Int`: number of binary discretization levels L for both x and y
+- `meta::String`: identifier encoding the original variable type being approximated
+"""
 function _add_dnmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
@@ -114,6 +189,24 @@ function _add_dnmdt_approx!(
     )
 end
 
+"""
+    _add_nmdt_approx!(container, C, names, time_steps, x_disc, yh_expr, meta)
+
+Approximate x·y using the NMDT method from a pre-built x discretization and normalized y.
+
+Discretizes only x (using `x_disc`) while y is already normalized to yh ∈ [0,1].
+Computes binary-continuous product β_x·yh and residual product δ_x·yh, then assembles
+x·y via `_assemble_product!`. Stores results in a `BilinearProductExpression` container.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_disc::NMDTDiscretization`: pre-built discretization for x
+- `yh_expr`: expression container for the normalized variable yh = (y − y_min)/(y_max − y_min)
+- `meta::String`: identifier encoding the original variable type being approximated
+"""
 function _add_nmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
@@ -141,6 +234,29 @@ function _add_nmdt_approx!(
     )
 end
 
+"""
+    _add_nmdt_approx!(container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
+
+Approximate x·y using the NMDT method from raw variable inputs.
+
+Discretizes x via `_discretize!` and normalizes y via `_normed_variable!`, then
+delegates to the `(x_disc, yh_expr)` overload. Stores results in a `BilinearProductExpression`
+container.
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_var`: container of x variables indexed by (name, t)
+- `y_var`: container of y variables indexed by (name, t)
+- `x_min::Float64`: lower bound of x
+- `x_max::Float64`: upper bound of x
+- `y_min::Float64`: lower bound of y
+- `y_max::Float64`: upper bound of y
+- `depth::Int`: number of binary discretization levels L for x
+- `meta::String`: identifier encoding the original variable type being approximated
+"""
 function _add_nmdt_approx!(
     container::OptimizationContainer,
     ::Type{C},
