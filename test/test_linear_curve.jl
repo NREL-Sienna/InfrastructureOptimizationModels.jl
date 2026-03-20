@@ -330,4 +330,86 @@ end
             expected_coef,
         )
     end
+
+    @testset "FuelCurve{LinearCurve} time-variant fuel cost adds to variant objective" begin
+        # When fuel_cost is a TimeSeriesKey, the cost goes to the variant objective
+        # and is computed as: FuelConsumptionExpression[name, t] * FuelCostParameter[name, t]
+        time_steps = 1:3
+        device = make_mock_thermal("gen1"; base_power = 100.0)
+        container = setup_container_with_variables(
+            time_steps,
+            device;
+            resolution = Dates.Hour(1),
+        )
+
+        # Set up FuelConsumptionExpression with known values.
+        # In production, this is populated by add_expressions!(container,
+        # FuelConsumptionExpression, devices, device_model) in POM's
+        # thermalgeneration_constructor.jl. We pre-populate here to isolate
+        # the IOM objective function logic from the POM constructor flow.
+        fuel_expr_container = IOM.add_expression_container!(
+            container,
+            IOM.FuelConsumptionExpression(),
+            MockThermalGen,
+            ["gen1"],
+            time_steps,
+        )
+        jump_model = IOM.get_jump_model(container)
+        power_var = IOM.get_variable(
+            container, TestActivePowerVariable(), MockThermalGen,
+        )
+        # Simulate fuel consumption = proportional_term * power_var
+        proportional_term = 8.0  # MMBTU/p.u.h (already normalized)
+        for t in time_steps
+            JuMP.add_to_expression!(
+                fuel_expr_container["gen1", t],
+                proportional_term,
+                power_var["gen1", t],
+            )
+        end
+
+        # Set up FuelCostParameter with time-varying fuel prices
+        fuel_prices = [5.0, 7.0, 3.0]
+        add_test_parameter!(
+            container,
+            IOM.FuelCostParameter,
+            MockThermalGen,
+            ["gen1"],
+            time_steps,
+            reshape(fuel_prices, 1, :),
+        )
+
+        # Create a FuelCurve with a TimeSeriesKey as fuel_cost
+        ts_key = IS.StaticTimeSeriesKey(
+            IS.SingleTimeSeries,
+            "fuel_cost",
+            Dates.DateTime(2024, 1, 1),
+            Dates.Hour(1),
+            3,
+            Dict{String, Any}(),
+        )
+        fuel_curve = IS.FuelCurve(
+            IS.LinearCurve(proportional_term),
+            IS.UnitSystem.SYSTEM_BASE,  # already normalized
+            ts_key,
+        )
+
+        IOM.add_variable_cost_to_objective!(
+            container,
+            TestActivePowerVariable(),
+            device,
+            fuel_curve,
+            TestLinearFormulation(),
+        )
+
+        # Variant objective should contain: fuel_expr * fuel_price for each t
+        # = proportional_term * power_var * fuel_price
+        obj = IOM.get_objective_expression(container)
+        variant = IOM.get_variant_terms(obj)
+        for t in time_steps
+            var = power_var["gen1", t]
+            expected = proportional_term * fuel_prices[t]
+            @test JuMP.coefficient(variant, var) ≈ expected atol = 1e-10
+        end
+    end
 end

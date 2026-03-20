@@ -467,80 +467,6 @@ function process_market_bid_parameters!(
 end
 
 #################################################################################
-# Section 8: Min-Gen-Power Dispatch Defaults
-# POM overrides these for specific device types and formulations.
-#################################################################################
-
-_include_min_gen_power_in_constraint(
-    ::Type,
-    ::VariableType,
-    ::AbstractDeviceFormulation,
-) = false
-
-_include_constant_min_gen_power_in_constraint(
-    ::Type,
-    ::VariableType,
-    ::AbstractDeviceFormulation,
-) = false
-
-#################################################################################
-# Section 9: PWL Block Offer Constraints (generic)
-# The ReserveDemandCurve-specific overload is in POM.
-#################################################################################
-
-"""
-Implement the constraints for PWL Block Offer variables. That is:
-
-```math
-\\sum_{k\\in\\mathcal{K}} \\delta_{k,t} = p_t \\\\
-\\sum_{k\\in\\mathcal{K}} \\delta_{k,t} <= P_{k+1,t}^{max} - P_{k,t}^{max}
-```
-"""
-function _add_pwl_constraint!(
-    container::OptimizationContainer,
-    component::T,
-    ::U,
-    ::D,
-    break_points::Vector{<:JuMPOrFloat},
-    pwl_vars::Vector{JuMP.VariableRef},
-    period::Int,
-    ::Type{W},
-) where {T <: PSY.Component, U <: VariableType,
-    D <: AbstractDeviceFormulation,
-    W <: AbstractPiecewiseLinearBlockOfferConstraint}
-    variables = get_variable(container, U, T)
-    const_container = lazy_container_addition!(
-        container,
-        W(),
-        T,
-        axes(variables)...,
-    )
-    name = PSY.get_name(component)
-
-    min_power_offset = if _include_constant_min_gen_power_in_constraint(T, U(), D())
-        jump_fixed_value(first(break_points))::Float64
-    elseif _include_min_gen_power_in_constraint(T, U(), D())
-        p1::Float64 = jump_fixed_value(first(break_points))
-        on_vars = get_variable(container, OnVariable, T)
-        p1 * on_vars[name, period]
-    else
-        0.0
-    end
-
-    add_pwl_block_offer_constraints!(
-        get_jump_model(container),
-        const_container,
-        name,
-        period,
-        variables[name, period],
-        pwl_vars,
-        break_points,
-        min_power_offset,
-    )
-    return
-end
-
-#################################################################################
 # Section 10: PWL Data Retrieval
 #################################################################################
 
@@ -598,8 +524,25 @@ end
 #################################################################################
 
 """
-Add PWL cost terms for data coming from a MarketBidCost / ImportExportCost
-with offer curves, dispatched on OfferDirection.
+Add PWL cost terms using the **delta (incremental/block-offer) formulation**.
+
+Given an offer curve with breakpoints ``P_0, P_1, \\ldots, P_n`` and slopes
+``m_1, m_2, \\ldots, m_n``, this function:
+
+1. Creates delta variables ``\\delta_k \\geq 0`` for each segment via [`add_pwl_variables!`](@ref),
+   with no upper bound (block sizes are enforced by constraints).
+2. Adds linking and block-size constraints via [`_add_pwl_constraint!`](@ref):
+   ``p = \\sum_k \\delta_k`` and ``\\delta_k \\leq P_{k+1} - P_k``.
+3. Builds the cost expression ``C = \\sum_k m_k \\, \\delta_k`` via [`get_pwl_cost_expression`](@ref).
+
+For convex offer curves (``m_1 \\leq m_2 \\leq \\cdots \\leq m_n``), no SOS2 or binary
+variables are needed — the optimizer fills cheap segments first automatically.
+
+Dispatches on `OfferDirection` (incremental or decremental) to select the appropriate
+variable and constraint types.
+
+See also: [`_add_pwl_term!`](@ref) for the lambda (convex combination) formulation used by
+`CostCurve{PiecewisePointCurve}`.
 """
 function add_pwl_term!(
     dir::OfferDirection,

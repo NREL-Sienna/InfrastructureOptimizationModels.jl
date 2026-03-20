@@ -22,6 +22,12 @@ struct ReservationVariable <: VariableType end
 struct ServiceRequirementVariable <: VariableType end
 
 # Cost Variables (used in piecewise_linear)
+"""
+Lambda weight variables ``\\lambda_i \\in [0, 1]`` for the convex-combination PWL cost formulation.
+
+Each breakpoint of a [`IS.PiecewisePointCurve`] gets one lambda variable per component per time step.
+The operating point and cost are expressed as weighted averages of breakpoint values.
+"""
 struct PiecewiseLinearCostVariable <: SparseVariableType end
 
 # Rate Constraint Slack Variables (used in rateofchange_constraints)

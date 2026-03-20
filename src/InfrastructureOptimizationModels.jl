@@ -314,7 +314,6 @@ export ExpressionType
 export StartupCostParameter
 export ShutdownCostParameter
 export OnStatusParameter
-export _get_ramp_constraint_devices
 
 # core folder exports
 # optimization_container.jl refactor
@@ -337,14 +336,15 @@ export supports_milp, get_quadratic_cost_per_system_unit
 export check_hvdc_line_limits_unidirectional, check_hvdc_line_limits_consistency
 export add_sparse_pwl_interpolation_variables!
 export JuMPOrFloat
-export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
 # Constraint helpers
 export add_range_constraints!, add_parameterized_upper_bound_range_constraints
 export add_reserve_bound_range_constraints!
 export add_semicontinuous_range_constraints!, add_semicontinuous_ramp_constraints!
 # Cost helpers
 export add_shut_down_cost!, add_start_up_cost!
-export _add_pwl_term!, _get_sos_value, _onvar_cost, add_cost_to_expression!
+export _add_pwl_term!, _get_sos_value, _onvar_cost
+export uses_commitment_variables
+export add_cost_to_expression!
 # Duration constraint helpers
 export device_duration_compact_retrospective!
 export device_duration_parameters!, device_duration_retrospective!
@@ -404,7 +404,6 @@ export add_constraints_container!, add_variable_cost!
 export add_initial_condition_container!
 export has_initial_condition_value, set_ic_quantity!, get_last_recorded_value
 export set_initial_conditions_model_container!, get_initial_conditions_model_container
-export _validate_warm_start_support, _add_services_to_device_model!
 export get_component_type, get_component_name, add_jump_parameter
 # Template/model access
 export get_use_slacks, get_template, get_model
@@ -563,14 +562,14 @@ include("common_models/add_constraint_dual.jl")
 include("common_models/add_jump_expressions.jl") # helpers only used in POM.
 include("common_models/set_expression.jl") # helpers only used in POM.
 include("common_models/get_time_series.jl")
-include("common_models/add_pwl_methods.jl")
+# PWL interpolation methods moved to quadratic_approximations/
 include("common_models/constraint_helpers.jl")
 include("common_models/range_constraint.jl")
 include("common_models/duration_constraints.jl")
 include("common_models/rateofchange_constraints.jl")
 
 # Objective function implementations
-include("objective_function/cost_term_helpers.jl") # generic helpers: add_cost_term_{invariant,variant}!, PWL helpers
+include("objective_function/cost_term_helpers.jl") # generic helpers: add_cost_term_{invariant,variant}!
 include("objective_function/common.jl")
 include("objective_function/proportional.jl") # add_proportional_cost! and add_proportional_cost_maybe_time_variant!
 include("objective_function/start_up_shut_down.jl") # add_{start_up, shut_down}_cost!
@@ -580,18 +579,32 @@ include("objective_function/linear_curve.jl")
 include("objective_function/quadratic_curve.jl")
 include("objective_function/import_export.jl")
 
-# add_variable_cost! implementations, but "it's complicated." Other stuff exported too
-include("objective_function/piecewise_linear.jl")
-# Offer curve types must come before market_bid.jl
+# Offer curve types (pure type definitions, no dependencies)
 include("objective_function/offer_curve_types.jl")
-include("objective_function/market_bid.jl")
+
+# Pure PWL formulation math (must come before cost-data-specific files)
+include("objective_function/objective_function_pwl_lambda.jl") # lambda/convex combination PWL
+include("objective_function/objective_function_pwl_delta.jl")  # delta/incremental block PWL
+
+# Cost-data-specific mapping to PWL formulations
+include("objective_function/piecewise_linear.jl")  # CostCurve/FuelCurve → lambda PWL
+include("objective_function/market_bid.jl")         # OfferCurveCost → delta PWL
 
 # Quadratic approximations (PWL via SOS2)
+include("quadratic_approximations/pwl_utils.jl")
+include("quadratic_approximations/incremental.jl")
 include("quadratic_approximations/solver_sos2.jl")
 include("quadratic_approximations/manual_sos2.jl")
 include("quadratic_approximations/sawtooth.jl")
-include("quadratic_approximations/mccormick.jl")
-include("quadratic_approximations/bilinear.jl")
+include("quadratic_approximations/epigraph.jl")
+
+# Bilinear approximations (x·y via Bin2/HybS decomposition)
+include("bilinear_approximations/mccormick.jl")
+include("bilinear_approximations/bilinear.jl")
+include("bilinear_approximations/hybs.jl")
+
+# DNMDT uses BilinearProductVariable from bilinear.jl — must come after bilinear_approximations
+include("quadratic_approximations/dnmdt.jl")
 
 # add_param_container! wrappers — must come after piecewise_linear.jl
 # (which defines VariableValueParameter and FixValueParameter)

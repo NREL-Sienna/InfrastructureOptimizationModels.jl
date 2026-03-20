@@ -104,10 +104,10 @@ function _add_time_varying_fuel_variable_cost!(
     container::OptimizationContainer,
     ::T,
     component::V,
-    fuel_cost::IS.TimeSeriesKey,
-) where {T <: VariableType, V <: PSY.Component}
+    ::IS.TimeSeriesKey,
+) where {T <: VariableType, V <: IS.InfrastructureSystemsComponent}
     expression = get_expression(container, FuelConsumptionExpression, V)
-    name = PSY.get_name(component)
+    name = get_name(component)
     for t in get_time_steps(container)
         add_cost_term_variant!(
             container,

@@ -111,6 +111,10 @@ const PSI_NAME_DELIMITER = "__"
 
 const M_VALUE = 1e6
 
+# D-NMDT convex combination weight λ for splitting xy = λxy + (1−λ)xy.
+# λ = 0.5 is optimal per Beach et al. (2024), Remark 1.
+const DNMDT_LAMBDA = 0.5
+
 const NO_SERVICE_NAME_PROVIDED = ""
 const UPPER_BOUND = "ub"
 const LOWER_BOUND = "lb"

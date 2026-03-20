@@ -123,6 +123,32 @@ function setup_pwl_test(;
     return (; container, device, cost_curve, pwl_data)
 end
 
+"""
+Set up a container with PWL variables already added, ready for constraint tests.
+Returns (; container, device, pwl_data, break_points, power_var).
+"""
+function setup_pwl_constraint_test(;
+    device_name = "gen1",
+    time_steps = 1:1,
+    points = CONVEX_PWL_POINTS,
+    kw...,
+)
+    (; container, device, pwl_data) = setup_pwl_test(;
+        time_steps, device_name, points, kw...,
+    )
+    for t in time_steps
+        IOM._add_pwl_variables!(container, MockThermalGen, device_name, t, pwl_data)
+    end
+    break_points = IS.get_x_coords(pwl_data)
+    power_var = IOM.get_variable(
+        container, TestPWLVariable(), MockThermalGen,
+    )[
+        device_name,
+        first(time_steps),
+    ]
+    return (; container, device, pwl_data, break_points, power_var)
+end
+
 @testset "Piecewise Linear Objective Functions" begin
     @testset "_add_pwl_variables!" begin
         (; container, pwl_data) = setup_pwl_test()
@@ -156,21 +182,9 @@ end
     end
 
     @testset "_add_pwl_constraint_standard! creates linking and normalization constraints" begin
-        (; container, device, pwl_data) = setup_pwl_test(; time_steps = 1:1)
+        (; container, device, break_points, power_var) =
+            setup_pwl_constraint_test(; time_steps = 1:1)
 
-        # First add the PWL variables
-        InfrastructureOptimizationModels._add_pwl_variables!(
-            container,
-            MockThermalGen,
-            "gen1",
-            1,
-            pwl_data,
-        )
-
-        # Add the PWL constraint
-        break_points = IS.get_x_coords(pwl_data)
-        power_var =
-            IOM.get_variable(container, TestPWLVariable, MockThermalGen)["gen1", 1]
         InfrastructureOptimizationModels._add_pwl_constraint_standard!(
             container,
             device,
@@ -201,15 +215,7 @@ end
     end
 
     @testset "_get_pwl_cost_expression computes correct expression" begin
-        (; container, device, pwl_data) = setup_pwl_test(; time_steps = 1:1)
-
-        InfrastructureOptimizationModels._add_pwl_variables!(
-            container,
-            MockThermalGen,
-            "gen1",
-            1,
-            pwl_data,
-        )
+        (; container, pwl_data) = setup_pwl_constraint_test(; time_steps = 1:1)
 
         cost_expr = InfrastructureOptimizationModels._get_pwl_cost_expression(
             container,
@@ -236,15 +242,7 @@ end
     end
 
     @testset "_get_pwl_cost_expression with multiplier" begin
-        (; container, device, pwl_data) = setup_pwl_test(; time_steps = 1:1)
-
-        InfrastructureOptimizationModels._add_pwl_variables!(
-            container,
-            MockThermalGen,
-            "gen1",
-            1,
-            pwl_data,
-        )
+        (; container, pwl_data) = setup_pwl_constraint_test(; time_steps = 1:1)
 
         multiplier = 2.5
         cost_expr = InfrastructureOptimizationModels._get_pwl_cost_expression(
@@ -269,19 +267,15 @@ end
     end
 
     @testset "add_pwl_sos2_constraint! adds SOS2 constraint for non-convex curves" begin
-        (; container, device, pwl_data) =
-            setup_pwl_test(; time_steps = 1:1, points = NONCONVEX_PWL_POINTS)
+        (; container, pwl_data) =
+            setup_pwl_constraint_test(; time_steps = 1:1, points = NONCONVEX_PWL_POINTS)
 
         @test !IS.is_convex(pwl_data)
 
-        pwl_vars = InfrastructureOptimizationModels._add_pwl_variables!(
-            container,
-            MockThermalGen,
-            "gen1",
-            1,
-            pwl_data,
+        pwl_var_container = IOM.get_variable(
+            container, IOM.PiecewiseLinearCostVariable(), MockThermalGen,
         )
-
+        pwl_vars = [pwl_var_container["gen1", i, 1] for i in 1:(length(pwl_data) + 1)]
         IOM.add_pwl_sos2_constraint!(container, MockThermalGen, "gen1", 1, pwl_vars)
 
         jump_model = InfrastructureOptimizationModels.get_jump_model(container)
@@ -571,5 +565,329 @@ end
         obj = InfrastructureOptimizationModels.get_objective_expression(container)
         invariant = InfrastructureOptimizationModels.get_invariant_terms(obj)
         @test length(invariant.terms) == 0
+    end
+
+    @testset "_add_pwl_constraint_compact! linking constraint includes P_min offset" begin
+        # Compact form: power_var + P_min * bin == Σ δ_i * breakpoint_i
+        # With NO_VARIABLE status, bin = 1.0
+        # So: power_var + P_min == Σ δ_i * breakpoint_i
+        P_min = 30.0
+        # Convex PWL: slopes 10, 20 (increasing)
+        # (30, 0) → (60, 300) → (100, 1100)
+        compact_points =
+            [(x = 30.0, y = 0.0), (x = 60.0, y = 300.0), (x = 100.0, y = 1100.0)]
+
+        (; container, device, break_points, power_var) =
+            setup_pwl_constraint_test(; time_steps = 1:1, points = compact_points)
+
+        IOM._add_pwl_constraint_compact!(
+            container,
+            device,
+            "gen1",
+            break_points,
+            IOM.SOSStatusVariable.NO_VARIABLE,
+            1,
+            power_var,
+            P_min,
+        )
+
+        # Verify linking constraint: power_var + 30 == 30*δ₁ + 60*δ₂ + 100*δ₃
+        linking_con = IOM.get_constraint(
+            container,
+            IOM.PiecewiseLinearCostConstraint(),
+            MockThermalGen,
+        )[
+            "gen1",
+            1,
+        ]
+        con_func = JuMP.constraint_object(linking_con).func
+        # power_var has coefficient 1
+        @test JuMP.coefficient(con_func, power_var) == 1.0
+        # δ variables have negative coefficients (moved to LHS)
+        pwl_vars = IOM.get_variable(
+            container,
+            IOM.PiecewiseLinearCostVariable(),
+            MockThermalGen,
+        )
+        for (i, bp) in enumerate(break_points)
+            @test JuMP.coefficient(con_func, pwl_vars["gen1", i, 1]) == -bp
+        end
+        # RHS is -P_min (constant moved to RHS of == 0 form)
+        con_set = JuMP.constraint_object(linking_con).set
+        @test con_set.value ≈ -P_min
+
+        # Verify normalization constraint: Σ δ_i == 1.0
+        norm_con = IOM.get_constraint(
+            container,
+            IOM.PiecewiseLinearCostNormalizationConstraint(),
+            MockThermalGen,
+        )[
+            "gen1",
+            1,
+        ]
+        norm_func = JuMP.constraint_object(norm_con).func
+        for i in 1:length(break_points)
+            @test JuMP.coefficient(norm_func, pwl_vars["gen1", i, 1]) == 1.0
+        end
+        norm_set = JuMP.constraint_object(norm_con).set
+        @test norm_set.value ≈ 1.0
+    end
+
+    @testset "_determine_bin_lhs VARIABLE branch uses OnVariable" begin
+        # When _sos_status returns VARIABLE, the normalization constraint
+        # should reference the OnVariable for the device
+        struct TestUCFormulation <: IOM.AbstractThermalUnitCommitment end
+        IOM.objective_function_multiplier(::TestPWLVariable, ::TestUCFormulation) = 1.0
+
+        (; container, device, break_points, power_var) =
+            setup_pwl_constraint_test(; device_name = "gen_uc")
+
+        # Add OnVariable container with a binary variable
+        on_var_container = IOM.add_variable_container!(
+            container,
+            IOM.OnVariable(),
+            MockThermalGen,
+            ["gen_uc"],
+            1:1,
+        )
+        jump_model = IOM.get_jump_model(container)
+        on_var = JuMP.@variable(jump_model, binary = true, base_name = "on_gen_uc")
+        on_var_container["gen_uc", 1] = on_var
+
+        IOM._add_pwl_constraint_standard!(
+            container,
+            device,
+            break_points,
+            IOM.SOSStatusVariable.VARIABLE,
+            1,
+            power_var,
+        )
+
+        # Normalization constraint should be: Σ δ_i == on_var
+        norm_con = IOM.get_constraint(
+            container,
+            IOM.PiecewiseLinearCostNormalizationConstraint(),
+            MockThermalGen,
+        )[
+            "gen_uc",
+            1,
+        ]
+        norm_func = JuMP.constraint_object(norm_con).func
+        # on_var appears with coefficient -1 (moved to LHS: Σ δ_i - on_var == 0)
+        @test JuMP.coefficient(norm_func, on_var) == -1.0
+    end
+
+    @testset "_determine_bin_lhs PARAMETER branch uses OnStatusParameter" begin
+        # When OnStatusParameter exists in the container, _determine_bin_lhs
+        # returns the parameter value (a Float64). The normalization constraint
+        # becomes: Σ δ_i == param_value
+        param_value = 0.75
+        (; container, device, break_points, power_var) =
+            setup_pwl_constraint_test(; device_name = "gen_param")
+
+        # Add OnStatusParameter container with a non-trivial value
+        add_test_parameter!(
+            container,
+            IOM.OnStatusParameter,
+            MockThermalGen,
+            ["gen_param"],
+            1:1,
+            fill(param_value, 1, 1),
+        )
+
+        IOM._add_pwl_constraint_standard!(
+            container,
+            device,
+            break_points,
+            IOM.SOSStatusVariable.PARAMETER,
+            1,
+            power_var,
+        )
+
+        # Normalization constraint RHS should equal the parameter value
+        norm_con = IOM.get_constraint(
+            container,
+            IOM.PiecewiseLinearCostNormalizationConstraint(),
+            MockThermalGen,
+        )[
+            "gen_param",
+            1,
+        ]
+        norm_set = JuMP.constraint_object(norm_con).set
+        @test norm_set.value ≈ param_value
+    end
+
+    @testset "FuelCurve: different fuel prices scale objective proportionally" begin
+        # Two generators with identical heat rate curves but different fuel costs
+        # Objective coefficients should scale proportionally with fuel_cost
+        fuel_points = [
+            (x = 0.0, y = 0.0),
+            (x = 50.0, y = 400.0),
+            (x = 100.0, y = 900.0),
+        ]
+        y_coords = [0.0, 400.0, 900.0]
+
+        for (fuel_cost, label) in [(3.0, "cheap"), (12.0, "expensive")]
+            (; container, device, cost_curve) = setup_pwl_test(;
+                time_steps = 1:1,
+                points = fuel_points,
+                fuel_cost = fuel_cost,
+            )
+
+            IOM.add_variable_cost_to_objective!(
+                container,
+                TestPWLVariable(),
+                device,
+                cost_curve,
+                TestPWLFormulation(),
+            )
+
+            obj = IOM.get_objective_expression(container)
+            invariant = IOM.get_invariant_terms(obj)
+            pwl_var_container = IOM.get_variable(
+                container,
+                IOM.PiecewiseLinearCostVariable(),
+                MockThermalGen,
+            )
+
+            # dt = 1.0 (hourly), multiplier = 1.0
+            # Expected coefficient for point i: y_i * fuel_cost * dt
+            for (i, y) in enumerate(y_coords)
+                var = pwl_var_container["gen1", i, 1]
+                expected = y * fuel_cost * 1.0
+                @test JuMP.coefficient(invariant, var) ≈ expected atol = 1e-10
+            end
+        end
+    end
+
+    @testset "FuelCurve with non-unity resolution scales by dt" begin
+        fuel_points = [
+            (x = 0.0, y = 0.0),
+            (x = 100.0, y = 800.0),
+        ]
+        fuel_cost = 10.0
+        (; container, device, cost_curve) = setup_pwl_test(;
+            time_steps = 1:4,
+            points = fuel_points,
+            fuel_cost = fuel_cost,
+            resolution = Dates.Minute(15),
+        )
+
+        IOM.add_variable_cost_to_objective!(
+            container,
+            TestPWLVariable(),
+            device,
+            cost_curve,
+            TestPWLFormulation(),
+        )
+
+        obj = IOM.get_objective_expression(container)
+        invariant = IOM.get_invariant_terms(obj)
+        pwl_var_container = IOM.get_variable(
+            container,
+            IOM.PiecewiseLinearCostVariable(),
+            MockThermalGen,
+        )
+
+        # dt = 15/60 = 0.25, fuel_cost = 10.0, y = 800
+        # Expected: 800 * 10.0 * 0.25 = 2000.0
+        var_y800 = pwl_var_container["gen1", 2, 1]
+        @test JuMP.coefficient(invariant, var_y800) ≈ 2000.0 atol = 1e-10
+    end
+
+    @testset "FuelCurve{PiecewiseIncrementalCurve} converts and produces correct objective" begin
+        # FuelCurve with incremental (marginal heat rate) data
+        # x_coords: [0, 50, 100] MW, slopes: [8, 10] MMBTU/MWh
+        # Converts to points: (0, 0), (50, 400), (100, 900) MMBTU/h
+        fuel_cost = 5.0  # $/MMBTU
+        incremental_curve = IS.PiecewiseIncrementalCurve(
+            0.0,
+            [0.0, 50.0, 100.0],
+            [8.0, 10.0],
+        )
+        fuel_curve = IS.FuelCurve(
+            incremental_curve,
+            IS.UnitSystem.NATURAL_UNITS,
+            fuel_cost,
+        )
+        op_cost = MockOperationCost(0.0, false, fuel_cost)
+        device =
+            make_mock_thermal("gen_fc_inc"; base_power = 100.0, operation_cost = op_cost)
+        container = setup_pwl_container_with_variables(1:1, device)
+
+        IOM.add_variable_cost_to_objective!(
+            container,
+            TestPWLVariable(),
+            device,
+            fuel_curve,
+            TestPWLFormulation(),
+        )
+
+        obj = IOM.get_objective_expression(container)
+        invariant = IOM.get_invariant_terms(obj)
+        pwl_var_container = IOM.get_variable(
+            container,
+            IOM.PiecewiseLinearCostVariable(),
+            MockThermalGen,
+        )
+
+        # After conversion to points: (0,0), (50,400), (100,900)
+        # Objective coefficients: y * fuel_cost * dt = y * 5.0 * 1.0
+        @test JuMP.coefficient(invariant, pwl_var_container["gen_fc_inc", 1, 1]) ≈ 0.0 atol =
+            1e-10
+        @test JuMP.coefficient(invariant, pwl_var_container["gen_fc_inc", 2, 1]) ≈ 2000.0 atol =
+            1e-10
+        @test JuMP.coefficient(invariant, pwl_var_container["gen_fc_inc", 3, 1]) ≈ 4500.0 atol =
+            1e-10
+    end
+
+    @testset "_add_pwl_constraint_compact! with must_run=true forces bin=1" begin
+        # Even with VARIABLE sos_status, must_run should force bin=1.0
+        # and NOT look for an OnVariable container
+        P_min = 20.0
+        # Convex PWL: slopes 5, 15 (increasing)
+        # (20, 0) → (60, 200) → (100, 800)
+        must_run_points =
+            [(x = 20.0, y = 0.0), (x = 60.0, y = 200.0), (x = 100.0, y = 800.0)]
+
+        (; container, device, break_points, power_var) =
+            setup_pwl_constraint_test(; time_steps = 1:1, points = must_run_points)
+
+        # Pass VARIABLE status but must_run=true — should not look for OnVariable
+        IOM._add_pwl_constraint_compact!(
+            container,
+            device,
+            "gen1",
+            break_points,
+            IOM.SOSStatusVariable.VARIABLE,
+            1,
+            power_var,
+            P_min,
+            true,  # must_run
+        )
+
+        # Normalization: Σ δ_i == 1.0 (not a variable)
+        norm_con = IOM.get_constraint(
+            container,
+            IOM.PiecewiseLinearCostNormalizationConstraint(),
+            MockThermalGen,
+        )[
+            "gen1",
+            1,
+        ]
+        norm_set = JuMP.constraint_object(norm_con).set
+        @test norm_set.value ≈ 1.0
+
+        # Linking: constant term should be -P_min (since bin=1.0, P_min*1.0 = 20)
+        linking_con = IOM.get_constraint(
+            container,
+            IOM.PiecewiseLinearCostConstraint(),
+            MockThermalGen,
+        )[
+            "gen1",
+            1,
+        ]
+        con_set = JuMP.constraint_object(linking_con).set
+        @test con_set.value ≈ -P_min
     end
 end

@@ -37,10 +37,11 @@ include(joinpath(TEST_DIR, "mocks/mock_container.jl"))
 include(joinpath(TEST_DIR, "mocks/constructors.jl"))
 include(joinpath(TEST_DIR, "test_utils/test_types.jl"))
 include(joinpath(TEST_DIR, "test_utils/objective_function_helpers.jl"))
+include(joinpath(TEST_DIR, "test_utils/qa_bilinear_helpers.jl"))
 
 # Environment flags for test selection
 const RUN_UNIT_TESTS = get(ENV, "IOM_RUN_UNIT_TESTS", "true") == "true"
-const RUN_INTEGRATION_TESTS = get(ENV, "IOM_RUN_INTEGRATION_TESTS", "false") == "true"
+const RUN_INTEGRATION_TESTS = get(ENV, "IOM_RUN_INTEGRATION_TESTS", "true") == "true"
 
 # Heavy dependencies - only load if we need tests that use them
 if RUN_INTEGRATION_TESTS
@@ -133,7 +134,7 @@ function run_tests()
                     include(joinpath(TEST_DIR, "test_piecewise_linear.jl"))
                     include(joinpath(TEST_DIR, "test_proportional.jl"))
                     include(joinpath(TEST_DIR, "test_quadratic_curve.jl"))
-                    # startup_shut_down.jl: in integration tests
+                    include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
 
                     # --- common_models/, utils/, initial_conditions/ ---
                     # TODO tests?
@@ -143,6 +144,8 @@ function run_tests()
                     # --- quadratic_approximations/ subfolder ---
                     include(joinpath(TEST_DIR, "test_quadratic_approximations.jl"))
                     include(joinpath(TEST_DIR, "test_bilinear_approximations.jl"))
+                    include(joinpath(TEST_DIR, "test_hybs_approximations.jl"))
+                    include(joinpath(TEST_DIR, "test_dnmdt_approximations.jl"))
                 end
 
                 #=
@@ -164,10 +167,7 @@ function run_tests()
         =#
         if RUN_INTEGRATION_TESTS
             @time @testset "InfrastructureOptimizationModels Integration Tests" begin
-                @info "Starting integration tests..."                  # --- objective_function/ subfolder ---
-                # TODO integration tests for common.jl
-                include(joinpath(TEST_DIR, "test_start_up_shut_down.jl"))
-
+                @info "Starting integration tests..."
                 # --- operation/ subfolder ---
                 include(joinpath(TEST_DIR, "test_model_store.jl"))
             end

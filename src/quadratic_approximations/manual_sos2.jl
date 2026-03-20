@@ -1,38 +1,41 @@
 # SOS2-based piecewise linear approximation of x² for use in constraints.
 # Uses manually-implemented SOS2 adjacency via binary variables and linear constraints.
 
+"Binary segment-selection variables (z) for manual SOS2 quadratic approximation."
 struct ManualSOS2BinaryVariable <: SparseVariableType end
+"Ensures exactly one segment is active (∑zⱼ = 1) in manual SOS2 quadratic approximation."
 struct ManualSOS2SegmentSelectionConstraint <: ConstraintType end
+struct ManualSOS2SegmentSelectionExpression <: ExpressionType end
+"Links active segment to lambda variables."
+struct ManualSOS2AdjacencyConstraint <: ConstraintType end
 
 """
-    _add_manual_sos2_quadratic_approx!(container, C, names, time_steps, x_var_container, x_min, x_max, num_segments, meta)
+    _add_manual_sos2_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, num_segments, meta)
 
 Approximate x² using a piecewise linear function with manually-implemented SOS2 constraints.
 
 Creates lambda (λ) variables representing convex combination weights over breakpoints,
 adds linking, normalization, and manual adjacency constraints using binary variables,
-and returns a dictionary of JuMP affine expressions approximating x².
+and stores affine expressions approximating x² in a `QuadraticExpression`
+expression container.
 
 # Arguments
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
 - `time_steps::UnitRange{Int}`: time periods
-- `x_var_container`: container of variables indexed by (name, t)
+- `x_var`: container of variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
 - `num_segments::Int`: number of PWL segments
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
-
-# Returns
-- `Dict{Tuple{String, Int}, JuMP.AffExpr}`: maps (name, t) to affine expression approximating x²
 """
 function _add_manual_sos2_quadratic_approx!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
+    x_var,
     x_min::Float64,
     x_max::Float64,
     num_segments::Int,
@@ -46,25 +49,41 @@ function _add_manual_sos2_quadratic_approx!(
 
     # Create all containers upfront
     lambda_container =
-        add_variable_container!(container, QuadraticApproxVariable(), C; meta)
+        add_variable_container!(container, QuadraticVariable(), C; meta)
     z_container = add_variable_container!(container, ManualSOS2BinaryVariable(), C; meta)
-    link_container = add_constraints_container!(
+    link_cons = add_constraints_container!(
         container,
-        QuadraticApproxLinkingConstraint(),
+        SOS2LinkingConstraint(),
         C,
         names,
         time_steps;
         meta,
     )
-    norm_container = add_constraints_container!(
+    link_expr = add_expression_container!(
         container,
-        QuadraticApproxNormalizationConstraint(),
+        SOS2LinkingExpression(),
         C,
         names,
         time_steps;
         meta,
     )
-    seg_container = add_constraints_container!(
+    norm_cons = add_constraints_container!(
+        container,
+        SOS2NormConstraint(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    norm_expr = add_expression_container!(
+        container,
+        SOS2NormExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    seg_cons = add_constraints_container!(
         container,
         ManualSOS2SegmentSelectionConstraint(),
         C,
@@ -72,11 +91,34 @@ function _add_manual_sos2_quadratic_approx!(
         time_steps;
         meta,
     )
-
-    result = Dict{Tuple{String, Int}, JuMP.AffExpr}()
+    seg_expr = add_expression_container!(
+        container,
+        ManualSOS2SegmentSelectionExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
+    adj_cons = add_constraints_container!(
+        container,
+        ManualSOS2AdjacencyConstraint(),
+        C,
+        names,
+        1:n_points,
+        time_steps;
+        meta,
+    )
+    result_expr = add_expression_container!(
+        container,
+        QuadraticExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+    )
 
     for name in names, t in time_steps
-        x_var = x_var_container[name, t]
+        x = x_var[name, t]
 
         # Create lambda variables: λ_i ∈ [0, 1]
         lambda = Vector{JuMP.VariableRef}(undef, n_points)
@@ -84,20 +126,25 @@ function _add_manual_sos2_quadratic_approx!(
             lambda[i] =
                 lambda_container[(name, i, t)] = JuMP.@variable(
                     jump_model,
-                    base_name = "QuadraticApproxVariable_$(C)_{$(name), pwl_$(i), $(t)}",
+                    base_name = "QuadraticVariable_$(C)_{$(name), pwl_$(i), $(t)}",
                     lower_bound = 0.0,
                     upper_bound = 1.0,
                 )
         end
 
         # x = Σ λ_i * x_i
-        link_container[name, t] = JuMP.@constraint(
-            jump_model,
-            x_var == sum(lambda[i] * x_bkpts[i] for i in eachindex(x_bkpts))
-        )
+        link = link_expr[name, t] = JuMP.AffExpr(0.0)
+        for i in eachindex(x_bkpts)
+            JuMP.add_to_expression!(link, lambda[i], x_bkpts[i])
+        end
+        link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
 
         # Σ λ_i = 1
-        norm_container[name, t] = JuMP.@constraint(jump_model, sum(lambda) == 1.0)
+        norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
+        for l in lambda
+            JuMP.add_to_expression!(norm, l)
+        end
+        norm_cons[name, t] = JuMP.@constraint(jump_model, norm == 1.0)
 
         # Create binary segment-selection variables z_j
         z_vars = Vector{JuMP.VariableRef}(undef, n_bins)
@@ -111,25 +158,31 @@ function _add_manual_sos2_quadratic_approx!(
         end
 
         # Σ z_j = 1 (segment selection)
-        seg_container[name, t] = JuMP.@constraint(jump_model, sum(z_vars) == 1)
+        seg = seg_expr[name, t] = JuMP.AffExpr(0.0)
+        for z in z_vars
+            JuMP.add_to_expression!(seg, z)
+        end
+        seg_cons[name, t] = JuMP.@constraint(jump_model, seg == 1)
 
         # Adjacency constraints: λ_i ≤ z_{i-1} + z_i (with boundary cases)
         # λ_1 ≤ z_1
-        JuMP.@constraint(jump_model, lambda[1] <= z_vars[1])
+        adj_cons[name, 1, t] = JuMP.@constraint(jump_model, lambda[1] <= z_vars[1])
         # λ_i ≤ z_{i-1} + z_i for i = 2..n-1
         for i in 2:(n_points - 1)
-            JuMP.@constraint(jump_model, lambda[i] <= z_vars[i - 1] + z_vars[i])
+            adj_cons[name, i + 1, t] =
+                JuMP.@constraint(jump_model, lambda[i] <= z_vars[i - 1] + z_vars[i])
         end
         # λ_n ≤ z_{n-1}
-        JuMP.@constraint(jump_model, lambda[n_points] <= z_vars[n_bins])
+        adj_cons[name, n_points, t] =
+            JuMP.@constraint(jump_model, lambda[n_points] <= z_vars[n_bins])
 
         # Build x̂² = Σ λ_i * x_i² as an affine expression
         x_hat_sq = JuMP.AffExpr(0.0)
         for i in 1:n_points
             JuMP.add_to_expression!(x_hat_sq, x_sq_bkpts[i], lambda[i])
         end
-        result[(name, t)] = x_hat_sq
+        result_expr[name, t] = x_hat_sq
     end
 
-    return result
+    return result_expr
 end

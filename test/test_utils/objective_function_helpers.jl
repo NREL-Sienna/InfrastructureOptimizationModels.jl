@@ -84,15 +84,10 @@ function add_test_parameter!(
         (), IOM.SOSStatusVariable.NO_VARIABLE, false)
     param_container = IOM.add_param_container_shared_axes!(
         container, param_key, attributes, Float64, names, time_steps)
+    jump_model = IOM.get_jump_model(container)
     for (i, name) in enumerate(names)
         for t in time_steps
-            IOM.set_parameter!(
-                param_container,
-                JuMP.@variable(IOM.get_jump_model(container)),
-                name,
-                t,
-            )
-            IOM._set_parameter_value!(param_container, values[i, t], name, t)
+            IOM.set_parameter!(param_container, jump_model, values[i, t], name, t)
             IOM.set_multiplier!(param_container, 1.0, name, t)
         end
     end

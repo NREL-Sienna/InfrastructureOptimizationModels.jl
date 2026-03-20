@@ -1,6 +1,19 @@
 using Test
 using InfrastructureOptimizationModels
 using Logging
+using CoverageTools
+using Coverage
+
+const BASE_DIR = joinpath(@__DIR__, "..")
+
+function is_running_on_ci()
+    return get(ENV, "CI", "false") == "true" || haskey(ENV, "GITHUB_ACTIONS")
+end
+
+const LOCAL_COVERAGE = Base.JLOptions().code_coverage != 0 && !is_running_on_ci()
+if LOCAL_COVERAGE
+    CoverageTools.clean_folder(joinpath(BASE_DIR, "src"))
+end
 
 # Import InfrastructureSystems for logging utilities
 using InfrastructureSystems
@@ -28,5 +41,8 @@ try
 finally
     # Guarantee that the global logger is reset
     global_logger(logger)
-    nothing
+    if LOCAL_COVERAGE
+        coverage = CoverageTools.process_folder(joinpath(BASE_DIR, "src"))
+        LCOV.writefile(joinpath(BASE_DIR, "lcov.info"), coverage)
+    end
 end

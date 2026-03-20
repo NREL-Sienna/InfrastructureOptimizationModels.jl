@@ -73,6 +73,15 @@ function make_mock_thermal(
     limits = (min = 0.0, max = 100.0),
     base_power = 100.0,
     operation_cost = MockOperationCost(0.0),
+    must_run = false,
 )
-    return MockThermalGen(name, available, bus, limits, base_power, operation_cost)
+    return MockThermalGen(
+        name,
+        available,
+        bus,
+        limits,
+        base_power,
+        operation_cost,
+        must_run,
+    )
 end

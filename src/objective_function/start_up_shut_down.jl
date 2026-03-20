@@ -61,16 +61,19 @@ function add_start_up_cost!(
     return
 end
 
-# NOTE: Type constraints PSY.ThermalGen and PSY.{ThermalGenerationCost, MarketBidCost}
-# are device/cost-specific and should eventually move to POM.
-# Alternative: replace with any component and any operation cost, then write thin wrappers in POM.
+# op_cost is PSY.ThermalGenerationCost or PSY.MarketBidCost, but trying
+# to avoid PSY types here.
 function _add_start_up_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::C,
-    op_cost::Union{PSY.ThermalGenerationCost, PSY.MarketBidCost},
+    op_cost,
     ::U,
-) where {T <: VariableType, C <: PSY.ThermalGen, U <: AbstractDeviceFormulation}
+) where {
+    T <: VariableType,
+    C <: IS.InfrastructureSystemsComponent,
+    U <: AbstractDeviceFormulation,
+}
     multiplier = objective_function_multiplier(T(), U())
     get_must_run(component) && return
     name = get_name(component)

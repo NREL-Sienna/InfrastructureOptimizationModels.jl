@@ -24,7 +24,7 @@ fields directly, use the `read_foo` functions.
 - `outputs_dir::String`: Directory where outputs are stored
 - `output_dir::String`: Directory for exported output
 
-See also: [`Outputs`](@ref), [`OptimizerStats`](@ref), [`OptimizationProblemOutputsExport`](@ref)
+See also: [`OptimizerStats`](@ref), [`OptimizationProblemOutputsExport`](@ref)
 """
 mutable struct OptimizationProblemOutputs <: Outputs
     base_power::Float64
@@ -140,7 +140,7 @@ end
 function get_resolution(res::OptimizationProblemOutputs)
     # Method return the resolution between timestamps.
     # If multiple resolutions are present it returns the first observed.
-    # If single timestamp is used, it return nothing.
+    # If single timestamp is used, it return.
     diff_res = diff(get_timestamps(res))
     if !isempty(diff_res)
         unique!(diff_res)
@@ -151,7 +151,7 @@ function get_resolution(res::OptimizationProblemOutputs)
             return first(diff_res)
         end
     end
-    return nothing
+    return
 end
 
 function get_realized_timestamps(
