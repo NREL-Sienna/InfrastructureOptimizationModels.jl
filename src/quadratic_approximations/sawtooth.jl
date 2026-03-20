@@ -6,11 +6,15 @@
 struct SawtoothAuxVariable <: VariableType end
 "Binary variables (α₁, …, α_L) for sawtooth quadratic approximation."
 struct SawtoothBinaryVariable <: VariableType end
+"Variable result in tightened version."
+struct SawtoothTightenedVariable <: VariableType end
 "Links g₀ to the normalized x value in sawtooth quadratic approximation."
 struct SawtoothLinkingConstraint <: ConstraintType end
 "Constrains g_j based on g_{j-1}."
 struct SawtoothMIPConstraint <: ConstraintType end
 struct SawtoothLPConstraint <: ConstraintType end
+"Bounds tightened variable."
+struct SawtoothTightenedConstraint <: ConstraintType end
 
 """
     _add_sawtooth_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
@@ -45,7 +49,10 @@ function _add_sawtooth_quadratic_approx!(
     x_min::Float64,
     x_max::Float64,
     depth::Int,
-    meta::String,
+    meta::String;
+    tighten::Bool = false,
+    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
+    add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op depth >= 1
@@ -100,8 +107,37 @@ function _add_sawtooth_quadratic_approx!(
         meta,
     )
 
+    if tighten
+        lp_expr = _add_epigraph_quadratic_approx!(
+            container, C, names, time_steps,
+            x_var, x_min, x_max,
+            epigraph_depth, meta * "_lb",
+        )
+        z_var = add_variable_container!(
+            container,
+            SawtoothTightenedVariable(),
+            C,
+            names,
+            time_steps;
+            meta,
+        )
+        tight_cons = add_constraints_container!(
+            container,
+            SawtoothTightenedConstraint(),
+            C,
+            names,
+            1:2,
+            time_steps;
+            meta,
+        )
+    end
+
     # Precompute sawtooth coefficients (invariant across names and time steps)
     saw_coeffs = [delta * delta * (2.0^(-2 * j)) for j in alpha_levels]
+
+    # Compute valid bounds for z ≈ x² from variable bounds
+    z_min = min(x_min * x_min, x_max * x_max)
+    z_max = max(x_min * x_min, x_max * x_max)
 
     for name in names, t in time_steps
         x = x_var[name, t]
@@ -161,7 +197,29 @@ function _add_sawtooth_quadratic_approx!(
             JuMP.add_to_expression!(x_sq_approx, -saw_coeffs[j], g_var[name, j, t])
         end
 
-        result_expr[name, t] = x_sq_approx
+        if tighten
+            z =
+                z_var[name, t] = JuMP.@variable(
+                    jump_model,
+                    base_name = "TightenedSawtooth_$(C)_{$(name), $(t)}",
+                    lower_bound = z_min,
+                    upper_bound = z_max
+                )
+            tight_cons[name, 1, t] = JuMP.@constraint(jump_model, z <= x_sq_approx)
+            tight_cons[name, 2, t] = JuMP.@constraint(jump_model, z >= lp_expr[name, t])
+            result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
+        else
+            result_expr[name, t] = x_sq_approx
+        end
+    end
+
+    if add_mccormick
+        _add_mccormick_envelope!(
+            container, C, names, time_steps,
+            x_var, result_expr,
+            x_min, x_max,
+            meta,
+        )
     end
 
     return result_expr

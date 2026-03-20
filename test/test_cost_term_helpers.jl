@@ -362,10 +362,10 @@ Test types defined in test_utils/test_types.jl.
     end
 
     @testset "PWL Helpers" begin
-        @testset "add_pwl_variables! creates bounded variables" begin
+        @testset "add_pwl_variables_delta! creates bounded variables" begin
             container = make_test_container(1:3)
 
-            pwl_vars = IOM.add_pwl_variables!(
+            pwl_vars = IOM.add_pwl_variables_delta!(
                 container, TestPWLVariable, MockThermalGen, "gen1", 1, 4,
             )
 
@@ -388,10 +388,10 @@ Test types defined in test_utils/test_types.jl.
             end
         end
 
-        @testset "add_pwl_variables! with custom upper bound" begin
+        @testset "add_pwl_variables_delta! with custom upper bound" begin
             container = make_test_container(1:3)
 
-            pwl_vars = IOM.add_pwl_variables!(
+            pwl_vars = IOM.add_pwl_variables_delta!(
                 container, TestPWLVariable, MockThermalGen, "gen1", 1, 3;
                 upper_bound = 100.0,
             )
@@ -403,10 +403,10 @@ Test types defined in test_utils/test_types.jl.
             end
         end
 
-        @testset "add_pwl_variables! with no upper bound (Inf)" begin
+        @testset "add_pwl_variables_delta! with no upper bound (Inf)" begin
             container = make_test_container(1:3)
 
-            pwl_vars = IOM.add_pwl_variables!(
+            pwl_vars = IOM.add_pwl_variables_delta!(
                 container, TestPWLVariable, MockThermalGen, "gen1", 1, 3;
                 upper_bound = Inf,
             )
@@ -514,7 +514,7 @@ Test types defined in test_utils/test_types.jl.
             ) == 1
         end
 
-        @testset "get_pwl_cost_expression computes correct expression" begin
+        @testset "get_pwl_cost_expression_delta computes correct expression" begin
             container = make_test_container(1:3)
             jump_model = IOM.get_jump_model(container)
 
@@ -522,7 +522,7 @@ Test types defined in test_utils/test_types.jl.
             slopes = [10.0, 20.0, 30.0]
             multiplier = 2.0
 
-            cost_expr = IOM.get_pwl_cost_expression(pwl_vars, slopes, multiplier)
+            cost_expr = IOM.get_pwl_cost_expression_delta(pwl_vars, slopes, multiplier)
 
             # Verify: cost = Σ δ[i] * slope[i] * multiplier
             # = δ1 * 10 * 2 + δ2 * 20 * 2 + δ3 * 30 * 2
@@ -533,14 +533,14 @@ Test types defined in test_utils/test_types.jl.
             @test JuMP.constant(cost_expr) ≈ 0.0
         end
 
-        @testset "get_pwl_cost_expression with multiplier = 1" begin
+        @testset "get_pwl_cost_expression_delta with multiplier = 1" begin
             container = make_test_container(1:3)
             jump_model = IOM.get_jump_model(container)
 
             pwl_vars = [JuMP.@variable(jump_model, base_name = "delta_$i") for i in 1:2]
             slopes = [5.0, 15.0]
 
-            cost_expr = IOM.get_pwl_cost_expression(pwl_vars, slopes, 1.0)
+            cost_expr = IOM.get_pwl_cost_expression_delta(pwl_vars, slopes, 1.0)
 
             @test JuMP.coefficient(cost_expr, pwl_vars[1]) ≈ 5.0
             @test JuMP.coefficient(cost_expr, pwl_vars[2]) ≈ 15.0
