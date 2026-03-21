@@ -179,6 +179,7 @@ curves come from a time series. Here is the full flow:
 IOM's `process_market_bid_parameters!` is called during model construction:
 
  1. Filters devices that have `MarketBidCost`.
+
  2. For each parameter type (slopes, breakpoints, cost-at-min, startup, shutdown):
     
       + Validates the cost data on each device.

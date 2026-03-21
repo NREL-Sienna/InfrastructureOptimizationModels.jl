@@ -159,7 +159,8 @@ function setup_delta_pwl_parameters!(
     # creating degenerate zero-width tranches — same convention as PSI.
     n_segments = maximum(length, slopes)
     n_points = n_segments + 1
-    @assert maximum(length, breakpoints) == n_points || maximum(length, breakpoints) == n_segments + 1
+    @assert maximum(length, breakpoints) == n_points ||
+            maximum(length, breakpoints) == n_segments + 1
 
     SlopeParam = IOM._slope_param(dir)
     BPParam = IOM._breakpoint_param(dir)

@@ -748,10 +748,19 @@ function _add_ts_incremental_pwl_cost!(
             slopes, breakpoints, slope_arr, slope_mult, bp_arr, bp_mult,
             seg_axis, point_axis, name, t,
             power_units, model_base_power, device_base_power)
-        pwl_vars = add_pwl_variables!(
+        pwl_vars = add_pwl_variables_delta!(
             container, W, C, name, t, n_segments; upper_bound = Inf)
-        _add_pwl_constraint!(container, component, T(), U(), breakpoints, pwl_vars, t, X)
-        pwl_cost = get_pwl_cost_expression(pwl_vars, slopes, sign_dt)
+        add_pwl_constraint_delta!(
+            container,
+            component,
+            T(),
+            U(),
+            breakpoints,
+            pwl_vars,
+            t,
+            X,
+        )
+        pwl_cost = get_pwl_cost_expression_delta(pwl_vars, slopes, sign_dt)
         add_cost_to_expression!(container, ProductionCostExpression, pwl_cost, C, name, t)
         add_to_objective_variant_expression!(container, pwl_cost)
     end

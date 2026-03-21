@@ -289,7 +289,11 @@ end
 
         for (unit_system, expected_slope_factor, expected_bp_factor) in [
             (IS.UnitSystem.NATURAL_UNITS, system_base, 1.0 / system_base),
-            (IS.UnitSystem.DEVICE_BASE, 1.0 / (device_base / system_base), device_base / system_base),
+            (
+                IS.UnitSystem.DEVICE_BASE,
+                1.0 / (device_base / system_base),
+                device_base / system_base,
+            ),
             (IS.UnitSystem.SYSTEM_BASE, 1.0, 1.0),
         ]
             @testset "$unit_system" begin
@@ -332,7 +336,7 @@ end
         end
     end
 
-    @testset "_add_pwl_constraint! accepts mock types" begin
+    @testset "add_pwl_constraint_delta! accepts mock types" begin
         # Direct call with MockThermalGen to confirm widened type bound works
         time_steps = 1:1
         container = make_test_container(time_steps; base_power = 100.0)
@@ -343,7 +347,7 @@ end
         add_test_variable!(container, TestVariableType, MockThermalGen, "gen1", 1)
 
         breakpoints = [0.0, 0.5, 1.0]
-        pwl_vars = IOM.add_pwl_variables!(
+        pwl_vars = IOM.add_pwl_variables_delta!(
             container,
             IOM.PiecewiseLinearBlockIncrementalOffer,
             MockThermalGen,
@@ -354,7 +358,7 @@ end
         )
 
         # This should not throw with the widened type bound
-        IOM._add_pwl_constraint!(
+        IOM.add_pwl_constraint_delta!(
             container,
             device,
             TestVariableType(),
