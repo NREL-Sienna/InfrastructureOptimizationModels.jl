@@ -135,7 +135,7 @@ function adjacency_list(net::NetworkData)
         adj[n] = Tuple{String, Float64}[]
     end
     for (a, b) in net.edges
-        g = net.conductances[a, b]
+        g = net.conductances[(a, b)]
         push!(adj[a], (b, g))
         push!(adj[b], (a, g))
     end
@@ -205,6 +205,13 @@ end
 
 # ─── MIP model using IOM bilinear approximations ─────────────────────────────
 
+bilinear_methods = (
+    ("Bin2+sSOS", IOM._add_sos2_bilinear_approx!, ()),
+    ("Bin2+Saw", IOM._add_sawtooth_bilinear_approx!, ()),
+    ("HybS+sSOS", IOM._add_hybs_sos2_bilinear_approx!, ()),
+    ("HybS+Saw", IOM._add_hybs_sawtooth_bilinear_approx!, ()),
+)
+
 """
     build_mip_model(net, method, refinement) -> NamedTuple
 
@@ -215,7 +222,7 @@ Build the MIP approximation of the bilinear delta model.
 - `method::Symbol`: `:sos2`, `:manual_sos2`, or `:sawtooth`
 - `refinement::Int`: number of PWL segments (SOS2) or sawtooth depth
 """
-function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
+function build_mip_model(net::NetworkData, bilinear_fn!, bilinear_kwargs, refinement::Int)
     container = make_container()
     jump_model = IOM.get_jump_model(container)
     time_steps = 1:1
@@ -250,84 +257,40 @@ function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
         )
     end
 
-    # --- Dispatch to the chosen bilinear approximation method ---
-    bilinear_fn! = if method === :sos2
-        (cont, names, xc, yc, ylo, yhi, meta) ->
-            IOM._add_sos2_bilinear_approx!(
-                cont, NetworkNode, names, time_steps, xc, yc,
-                V_MIN, V_MAX, ylo, yhi, refinement, meta,
-            )
-    elseif method === :manual_sos2
-        (cont, names, xc, yc, ylo, yhi, meta) ->
-            IOM._add_manual_sos2_bilinear_approx!(
-                cont, NetworkNode, names, time_steps, xc, yc,
-                V_MIN, V_MAX, ylo, yhi, refinement, meta,
-            )
-    elseif method === :sawtooth
-        (cont, names, xc, yc, ylo, yhi, meta) ->
-            IOM._add_sawtooth_bilinear_approx!(
-                cont, NetworkNode, names, time_steps, xc, yc,
-                V_MIN, V_MAX, ylo, yhi, refinement, meta,
-            )
-    else
-        error("Unknown method: $method. Use :sos2, :manual_sos2, or :sawtooth.")
-    end
-
     # Generator bilinear: z_gen ≈ V · I_gen
     z_gen = bilinear_fn!(
-        container, net.gen_nodes, V_container, I_container,
-        I_GEN_MIN, I_GEN_MAX, "gen",
+        container, NetworkNode, net.gen_nodes, time_steps,
+        V_container, I_container, 
+        V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
+        refinement, "gen"; bilinear_kwargs...
     )
 
     # Demand bilinear: z_dem ≈ V · I_dem
     z_dem = bilinear_fn!(
-        container, net.dem_nodes, V_container, I_container,
-        I_DEM_MIN, I_DEM_MAX, "dem",
+        container, NetworkNode, net.dem_nodes, time_steps,
+        V_container, I_container, 
+        V_MIN, V_MAX, I_DEM_MIN, I_DEM_MAX,
+        refinement, "dem"; bilinear_kwargs...
     )
 
+    # --- Remaining linear model components (directly in JuMP) ---
     Pg = Dict{String, JuMP.VariableRef}()
-    pwl_link_constraints = IOM.lazy_container_addition!(
-        container,
-        IOM.PiecewiseLinearBlockIncrementalOfferConstraint(),
-        NetworkNode,
-        net.gen_nodes,
-        time_steps,
-    )
+    delta = Dict{Tuple{String, Int}, JuMP.VariableRef}()
+
     for g in net.gen_nodes
         Pg[g] = JuMP.@variable(jump_model, base_name = "Pg_$(g)",
             lower_bound = 0.0, upper_bound = P_MAX)
-
-        breakpoints = vcat(0.0, cumsum(net.segment_widths[g]))
-        pwl_vars = IOM.add_pwl_variables!(
-            container,
-            IOM.PiecewiseLinearBlockIncrementalOffer,
-            NetworkNode,
-            g,
-            1,
-            net.K;
-            upper_bound = Inf,
-        )
-        IOM.add_pwl_block_offer_constraints!(
-            jump_model,
-            pwl_link_constraints,
-            g,
-            1,
-            Pg[g],
-            pwl_vars,
-            breakpoints,
-        )
-
-        pwl_cost = IOM.get_pwl_cost_expression(
-            pwl_vars,
-            net.marginal_costs[g],
-            1.0,
-        )
-        IOM.add_to_objective_invariant_expression!(container, pwl_cost)
+        for k in 1:(net.K)
+            delta[g, k] = JuMP.@variable(jump_model, base_name = "delta_$(g)_$(k)",
+                lower_bound = 0.0, upper_bound = net.segment_widths[g][k])
+        end
     end
 
-    # Objective: min Σ m_{i,k} · δ_{i,k}, assembled via IOM's delta-PWL helper.
-    # With a 1-hour benchmark resolution, the formulation multiplier is dt = 1.0.
-    IOM.update_objective_function!(container)
+    # Objective: min Σ m_{i,k} · δ_{i,k}
+    JuMP.@objective(jump_model, Min, sum(
+        net.marginal_costs[g][k] * delta[g, k]
+        for g in net.gen_nodes, k in 1:(net.K)
+    ))
 
     # Pg == bilinear approx of V·I (generators)
     for g in net.gen_nodes
@@ -348,6 +311,12 @@ function build_mip_model(net::NetworkData, method::Symbol, refinement::Int)
             ))
     end
 
+    # Delta link: Pg = Σ δ_{g,k}
+    for g in net.gen_nodes
+        JuMP.@constraint(jump_model,
+            Pg[g] == sum(delta[g, k] for k in 1:(net.K)))
+    end
+
     return (; container, jump_model, V_container, I_container, z_gen, z_dem)
 end
 
@@ -357,19 +326,20 @@ function compute_bilinear_residuals(result, net)
     V = result.V_container
     I = result.I_container
     residuals = Float64[]
-    for g in net.gen_nodes
-        v_val = JuMP.value(V[g, 1])
-        i_val = JuMP.value(I[g, 1])
-        z_val = JuMP.value(result.z_gen[g, 1])
-        push!(residuals, abs(v_val * i_val - z_val))
+    grouped_nodes = (net.gen_nodes, net.dem_nodes)
+    zs = (result.z_gen, result.z_dem)
+    for (nodes, z) in zip(grouped_nodes, zs)
+        for n in nodes
+            product = JuMP.value(V[n, 1]) * JuMP.value(I[n, 1])
+            if product == 0.0
+                continue
+            end
+            resid = abs(product - JuMP.value(z[n, 1])) / abs(product)
+            push!(residuals, resid)
+        end
     end
-    for d in net.dem_nodes
-        v_val = JuMP.value(V[d, 1])
-        i_val = JuMP.value(I[d, 1])
-        z_val = JuMP.value(result.z_dem[d, 1])
-        push!(residuals, abs(v_val * i_val - z_val))
-    end
-    return residuals
+    geometric_mean = reduce(*, residuals)^(1/length(residuals))
+    return geometric_mean, maximum(residuals)
 end
 
 function model_size(jump_model)
@@ -400,8 +370,8 @@ function run_benchmark(;
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
-    segment_counts::Vector{Int} = [2, 4, 8, 16],
-    sawtooth_depths::Vector{Int} = [2, 4, 8],
+    # segment_counts::Vector{Int} = [2, 4, 8],
+    # sawtooth_depths::Vector{Int} = [2, 4, 8],
 )
     net = generate_network(; N, K, seed)
     println("Network: $(net.N) nodes, $(length(net.edges)) edges, $(net.K) cost segments")
@@ -411,9 +381,9 @@ function run_benchmark(;
     # --- NLP reference ---
     nlp_obj = NaN
     if HAS_IPOPT
-        println("=" ^ 90)
+        println("=" ^ 100)
         println("NLP Reference (Ipopt, bilinear V·I constraints)")
-        println("=" ^ 90)
+        println("=" ^ 100)
         nlp_model = build_nlp_model(net)
         JuMP.set_optimizer(nlp_model, Ipopt.Optimizer)
         JuMP.set_optimizer_attribute(nlp_model, "print_level", 0)
@@ -435,54 +405,47 @@ function run_benchmark(;
     println()
 
     # --- MIP benchmarks ---
-    method_configs = [
-        (:sos2, "Solver SOS2", segment_counts),
-        (:manual_sos2, "Manual SOS2", segment_counts),
-        (:sawtooth, "Sawtooth", sawtooth_depths),
-    ]
-
-    println("=" ^ 90)
+    println("=" ^ 100)
     println("MIP Bilinear Approximations (HiGHS)")
     println("  Refinement = num_segments for SOS2 methods, depth for Sawtooth")
-    println("=" ^ 90)
-    @printf("%-14s %4s %6s %7s %6s %12s %9s %10s %8s\n",
-        "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Max Resid", "Time(s)")
-    println("-" ^ 90)
+    println("=" ^ 100)
+    @printf("%-17s %4s %6s %7s %6s %12s %9s %11s %10s %8s\n",
+        "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
+    println("-" ^ 100)
 
-    for (method, label, refs) in method_configs
-        for ref in refs
-            build_t = @elapsed begin
-                result = build_mip_model(net, method, ref)
-            end
+    refinements = [2, 4, 6]
+    for (label, fn, kw) in bilinear_methods, ref in refinements
+        build_t = @elapsed begin
+            result = build_mip_model(net, fn, kw, ref)
+        end
 
-            JuMP.set_optimizer(result.jump_model, HiGHS.Optimizer)
-            JuMP.set_optimizer_attribute(result.jump_model, "log_to_console", false)
-            JuMP.set_optimizer_attribute(result.jump_model, "time_limit", 300.0)
+        JuMP.set_optimizer(result.jump_model, HiGHS.Optimizer)
+        JuMP.set_optimizer_attribute(result.jump_model, "log_to_console", false)
+        JuMP.set_optimizer_attribute(result.jump_model, "time_limit", 300.0)
 
-            solve_t = @elapsed JuMP.optimize!(result.jump_model)
-            status = JuMP.termination_status(result.jump_model)
-            sz = model_size(result.jump_model)
+        solve_t = @elapsed JuMP.optimize!(result.jump_model)
+        status = JuMP.termination_status(result.jump_model)
+        sz = model_size(result.jump_model)
 
-            if status in (JuMP.OPTIMAL, JuMP.TIME_LIMIT) &&
-               JuMP.has_values(result.jump_model)
-                obj = JuMP.objective_value(result.jump_model)
-                gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / max(abs(nlp_obj), 1e-10) * 100.0
-                resids = compute_bilinear_residuals(result, net)
-                gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
-                @printf("%-14s %4d %6d %7d %6d %12.6f %s %10.2e %8.4f\n",
-                    label, ref,
-                    sz.variables, sz.constraints, sz.binaries,
-                    obj, gap_str, maximum(resids), solve_t)
-            else
-                @printf("%-14s %4d %6d %7d %6d %12s %9s %10s %8.4f\n",
-                    label, ref,
-                    sz.variables, sz.constraints, sz.binaries,
-                    string(status), "-", "-", solve_t)
-            end
+        if status in (JuMP.OPTIMAL, JuMP.TIME_LIMIT) &&
+            JuMP.has_values(result.jump_model)
+            obj = JuMP.objective_value(result.jump_model)
+            gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / max(abs(nlp_obj), 1e-10) * 100.0
+            geometric_mean, max = compute_bilinear_residuals(result, net)
+            gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
+            @printf("%-17s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
+                label, ref,
+                sz.variables, sz.constraints, sz.binaries,
+                obj, gap_str, geometric_mean, max, solve_t)
+        else
+            @printf("%-15s %4d %6d %7d %6d %12s %9s %10s %8.4f\n",
+                label, ref,
+                sz.variables, sz.constraints, sz.binaries,
+                string(status), "-", "-", solve_t)
         end
         println()
     end
-    println("=" ^ 90)
+    println("=" ^ 100)
 end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────

@@ -46,7 +46,7 @@ function _add_mccormick_envelope!(
     y_min::Float64,
     y_max::Float64,
     meta::String;
-    lower_bounds = true,
+    lower_bounds::Bool = true,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op y_max > y_min
@@ -85,7 +85,7 @@ function _add_mccormick_envelope!(
     x_min::Float64,
     x_max::Float64,
     meta::String;
-    lower_bounds = true,
+    lower_bounds::Bool = true,
 ) where {C <: IS.InfrastructureSystemsComponent}
     _add_mccormick_envelope!(
         container, C, names, time_steps,
@@ -107,7 +107,7 @@ function _add_mccormick_envelope!(
     x_max::Float64,
     y_min::Float64,
     y_max::Float64;
-    lower_bounds = true,
+    lower_bounds::Bool = true,
 )
     if lower_bounds
         cons[index[1:(end - 1)]..., 1, index[end]] = JuMP.@constraint(
@@ -137,7 +137,7 @@ function _add_mccormick_envelope!(
     z::JuMP.VariableRef,
     x_min::Float64,
     x_max::Float64;
-    lower_bounds = true,
+    lower_bounds::Bool = true,
 )
     _add_mccormick_envelope!(
         jump_model, cons, index,

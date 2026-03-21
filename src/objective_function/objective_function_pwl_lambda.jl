@@ -93,7 +93,7 @@ _get_sos_value(
 ##################################################
 
 # This cases bounds the data by 1 - 0
-function _add_pwl_variables!(
+function add_pwl_variables_lambda!(
     container::OptimizationContainer,
     ::Type{T},
     component_name::String,
@@ -282,7 +282,7 @@ end
 ##################################################
 
 # accepts scaled function data.
-function _get_pwl_cost_expression(
+function get_pwl_cost_expression_lambda(
     container::OptimizationContainer,
     ::Type{T},
     name::String,

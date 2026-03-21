@@ -533,11 +533,11 @@ Add PWL objective terms using the **delta (incremental/block-offer) formulation*
 Given an offer curve with breakpoints ``P_0, P_1, \\ldots, P_n`` and slopes
 ``m_1, m_2, \\ldots, m_n``, this function:
 
-1. Creates delta variables ``\\delta_k \\geq 0`` for each segment via [`add_pwl_variables!`](@ref),
+1. Creates delta variables ``\\delta_k \\geq 0`` for each segment via [`add_pwl_variables_delta!`](@ref),
    with no upper bound (block sizes are enforced by constraints).
-2. Adds linking and block-size constraints via [`_add_pwl_constraint!`](@ref):
+2. Adds linking and block-size constraints via [`add_pwl_constraint_delta!`](@ref):
    ``p = \\sum_k \\delta_k`` and ``\\delta_k \\leq P_{k+1} - P_k``.
-3. Builds the objective expression ``C = \\sum_k m_k \\, \\delta_k`` via [`get_pwl_cost_expression`](@ref).
+3. Builds the cost expression ``C = \\sum_k m_k \\, \\delta_k`` via [`get_pwl_cost_expression_delta`](@ref).
 
 For convex offer curves (``m_1 \\leq m_2 \\leq \\cdots \\leq m_n``), no SOS2 or binary
 variables are needed — the optimizer fills cheap segments first automatically.
@@ -545,10 +545,10 @@ variables are needed — the optimizer fills cheap segments first automatically.
 Dispatches on `OfferDirection` (incremental or decremental) to select the appropriate
 variable and constraint types.
 
-See also: [`_add_pwl_term!`](@ref) for the lambda (convex combination) formulation used by
+See also: [`add_pwl_term_lambda!`](@ref) for the lambda (convex combination) formulation used by
 `CostCurve{PiecewisePointCurve}`.
 """
-function add_pwl_term!(
+function add_pwl_term_delta!(
     dir::OfferDirection,
     container::OptimizationContainer,
     component::T,
@@ -567,8 +567,16 @@ function add_pwl_term!(
     for t in time_steps
         breakpoints, slopes = _get_pwl_data(dir, container, component, t)
         pwl_vars =
-            add_pwl_variables!(container, W, T, name, t, length(slopes); upper_bound = Inf)
-        _add_pwl_constraint!(
+            add_pwl_variables_delta!(
+                container,
+                W,
+                T,
+                name,
+                t,
+                length(slopes);
+                upper_bound = Inf,
+            )
+        add_pwl_constraint_delta!(
             container,
             component,
             U(),
@@ -578,7 +586,8 @@ function add_pwl_term!(
             t,
             X,
         )
-        pwl_cost = get_pwl_cost_expression(pwl_vars, slopes, _objective_sign(dir) * dt)
+        pwl_cost =
+            get_pwl_cost_expression_delta(pwl_vars, slopes, _objective_sign(dir) * dt)
 
         add_cost_to_expression!(
             container,
@@ -613,7 +622,7 @@ function add_variable_cost_to_objective!(
     if !isnothing(get_input_offer_curves(cost_function))
         error("Component $(component_name) is not allowed to participate as a demand.")
     end
-    add_pwl_term!(
+    add_pwl_term_delta!(
         IncrementalOffer(),
         container,
         component,
