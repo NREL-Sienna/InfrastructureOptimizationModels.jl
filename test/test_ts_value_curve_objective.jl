@@ -171,6 +171,70 @@ end
         end
     end
 
+    # POM populates parameter arrays, not IOM: this is really a test of our test utils,
+    # `setup_delta_pwl_parameters!` in test_utils/objective_function_helpers.jl
+    @testset "Varying tranche counts across devices" begin
+        # gen1 has 3 segments, gen2 has 2. Parameter arrays are padded to max (3).
+        # Padded slopes = 0, padded breakpoints = last breakpoint (zero-width tranches).
+        time_steps = 1:1
+        names = ["gen1", "gen2"]
+        base_power = 100.0
+
+        slopes_mat = Matrix{Vector{Float64}}(undef, 2, 1)
+        slopes_mat[1, 1] = [10.0, 20.0, 30.0]  # gen1: 3 segments
+        slopes_mat[2, 1] = [5.0, 15.0]           # gen2: 2 segments
+
+        bp_mat = Matrix{Vector{Float64}}(undef, 2, 1)
+        bp_mat[1, 1] = [0.0, 50.0, 100.0, 150.0]  # gen1: 4 breakpoints
+        bp_mat[2, 1] = [0.0, 40.0, 80.0]            # gen2: 3 breakpoints
+
+        container = make_test_container(time_steps; base_power = base_power)
+        # Create variable container with both names upfront (add_test_variable!
+        # creates the axis from the first name only)
+        IOM.add_variable_container!(
+            container, TestVariableType(), MockThermalGen, names, time_steps)
+        jump_model = IOM.get_jump_model(container)
+        var_container = IOM.get_variable(container, TestVariableType(), MockThermalGen)
+        for name in names, t in time_steps
+            var_container[name, t] =
+                JuMP.@variable(jump_model, base_name = "TestVar_$(name)_$(t)")
+        end
+        add_test_expression!(
+            container, IOM.ProductionCostExpression, MockThermalGen, names, time_steps)
+
+        setup_delta_pwl_parameters!(
+            container, MockThermalGen, names, slopes_mat, bp_mat, time_steps)
+
+        cost_fn = _make_ts_incremental_cost_curve()
+
+        # Run objective for both devices
+        for name in names
+            device = make_mock_thermal(name)
+            IOM.add_variable_cost_to_objective!(
+                container, TestVariableType(), device, cost_fn, TestDeviceFormulation())
+        end
+
+        delta_var_container = IOM.get_variable(
+            container, IOM.PiecewiseLinearBlockIncrementalOffer(), MockThermalGen)
+        obj = IOM.get_objective_expression(container)
+        variant = IOM.get_variant_terms(obj)
+
+        # gen1: 3 real segments, coefficients = slopes * base_power
+        for (k, s) in enumerate([10.0, 20.0, 30.0])
+            coeff = JuMP.coefficient(variant, delta_var_container[("gen1", k, 1)])
+            @test isapprox(coeff, s * base_power; atol = 1e-10)
+        end
+
+        # gen2: 2 real segments with correct costs, 3rd segment has zero cost (padded)
+        for (k, s) in enumerate([5.0, 15.0])
+            coeff = JuMP.coefficient(variant, delta_var_container[("gen2", k, 1)])
+            @test isapprox(coeff, s * base_power; atol = 1e-10)
+        end
+        # Padded segment: slope = 0 → zero objective coefficient
+        padded_coeff = JuMP.coefficient(variant, delta_var_container[("gen2", 3, 1)])
+        @test isapprox(padded_coeff, 0.0; atol = 1e-10)
+    end
+
     @testset "Resolution scaling (15-min)" begin
         time_steps = 1:2
         names = ["gen1"]
