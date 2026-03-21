@@ -144,6 +144,7 @@ Populate slope + breakpoint parameter containers for delta PWL testing.
 - `time_steps`: time step range
 - `dir`: OfferDirection (default IncrementalOffer)
 """
+# NOTE: assumes time_steps starts at 1 (slopes/breakpoints matrices are indexed directly by t)
 function setup_delta_pwl_parameters!(
     container::IOM.OptimizationContainer,
     ::Type{C},
@@ -153,20 +154,23 @@ function setup_delta_pwl_parameters!(
     time_steps::UnitRange{Int};
     dir::IOM.OfferDirection = IOM.IncrementalOffer(),
 ) where {C <: IS.InfrastructureSystemsComponent}
-    n_segments::Int = length(slopes[1, 1])
-    n_points::Int = length(breakpoints[1, 1])
-    @assert n_points == n_segments + 1
+    # Handle varying tranche counts: pad to the maximum across all devices and times.
+    # Slopes are padded with 0.0, breakpoints with the last value (so dx = 0),
+    # creating degenerate zero-width tranches — same convention as PSI.
+    n_segments = maximum(length, slopes)
+    n_points = n_segments + 1
+    @assert maximum(length, breakpoints) == n_points || maximum(length, breakpoints) == n_segments + 1
 
     SlopeParam = IOM._slope_param(dir)
     BPParam = IOM._breakpoint_param(dir)
 
     # Build 3D slope array: (names × segments × time)
-    slope_vals = Array{Float64, 3}(undef, length(names), n_segments, length(time_steps))
-    for (i, _name) in enumerate(names)
-        for t in time_steps
+    slope_vals = zeros(Float64, length(names), n_segments, length(time_steps))
+    for i in axes(slopes, 1)
+        for (ti, t) in enumerate(time_steps)
             s = slopes[i, t]
-            for k in 1:n_segments
-                slope_vals[i, k, t] = s[k]
+            for k in eachindex(s)
+                slope_vals[i, k, ti] = s[k]
             end
         end
     end
@@ -182,11 +186,15 @@ function setup_delta_pwl_parameters!(
 
     # Build 3D breakpoint array: (names × points × time)
     bp_vals = Array{Float64, 3}(undef, length(names), n_points, length(time_steps))
-    for (i, _name) in enumerate(names)
-        for t in time_steps
+    for i in axes(breakpoints, 1)
+        for (ti, t) in enumerate(time_steps)
             bp = breakpoints[i, t]
-            for k in 1:n_points
-                bp_vals[i, k, t] = bp[k]
+            for k in eachindex(bp)
+                bp_vals[i, k, ti] = bp[k]
+            end
+            # Pad with last breakpoint value (zero-width tranches)
+            for k in (length(bp) + 1):n_points
+                bp_vals[i, k, ti] = bp[end]
             end
         end
     end

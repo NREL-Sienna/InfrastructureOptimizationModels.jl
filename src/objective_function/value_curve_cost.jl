@@ -675,7 +675,7 @@ function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
     component::C,
-    ::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve},
+    cost_function::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve},
     ::U;
     dir::OfferDirection = IncrementalOffer(),
 ) where {
@@ -683,7 +683,10 @@ function add_variable_cost_to_objective!(
     C <: IS.InfrastructureSystemsComponent,
     U <: AbstractDeviceFormulation,
 }
-    _add_ts_incremental_pwl_cost!(dir, container, component, T(), U())
+    power_units = IS.get_power_units(cost_function)
+    device_base_power = get_base_power(component)
+    _add_ts_incremental_pwl_cost!(dir, container, component, T(), U(),
+        power_units, device_base_power)
     return
 end
 
@@ -699,6 +702,8 @@ function _add_ts_incremental_pwl_cost!(
     component::C,
     ::T,
     ::U,
+    power_units::IS.UnitSystem,
+    device_base_power::Float64,
 ) where {
     D <: OfferDirection,
     C <: IS.InfrastructureSystemsComponent,
@@ -707,10 +712,10 @@ function _add_ts_incremental_pwl_cost!(
 }
     W = _block_offer_var(dir)
     X = _block_offer_constraint(dir)
-    name::String = get_name(component)
-    dt::Float64 = Dates.value(get_resolution(container)) / MILLISECONDS_IN_HOUR
-    sign_dt::Float64 = _objective_sign(dir) * dt
-    model_base_power::Float64 = get_model_base_power(container)
+    name = get_name(component)
+    dt = Dates.value(get_resolution(container)) / MILLISECONDS_IN_HOUR
+    sign_dt = _objective_sign(dir) * dt
+    model_base_power = get_model_base_power(container)
 
     # Hoist parameter array lookups out of the time loop (4 dict lookups total, not 4*T)
     SlopeParam = _slope_param(dir)
@@ -729,17 +734,15 @@ function _add_ts_incremental_pwl_cost!(
     slopes = Vector{Float64}(undef, n_segments)
     breakpoints = Vector{Float64}(undef, n_points)
 
-    # NATURAL_UNITS conversion factors (slopes scale up, breakpoints scale down)
-    inv_base::Float64 = 1.0 / model_base_power
-
     for t in get_time_steps(container)
         _fill_pwl_data_from_arrays!(
             slopes, breakpoints, slope_arr, slope_mult, bp_arr, bp_mult,
-            seg_axis, point_axis, name, t, model_base_power, inv_base)
-        pwl_vars::Vector{JuMP.VariableRef} = add_pwl_variables!(
+            seg_axis, point_axis, name, t,
+            power_units, model_base_power, device_base_power)
+        pwl_vars = add_pwl_variables!(
             container, W, C, name, t, n_segments; upper_bound = Inf)
         _add_pwl_constraint!(container, component, T(), U(), breakpoints, pwl_vars, t, X)
-        pwl_cost::JuMP.AffExpr = get_pwl_cost_expression(pwl_vars, slopes, sign_dt)
+        pwl_cost = get_pwl_cost_expression(pwl_vars, slopes, sign_dt)
         add_cost_to_expression!(container, ProductionCostExpression, pwl_cost, C, name, t)
         add_to_objective_variant_expression!(container, pwl_cost)
     end
@@ -748,8 +751,8 @@ end
 
 """
 Fill pre-allocated slope and breakpoint buffers from parameter arrays for a single
-time step. Applies NATURAL_UNITS conversion in-place (slopes × base_power,
-breakpoints / base_power), avoiding intermediate DenseAxisArray allocations.
+time step. Reads raw values from parameter arrays, then applies unit conversion
+via `get_piecewise_curve_per_system_unit`.
 """
 function _fill_pwl_data_from_arrays!(
     slopes::Vector{Float64},
@@ -762,16 +765,21 @@ function _fill_pwl_data_from_arrays!(
     point_axis::UnitRange{Int64},
     name::String,
     time::Int,
+    power_units::IS.UnitSystem,
     model_base_power::Float64,
-    inv_base::Float64,
+    device_base_power::Float64,
 )
+    # Read raw values from parameter arrays
     for (i, seg) in enumerate(seg_axis)
-        slopes[i] =
-            slope_arr[name, seg, time] * slope_mult[name, seg, time] *
-            model_base_power
+        slopes[i] = slope_arr[name, seg, time] * slope_mult[name, seg, time]
     end
     for (i, pt) in enumerate(point_axis)
-        breakpoints[i] = bp_arr[name, pt, time] * bp_mult[name, pt, time] * inv_base
+        breakpoints[i] = bp_arr[name, pt, time] * bp_mult[name, pt, time]
     end
+    # Convert to system per-unit
+    converted_bp, converted_slopes = get_piecewise_curve_per_system_unit(
+        breakpoints, slopes, power_units, model_base_power, device_base_power)
+    copyto!(slopes, converted_slopes)
+    copyto!(breakpoints, converted_bp)
     return
 end
