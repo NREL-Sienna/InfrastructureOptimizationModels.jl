@@ -1,12 +1,22 @@
 ##################################################
 # PWL Delta (Incremental/Block) Formulation
 #
-# Pure formulation math for the delta/incremental PWL method.
+# Pure objective function formulation for the delta/incremental PWL method.
 # Variables δ_k >= 0 with block width bounds,
-# P = Σ δ_k + offset, cost = Σ δ_k * slope_k.
+# P = Σ δ_k + offset, objective = Σ δ_k * slope_k.
 #
-# Cost-data-specific mapping (OfferCurveCost → slopes/breakpoints)
-# stays in market_bid.jl.
+# ValueCurve-specific mapping (ValueCurve → slopes/breakpoints)
+# stays in value_curve_cost.jl.
+#
+# Data type relationship:
+#   IS.PiecewiseStepData  →  this formulation (slopes already stored per segment)
+#   IS.PiecewiseIncrementalCurve  =  IncrementalCurve{PiecewiseStepData}  →  this formulation
+#   IS.PiecewiseAverageCurve      =  AverageRateCurve{PiecewiseStepData}  →  this formulation
+#
+# The segment-width upper bounds (δ_k ≤ P_{k+1} - P_k) naturally enforce ordering
+# without SOS2, so non-convex (declining slope) curves remain LP-feasible.
+# Contrast with the lambda formulation (objective_function_pwl_lambda.jl) which
+# operates on IS.PiecewiseLinearData (point values) and requires SOS2 for non-convex curves.
 ##################################################
 
 ##################################################
@@ -71,20 +81,20 @@ end
 ##################################################
 
 """
-Compute PWL cost expression from delta variables and slopes.
+Compute PWL objective expression from delta variables and slopes.
 
-Returns the cost expression without adding it to the objective (caller decides
+Returns the objective expression without adding it to the objective (caller decides
 whether to use invariant or variant).
 
-    cost = Σ δ[i] * slope[i] * multiplier
+    objective_term = Σ δ[i] * slope[i] * multiplier
 
 # Arguments
 - `pwl_vars`: vector of PWL delta variables
-- `slopes`: vector of slope values (cost per segment, already normalized)
+- `slopes`: vector of slope values (rate per segment, already normalized)
 - `multiplier`: additional multiplier (e.g., dt for time resolution)
 
 # Returns
-JuMP affine expression representing the cost.
+JuMP affine expression representing the objective function term.
 """
 function get_pwl_cost_expression_delta(
     pwl_vars::AbstractVector{JuMP.VariableRef},
@@ -177,7 +187,7 @@ function add_pwl_constraint_delta!(
     pwl_vars::Vector{JuMP.VariableRef},
     period::Int,
     ::Type{W},
-) where {T <: PSY.Component, U <: VariableType,
+) where {T <: IS.InfrastructureSystemsComponent, U <: VariableType,
     D <: AbstractDeviceFormulation,
     W <: AbstractPiecewiseLinearBlockOfferConstraint}
     variables = get_variable(container, U(), T)
@@ -187,7 +197,7 @@ function add_pwl_constraint_delta!(
         T,
         axes(variables)...,
     )
-    name = PSY.get_name(component)
+    name = get_name(component)
 
     min_power_offset = if _include_constant_min_gen_power_in_constraint(T, U(), D())
         jump_fixed_value(first(break_points))::Float64

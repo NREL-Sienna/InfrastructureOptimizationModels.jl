@@ -2,11 +2,22 @@
 # PWL Lambda (Convex Combination) Formulation
 #
 # Pure formulation math for the lambda/convex-combination PWL method.
-# Variables δ_i ∈ [0,1], Σ δ_i = on_status, P = Σ δ_i * breakpoint_i,
-# cost = Σ δ_i * y_i.
+# Variables λ_i ∈ [0,1], Σ λ_i = on_status, P = Σ λ_i * P_i,
+# cost = Σ λ_i * C_i.
 #
 # Cost-data-specific mapping (CostCurve/FuelCurve → PiecewiseLinearData)
 # stays in piecewise_linear.jl.
+#
+# Data type relationship:
+#   IS.PiecewiseLinearData  →  this formulation (absolute (P, C) values at breakpoints)
+#   IS.PiecewisePointCurve  =  InputOutputCurve{PiecewiseLinearData}  →  this formulation
+#
+# For convex cost curves the LP relaxation is exact — no extra constraints needed.
+# For non-convex curves (marginal rate decreases at some breakpoint), an SOS2 constraint
+# is automatically added, restricting at most two neighboring λ values to be nonzero.
+# This converts the problem to a MILP.
+# Contrast with the delta formulation (objective_function_pwl_delta.jl) which
+# operates on IS.PiecewiseStepData (slopes) and never needs SOS2.
 ##################################################
 
 ##################################################

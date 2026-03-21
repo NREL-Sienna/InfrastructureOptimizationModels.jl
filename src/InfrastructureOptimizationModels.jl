@@ -447,7 +447,6 @@ export ActivePowerVariable, ActivePowerInVariable, ActivePowerOutVariable
 export PowerAboveMinimumVariable
 export OnVariable, StartVariable, StopVariable
 export ReservationVariable
-export ServiceRequirementVariable
 export PiecewiseLinearCostVariable
 export RateofChangeConstraintSlackUp, RateofChangeConstraintSlackDown
 export DCVoltage
@@ -587,8 +586,8 @@ include("objective_function/objective_function_pwl_lambda.jl") # lambda/convex c
 include("objective_function/objective_function_pwl_delta.jl")  # delta/incremental block PWL
 
 # Cost-data-specific mapping to PWL formulations
-include("objective_function/piecewise_linear.jl")  # CostCurve/FuelCurve → lambda PWL
-include("objective_function/market_bid.jl")         # OfferCurveCost → delta PWL
+include("objective_function/piecewise_linear.jl")    # CostCurve/FuelCurve → lambda PWL
+include("objective_function/value_curve_cost.jl")    # ValueCurve → delta PWL
 
 # Quadratic approximations (PWL via SOS2)
 include("quadratic_approximations/pwl_utils.jl")
