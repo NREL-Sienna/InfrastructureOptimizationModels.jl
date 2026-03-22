@@ -43,6 +43,12 @@ function _add_bin2_bilinear_approx_impl!(
     time_steps::UnitRange{Int},
     xsq_expr,
     ysq_expr,
+    x_var,
+    y_var,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
     quad_approx_fn!,
     depth,
     meta::String;
@@ -51,8 +57,7 @@ function _add_bin2_bilinear_approx_impl!(
     p_min = x_min + y_min
     p_max = x_max + y_max
     IS.@assert_op p_min <= p_max
-
-    jump_model = get_jump_model(container)
+    meta_plus = meta * "_plus"
 
     p_expr = add_expression_container!(
         container,
@@ -73,7 +78,7 @@ function _add_bin2_bilinear_approx_impl!(
     psq_expr = quad_approx_fn!(
         container, C, names, time_steps,
         p_expr, p_min, p_max, depth,
-        meta * "_plus",
+        meta_plus,
     )
 
     result_expr = add_expression_container!(
@@ -128,11 +133,13 @@ function _add_bin2_sos2_bilinear_approx!(
     ysq_expr = _add_sos2_quadratic_approx!(
         container, C, names, time_steps,
         y_var, y_min, y_max, depth,
-        meta * "_x"; add_mccormick,
+        meta * "_y"; add_mccormick,
     )
     return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
-        xsq_expr, ysq_expr, _add_sos2_quadratic_approx!,
+        xsq_expr, ysq_expr, x_var, y_var,
+        x_min, x_max, y_min, y_max,
+        _add_sos2_quadratic_approx!,
         depth, meta,
     )
 end
@@ -169,11 +176,13 @@ function _add_bin2_manual_sos2_bilinear_approx!(
     ysq_expr = _add_manual_sos2_quadratic_approx!(
         container, C, names, time_steps,
         y_var, y_min, y_max, depth,
-        meta * "_x"; add_mccormick,
+        meta * "_y"; add_mccormick,
     )
     return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
-        xsq_expr, ysq_expr, _add_manual_sos2_quadratic_approx!,
+        xsq_expr, ysq_expr, x_var, y_var,
+        x_min, x_max, y_min, y_max,
+        _add_manual_sos2_quadratic_approx!,
         depth, meta,
     )
 end
@@ -212,53 +221,54 @@ function _add_bin2_sawtooth_bilinear_approx!(
     ysq_expr = _add_sawtooth_quadratic_approx!(
         container, C, names, time_steps,
         y_var, y_min, y_max, depth,
-        meta * "_x"; tighten,
+        meta * "_y"; tighten,
         add_mccormick,
     )
     quad_fn = (args...) -> _add_sawtooth_quadratic_approx!(args...; tighten)
     return _add_bin2_bilinear_approx_impl!(
         container, C, names, time_steps,
-        xsq_expr, ysq_expr, quad_fn,
-        depth, meta,
+        xsq_expr, ysq_expr, x_var, y_var,
+        x_min, x_max, y_min, y_max,
+        quad_fn, depth, meta,
     )
 end
 
-function _add_bin2_dnmdt_bilinear_approx!(
-    container::OptimizationContainer,
-    ::Type{C},
-    names::Vector{String},
-    time_steps::UnitRange{Int},
-    x_var,
-    y_var,
-    x_min::Float64,
-    x_max::Float64,
-    y_min::Float64,
-    y_max::Float64,
-    depth::Int,
-    meta::String;
-    double::Bool = false,
-    tighten::Bool = false,
-    add_mccormick::Bool = false,
-) where {C <: IS.InfrastructureSystemsComponent}
-    quad_fn =
-        (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_dnmdt_univariate_approx!(
-                cont,
-                CT,
-                nms,
-                ts,
-                vc,
-                lo,
-                hi,
-                depth,
-                m;
-                double,
-                tighten,
-                add_mccormick,
-            )
-    return _add_bin2_bilinear_approx_impl!(
-        container, C, names, time_steps,
-        x_var, y_var,
-        x_min, x_max, y_min, y_max, quad_fn, meta;
-    )
-end
+# function _add_bin2_dnmdt_bilinear_approx!(
+#     container::OptimizationContainer,
+#     ::Type{C},
+#     names::Vector{String},
+#     time_steps::UnitRange{Int},
+#     x_var,
+#     y_var,
+#     x_min::Float64,
+#     x_max::Float64,
+#     y_min::Float64,
+#     y_max::Float64,
+#     depth::Int,
+#     meta::String;
+#     double::Bool = false,
+#     tighten::Bool = false,
+#     add_mccormick::Bool = false,
+# ) where {C <: IS.InfrastructureSystemsComponent}
+#     quad_fn =
+#         (cont, CT, nms, ts, vc, lo, hi, m) ->
+#             _add_dnmdt_univariate_approx!(
+#                 cont,
+#                 CT,
+#                 nms,
+#                 ts,
+#                 vc,
+#                 lo,
+#                 hi,
+#                 depth,
+#                 m;
+#                 double,
+#                 tighten,
+#                 add_mccormick,
+#             )
+#     return _add_bin2_bilinear_approx_impl!(
+#         container, C, names, time_steps,
+#         x_var, y_var,
+#         x_min, x_max, y_min, y_max, quad_fn, meta;
+#     )
+# end
