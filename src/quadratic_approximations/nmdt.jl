@@ -37,12 +37,12 @@ function _add_dnmdt_approx!(
     bx_xh_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, x_disc.norm_expr, 0.0, 1.0,
-        meta * "_bx_xh"; tighten
+        meta * "_bx_xh"; tighten,
     )
     bx_dx_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, x_disc.delta_var, 0.0, 2.0^(-x_disc.depth),
-        meta * "_bx_dx"; tighten
+        meta * "_bx_dx"; tighten,
     )
 
     result_expr = _add_dnmdt_approx!(
@@ -135,12 +135,12 @@ function _add_nmdt_approx!(
     bx_y_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, x_disc.norm_expr, 0.0, 1.0,
-        meta; tighten
+        meta; tighten,
     )
     dz = _residual_product!(
         container, C, names, time_steps,
         x_disc, x_disc.norm_expr, 1.0, meta;
-        tighten
+        tighten,
     )
 
     result_expr = _assemble_product!(

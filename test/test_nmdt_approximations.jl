@@ -269,7 +269,7 @@ end
                         JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
                         JuMP.set_silent(setup.jump_model)
                         JuMP.optimize!(setup.jump_model)
-                        push!(gaps, abs(x0*y0 - JuMP.objective_value(setup.jump_model)))
+                        push!(gaps, abs(x0 * y0 - JuMP.objective_value(setup.jump_model)))
                     end
                 end
             end
@@ -774,7 +774,7 @@ end
                         JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
                         JuMP.set_silent(setup.jump_model)
                         JuMP.optimize!(setup.jump_model)
-                        push!(gaps, abs(x0*y0 - JuMP.objective_value(setup.jump_model)))
+                        push!(gaps, abs(x0 * y0 - JuMP.objective_value(setup.jump_model)))
                     end
                 end
             end

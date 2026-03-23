@@ -202,7 +202,7 @@ function _add_nmdt_approx!(
     )
     yh_expr = _normed_variable!(
         container, C, names, time_steps,
-        y_var, y_min, y_max, meta * "_y"
+        y_var, y_min, y_max, meta * "_y",
     )
 
     return _add_nmdt_approx!(

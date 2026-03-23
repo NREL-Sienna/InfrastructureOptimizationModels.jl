@@ -44,4 +44,3 @@ function _normed_variable!(
     end
     return result_expr
 end
-
