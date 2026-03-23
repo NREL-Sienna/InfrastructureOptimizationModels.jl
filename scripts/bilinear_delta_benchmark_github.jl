@@ -413,7 +413,7 @@ function run_benchmark(;
         "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
     println("-" ^ 100)
 
-    refinements = [2, 4, 6]
+    refinements = [2]#, 4, 6]
     for (label, fn, kw) in bilinear_methods, ref in refinements
         build_t = @elapsed begin
             result = build_mip_model(net, fn, kw, ref)
@@ -430,7 +430,7 @@ function run_benchmark(;
         if status in (JuMP.OPTIMAL, JuMP.TIME_LIMIT) &&
             JuMP.has_values(result.jump_model)
             obj = JuMP.objective_value(result.jump_model)
-            gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / max(abs(nlp_obj), 1e-10) * 100.0
+            gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / abs(nlp_obj) * 100.0
             geometric_mean, max = compute_bilinear_residuals(result, net)
             gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
             @printf("%-17s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",

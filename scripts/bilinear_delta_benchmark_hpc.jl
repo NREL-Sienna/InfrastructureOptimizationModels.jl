@@ -424,35 +424,37 @@ function run_benchmark(;
         "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
     println("-" ^ 100)
 
-    refinements = [2, 4,]
-    for (label, fn, kw) in bilinear_methods, ref in refinements
-        build_t = @elapsed begin
-            result = build_mip_model(net, fn, kw, ref)
-        end
+    refinements = [4, 6, 8]
+    for (label, fn, kw) in bilinear_methods
+        for ref in refinements
+            build_t = @elapsed begin
+                result = build_mip_model(net, fn, kw, ref)
+            end
 
-        JuMP.set_optimizer(result.jump_model, HiGHS.Optimizer)
-        JuMP.set_optimizer_attribute(result.jump_model, "log_to_console", false)
-        JuMP.set_optimizer_attribute(result.jump_model, "time_limit", 300.0)
+            JuMP.set_optimizer(result.jump_model, HiGHS.Optimizer)
+            JuMP.set_optimizer_attribute(result.jump_model, "log_to_console", false)
+            JuMP.set_optimizer_attribute(result.jump_model, "time_limit", 300.0)
 
-        solve_t = @elapsed JuMP.optimize!(result.jump_model)
-        status = JuMP.termination_status(result.jump_model)
-        sz = model_size(result.jump_model)
+            solve_t = @elapsed JuMP.optimize!(result.jump_model)
+            status = JuMP.termination_status(result.jump_model)
+            sz = model_size(result.jump_model)
 
-        if status in (JuMP.OPTIMAL, JuMP.TIME_LIMIT) &&
-            JuMP.has_values(result.jump_model)
-            obj = JuMP.objective_value(result.jump_model)
-            gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / max(abs(nlp_obj), 1e-10) * 100.0
-            geometric_mean, max = compute_bilinear_residuals(result, net)
-            gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
-            @printf("%-17s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
-                label, ref,
-                sz.variables, sz.constraints, sz.binaries,
-                obj, gap_str, geometric_mean, max, solve_t)
-        else
-            @printf("%-15s %4d %6d %7d %6d %12s %9s %10s %8.4f\n",
-                label, ref,
-                sz.variables, sz.constraints, sz.binaries,
-                string(status), "-", "-", solve_t)
+            if status in (JuMP.OPTIMAL, JuMP.TIME_LIMIT) &&
+                JuMP.has_values(result.jump_model)
+                obj = JuMP.objective_value(result.jump_model)
+                gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / nlp_obj * 100.0
+                geometric_mean, max = compute_bilinear_residuals(result, net)
+                gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
+                @printf("%-17s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
+                    label, ref,
+                    sz.variables, sz.constraints, sz.binaries,
+                    obj, gap_str, geometric_mean, max, solve_t)
+            else
+                @printf("%-15s %4d %6d %7d %6d %12s %9s %10s %8.4f\n",
+                    label, ref,
+                    sz.variables, sz.constraints, sz.binaries,
+                    string(status), "-", "-", solve_t)
+            end
         end
         println()
     end
