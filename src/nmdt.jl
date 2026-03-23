@@ -434,7 +434,7 @@ function _assemble_product!(
         container, C, names, time_steps, terms, dz_var,
         x_disc.norm_expr, y_disc.norm_expr,
         x_disc.min, x_disc.max, y_disc.min, y_disc.max,
-        meta; result_type
+        meta; result_type,
     )
 end
 
@@ -456,7 +456,7 @@ function _assemble_product!(
         container, C, names, time_steps, terms, dz_var,
         x_disc.norm_expr, yh_expr,
         x_disc.min, x_disc.max, y_min, y_max,
-        meta; result_type
+        meta; result_type,
     )
 end
 
@@ -502,7 +502,7 @@ function _add_dnmdt_approx!(
     meta::String;
     lambda::Float64 = DNMDT_LAMBDA,
     result_type::Type = NMDTResultExpression,
-    tighten::Bool = false
+    tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
     result_expr = add_expression_container!(
         container,
@@ -527,8 +527,7 @@ function _add_dnmdt_approx!(
     z2_expr = _assemble_product!(
         container, C, names, time_steps,
         [by_xh_expr, bx_dy_expr], dz,
-        y_disc, x_disc
-        , meta * "_nmdt2",
+        y_disc, x_disc, meta * "_nmdt2",
     )
 
     for name in names, t in time_steps
