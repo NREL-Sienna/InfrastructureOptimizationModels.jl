@@ -464,8 +464,9 @@ end
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    N = get(ARGS, 1, "10") |> x -> parse(Int, x)
-    K = get(ARGS, 2, "3") |> x -> parse(Int, x)
-    seed = get(ARGS, 3, "42") |> x -> parse(Int, x)
-    run_benchmark(; N, K, seed)
+    K = 3
+    seed = 42
+    for N in [10, 100, 500, 1000]
+        run_benchmark(; N, K, seed)
+    end
 end
