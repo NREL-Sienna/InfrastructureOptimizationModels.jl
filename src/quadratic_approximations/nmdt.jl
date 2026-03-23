@@ -156,6 +156,8 @@ function _add_nmdt_approx!(
             result_expr, x_disc, meta,
         )
     end
+    
+    return result_expr
 end
 
 """

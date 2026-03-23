@@ -72,6 +72,8 @@ function _discretize!(
     depth::Int,
     meta::String;
 ) where {C <: IS.InfrastructureSystemsComponent}
+    IS.@assert_op x_max > x_min
+    IS.@assert_op depth >= 1
     jump_model = get_jump_model(container)
 
     beta_var = add_variable_container!(
@@ -119,7 +121,7 @@ function _discretize!(
             beta =
                 beta_var[name, i, t] = JuMP.@variable(
                     jump_model,
-                    base_name = "NMDTBinary_$(C)_{$(name), $(t)}",
+                    base_name = "NMDTBinary_$(C)_{$(name), $(i), $(t)}",
                     binary = true
                 )
             JuMP.add_to_expression!(disc, 2.0^(-i), beta)
@@ -297,7 +299,7 @@ McCormick constraints on (δ, y) where δ ∈ [0, 2^{−L}]. Stores results in a
 - `y_var`: container of continuous variables y indexed by (name, t)
 - `y_max::Float64`: upper bound of y (lower bound assumed 0)
 - `meta::String`: identifier encoding the original variable type being approximated
-- `tighten::Bool`: if true, omit McCormick lower bounds (default: true)
+- `tighten::Bool`: if true, omit McCormick lower bounds (default: false)
 """
 function _residual_product!(
     container::OptimizationContainer,
@@ -363,7 +365,7 @@ Stores results in an expression container of type `result_type`.
 - `terms`: iterable of expression containers indexed by (name, t) for the binary-continuous products
 - `dz_var`: variable container for the residual product δ·y
 - `xh_norm`: normed expression container for x
-- `yh_norm`: normed expression conatiner for y
+- `yh_norm`: normed expression container for y
 - `x_min::Float64`: original x min
 - `x_max::Float64`: original x max
 - `y_min::Float64`: original y min
@@ -484,7 +486,7 @@ container of type `result_type`.
 - `y_disc::NMDTDiscretization`: discretization for y
 - `meta::String`: identifier encoding the original variable type being approximated
 - `lambda::Float64`: convex combination weight for the two NMDT estimates (default: `DNMDT_LAMBDA` = 0.5)
-- `result_type`: expression type to store results in (default: `DNMDTResultExpression`)
+- `result_type`: expression type to store results in (default: `NMDTResultExpression`)
 """
 function _add_dnmdt_approx!(
     container::OptimizationContainer,
@@ -499,7 +501,7 @@ function _add_dnmdt_approx!(
     y_disc::NMDTDiscretization,
     meta::String;
     lambda::Float64 = DNMDT_LAMBDA,
-    result_type::Type = DNMDTResultExpression,
+    result_type::Type = NMDTResultExpression,
     tighten::Bool = false
 ) where {C <: IS.InfrastructureSystemsComponent}
     result_expr = add_expression_container!(

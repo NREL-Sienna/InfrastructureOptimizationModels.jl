@@ -28,6 +28,7 @@ function _normed_variable!(
     x_max::Float64,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    IS.@assert_op x_max > x_min
     lx = x_max - x_min
     result_expr = add_expression_container!(
         container,
