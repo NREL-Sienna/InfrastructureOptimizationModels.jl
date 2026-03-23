@@ -2,19 +2,20 @@
 Benchmark script for the bilinear delta model described in `bilinear_delta_model.tex`.
 
 Builds a network OPF with delta (incremental) PWL costs and bilinear V·I power
-balance constraints. Compares three Bin2 bilinear approximation methods from
-InfrastructureOptimizationModels:
+balance constraints. Compares bilinear approximation methods from
+InfrastructureOptimizationModels against an exact NLP reference (Ipopt).
 
-  1. Solver-native SOS2
-  2. Manual SOS2 (binary-variable adjacency)
-  3. Sawtooth MIP
+Supports two network problem types via multiple dispatch:
+  - `LosslessNetworkProblem`: P = V·I
+  - `LossyNetworkProblem`:    P = V·I − a·I² − b·I − c
 
 Usage:
-    julia --project=test scripts/bilinear_delta_benchmark.jl [N] [K] [seed]
+    julia --project=test scripts/bilinear_delta_benchmark_github.jl [N] [K] [seed] [--lossy]
 
-    N    = number of nodes (default 10, must be even)
-    K    = number of PWL cost segments per generator (default 3)
-    seed = random seed for network generation (default 42)
+    N       = number of nodes (default 10, must be even)
+    K       = number of PWL cost segments per generator (default 3)
+    seed    = random seed for network generation (default 42)
+    --lossy = also run the lossy generator benchmark
 """
 
 using InfrastructureOptimizationModels
@@ -49,9 +50,11 @@ struct NetworkNode <: IS.InfrastructureSystemsComponent end
 struct VoltageVariable <: IOM.VariableType end
 struct CurrentVariable <: IOM.VariableType end
 
-# ─── Network data ────────────────────────────────────────────────────────────
+# ─── Network problem types ───────────────────────────────────────────────────
 
-struct NetworkData
+abstract type AbstractNetworkProblem end
+
+struct LosslessNetworkProblem <: AbstractNetworkProblem
     N::Int
     K::Int
     gen_nodes::Vector{String}
@@ -64,19 +67,29 @@ struct NetworkData
     segment_widths::Dict{String, Vector{Float64}}
 end
 
-"""
-Generate a random connected network matching the model in bilinear_delta_model.tex.
+struct LossyNetworkProblem <: AbstractNetworkProblem
+    N::Int
+    K::Int
+    gen_nodes::Vector{String}
+    dem_nodes::Vector{String}
+    all_nodes::Vector{String}
+    edges::Vector{Tuple{String, String}}
+    conductances::Dict{Tuple{String, String}, Float64}
+    demands::Dict{String, Float64}
+    marginal_costs::Dict{String, Vector{Float64}}
+    segment_widths::Dict{String, Vector{Float64}}
+    loss_a::Dict{String, Float64}
+    loss_b::Dict{String, Float64}
+    loss_c::Dict{String, Float64}
+end
 
-- `N` nodes split evenly into generators and demands.
-- `K` PWL cost segments per generator with nondecreasing marginal costs.
-- Connected graph via random spanning tree plus extra edges.
-- Conductances scaled for feasibility given voltage/current bounds.
-- Demands d_i ∈ [0.05, 0.15].
-"""
-function generate_network(; N::Int = 10, K::Int = 3, seed::Int = 42)
-    @assert iseven(N) "N must be even"
-    rng = MersenneTwister(seed)
+# ─── Network generation ──────────────────────────────────────────────────────
 
+"""
+Generate the base network topology, demands, and PWL cost data shared by all
+problem types. Returns a NamedTuple consumed by the dispatched constructors.
+"""
+function _generate_base_network(rng, N::Int, K::Int)
     all_nodes = ["n$(i)" for i in 1:N]
     gen_nodes = all_nodes[1:(N ÷ 2)]
     dem_nodes = all_nodes[(N ÷ 2 + 1):N]
@@ -84,7 +97,7 @@ function generate_network(; N::Int = 10, K::Int = 3, seed::Int = 42)
     edges = Tuple{String, String}[]
     conductances = Dict{Tuple{String, String}, Float64}()
 
-    # Random spanning tree: shuffle nodes, connect consecutive pairs
+    # Random spanning tree
     perm = shuffle(rng, 1:N)
     for idx in 1:(N - 1)
         a, b = all_nodes[perm[idx]], all_nodes[perm[idx + 1]]
@@ -107,10 +120,8 @@ function generate_network(; N::Int = 10, K::Int = 3, seed::Int = 42)
         end
     end
 
-    # Demands at demand nodes (small enough for network to transport)
     demands = Dict(d => 0.05 + 0.1 * rand(rng) for d in dem_nodes)
 
-    # PWL cost data: K segments per generator with nondecreasing marginal costs
     marginal_costs = Dict{String, Vector{Float64}}()
     segment_widths = Dict{String, Vector{Float64}}()
     for g in gen_nodes
@@ -121,15 +132,55 @@ function generate_network(; N::Int = 10, K::Int = 3, seed::Int = 42)
         segment_widths[g] = widths
     end
 
-    return NetworkData(
-        N, K, gen_nodes, dem_nodes, all_nodes,
+    return (;
+        all_nodes, gen_nodes, dem_nodes,
         edges, conductances, demands,
         marginal_costs, segment_widths,
     )
 end
 
+function generate_network(
+    ::Type{LosslessNetworkProblem};
+    N::Int = 10,
+    K::Int = 3,
+    seed::Int = 42,
+)
+    @assert iseven(N) "N must be even"
+    rng = MersenneTwister(seed)
+    b = _generate_base_network(rng, N, K)
+    return LosslessNetworkProblem(
+        N, K, b.gen_nodes, b.dem_nodes, b.all_nodes,
+        b.edges, b.conductances, b.demands,
+        b.marginal_costs, b.segment_widths,
+    )
+end
+
+"""
+Generate a lossy network. Same base topology as the lossless variant, with
+additional per-generator loss coefficients a, b, c ∈ [0, 0.01].
+"""
+function generate_network(
+    ::Type{LossyNetworkProblem};
+    N::Int = 10,
+    K::Int = 3,
+    seed::Int = 42,
+)
+    @assert iseven(N) "N must be even"
+    rng = MersenneTwister(seed)
+    b = _generate_base_network(rng, N, K)
+    loss_a = Dict(g => 0.01 * rand(rng) for g in b.gen_nodes)
+    loss_b = Dict(g => 0.01 * rand(rng) for g in b.gen_nodes)
+    loss_c = Dict(g => 0.01 * rand(rng) for g in b.gen_nodes)
+    return LossyNetworkProblem(
+        N, K, b.gen_nodes, b.dem_nodes, b.all_nodes,
+        b.edges, b.conductances, b.demands,
+        b.marginal_costs, b.segment_widths,
+        loss_a, loss_b, loss_c,
+    )
+end
+
 """Build adjacency list from edge set."""
-function adjacency_list(net::NetworkData)
+function adjacency_list(net::AbstractNetworkProblem)
     adj = Dict{String, Vector{Tuple{String, Float64}}}()
     for n in net.all_nodes
         adj[n] = Tuple{String, Float64}[]
@@ -152,45 +203,50 @@ const I_DEM_MIN = -1.0
 const I_DEM_MAX = 0.0
 const P_MAX = 1.5
 
-# ─── NLP reference model (direct bilinear constraints via Ipopt) ─────────────
+# ─── Exact bilinear / quadratic (NLP via Ipopt) ─────────────────────────────
 
-function build_nlp_model(net::NetworkData)
-    model = JuMP.Model()
-    adj = adjacency_list(net)
-
-    # Variables
-    @variable(model, V_MIN <= V[n in net.all_nodes] <= V_MAX)
-    @variable(model, I_GEN_MIN <= Ig[g in net.gen_nodes] <= I_GEN_MAX)
-    @variable(model, I_DEM_MIN <= Id[d in net.dem_nodes] <= I_DEM_MAX)
-    @variable(model, 0.0 <= Pg[g in net.gen_nodes] <= P_MAX)
-    @variable(model,
-        0.0 <= delta[g in net.gen_nodes, k in 1:(net.K)] <= net.segment_widths[g][k])
-
-    # Objective: min Σ m_{i,k} · δ_{i,k}
-    @objective(model, Min, sum(
-        net.marginal_costs[g][k] * delta[g, k]
-        for g in net.gen_nodes, k in 1:(net.K)
-    ))
-
-    # Bilinear: Pg = V · I (generators)
-    @constraint(model, [g in net.gen_nodes], Pg[g] == V[g] * Ig[g])
-
-    # Bilinear: V · I = -d (demands)
-    @constraint(model, [d in net.dem_nodes], V[d] * Id[d] == -net.demands[d])
-
-    # KCL
-    for g in net.gen_nodes
-        @constraint(model, Ig[g] == sum(c * (V[g] - V[j]) for (j, c) in adj[g]))
+"""
+Exact bilinear product z = x·y as a quadratic constraint.
+Same calling convention as IOM bilinear approximation functions.
+"""
+function _add_exact_bilinear!(
+    container, ::Type{C}, names, time_steps,
+    x_var, y_var, x_min, x_max, y_min, y_max,
+    _refinement, meta; _kwargs...,
+) where {C}
+    jump_model = IOM.get_jump_model(container)
+    z_lo = min(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
+    z_hi = max(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
+    z = Dict{Tuple{String, Int}, JuMP.VariableRef}()
+    for name in names, t in time_steps
+        z_var = JuMP.@variable(jump_model, base_name = "z_exact_$(meta)_$(name)",
+            lower_bound = z_lo, upper_bound = z_hi)
+        JuMP.@constraint(jump_model, z_var == x_var[name, t] * y_var[name, t])
+        z[(name, t)] = z_var
     end
-    for d in net.dem_nodes
-        @constraint(model, Id[d] == sum(c * (V[d] - V[j]) for (j, c) in adj[d]))
+    return z
+end
+
+"""
+Exact quadratic z = x² as a quadratic constraint.
+Same calling convention as IOM quadratic approximation functions.
+"""
+function _add_exact_quadratic!(
+    container, ::Type{C}, names, time_steps,
+    x_var, x_min, x_max,
+    _refinement, _meta; _kwargs...,
+) where {C}
+    jump_model = IOM.get_jump_model(container)
+    sq_lo = min(x_min^2, x_max^2)
+    sq_hi = max(x_min^2, x_max^2)
+    z = Dict{Tuple{String, Int}, JuMP.VariableRef}()
+    for name in names, t in time_steps
+        z_var = JuMP.@variable(jump_model, base_name = "z_exact_sq_$(name)",
+            lower_bound = sq_lo, upper_bound = sq_hi)
+        JuMP.@constraint(jump_model, z_var == x_var[name, t]^2)
+        z[(name, t)] = z_var
     end
-
-    # Delta link: Pg = Σ δ_{g,k}
-    @constraint(model, [g in net.gen_nodes],
-        Pg[g] == sum(delta[g, k] for k in 1:(net.K)))
-
-    return model
+    return z
 end
 
 # ─── IOM container setup ─────────────────────────────────────────────────────
@@ -203,32 +259,188 @@ function make_container()
     return container
 end
 
-# ─── MIP model using IOM bilinear approximations ─────────────────────────────
+# ─── Method family types for dispatch ─────────────────────────────────────────
+
+abstract type MethodFamily end
+struct SeparableMethod <: MethodFamily end
+struct DNMDTMethod <: MethodFamily end
+struct ExactMethod <: MethodFamily end
+
+# ─── Dispatched model components ─────────────────────────────────────────────
+
+function add_gen_power_constraints!(
+    jump_model, ::LosslessNetworkProblem, gen_nodes, z_gen, _I_container, _I_sq, Pg,
+)
+    for g in gen_nodes
+        JuMP.@constraint(jump_model, Pg[g] == z_gen[g, 1])
+    end
+end
+
+function add_gen_power_constraints!(
+    jump_model, net::LossyNetworkProblem, gen_nodes, z_gen, I_container, I_sq, Pg,
+)
+    for g in gen_nodes
+        JuMP.@constraint(jump_model,
+            Pg[g] ==
+            z_gen[g, 1]
+            -
+            net.loss_a[g] * I_sq[g, 1]
+            -
+            net.loss_b[g] * I_container[g, 1]
+            -
+            net.loss_c[g])
+    end
+end
+
+# ─── Dispatched gen bilinear construction ─────────────────────────────────────
+
+"""
+Lossless networks: no precomputation, call the bilinear wrapper directly.
+"""
+function build_gen_bilinear(
+    container, net::LosslessNetworkProblem, V_container, I_container, time_steps,
+    ::MethodFamily, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
+)
+    z_gen = bilinear_fn!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        V_container, I_container,
+        V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
+        refinement, "gen"; bilinear_kwargs...,
+    )
+    return z_gen, nothing
+end
+
+"""
+Lossy + separable methods: precompute V² and I², call wrapper's precomputed overload.
+I² is reused in the loss constraint.
+"""
+function build_gen_bilinear(
+    container, net::LossyNetworkProblem, V_container, I_container, time_steps,
+    ::SeparableMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
+)
+    V_sq = quad_fn!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        V_container, V_MIN, V_MAX, refinement, "gen_x",
+    )
+    I_sq = quad_fn!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        I_container, I_GEN_MIN, I_GEN_MAX, refinement, "gen_y",
+    )
+    z_gen = bilinear_fn!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        V_sq, I_sq,
+        V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
+        V_sq, I_sq, refinement, "gen"; bilinear_kwargs...,
+    )
+    return z_gen, I_sq
+end
+
+"""
+Lossy + DNMDT: discretize V and I, compute I² from I's discretization,
+call DNMDT bilinear with pre-built discretizations. I² is reused in the loss constraint.
+"""
+function build_gen_bilinear(
+    container, net::LossyNetworkProblem, V_container, I_container, time_steps,
+    ::DNMDTMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
+)
+    V_disc = IOM._discretize!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        V_container, V_MIN, V_MAX, refinement, "gen_V",
+    )
+    I_disc = IOM._discretize!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        I_container, I_GEN_MIN, I_GEN_MAX, refinement, "gen_I",
+    )
+    I_sq = IOM._add_dnmdt_quadratic_approx!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        I_disc, "gen_I_sq",
+    )
+    z_gen = IOM._add_dnmdt_bilinear_approx!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        V_disc, I_disc, "gen",
+    )
+    return z_gen, I_sq
+end
+
+"""
+Lossy + exact (NLP): exact bilinear V·I and exact quadratic I².
+"""
+function build_gen_bilinear(
+    container, net::LossyNetworkProblem, V_container, I_container, time_steps,
+    ::ExactMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
+)
+    z_gen = bilinear_fn!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        V_container, I_container,
+        V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
+        refinement, "gen"; bilinear_kwargs...,
+    )
+    I_sq = quad_fn!(
+        container, NetworkNode, net.gen_nodes, time_steps,
+        I_container, I_GEN_MIN, I_GEN_MAX,
+        refinement, "gen_I_sq",
+    )
+    return z_gen, I_sq
+end
+
+# ─── MIP model (unified) ─────────────────────────────────────────────────────
 
 bilinear_methods = (
-    ("Bin2+sSOS", IOM._add_sos2_bilinear_approx!, ()),
-    ("Bin2+Saw", IOM._add_sawtooth_bilinear_approx!, ()),
-    ("HybS+sSOS", IOM._add_hybs_sos2_bilinear_approx!, ()),
-    ("HybS+Saw", IOM._add_hybs_sawtooth_bilinear_approx!, ()),
+    (
+        "Bin2+sSOS",
+        SeparableMethod(),
+        IOM._add_sos2_bilinear_approx!,
+        (),
+        IOM._add_sos2_quadratic_approx!,
+    ),
+    (
+        "Bin2+Saw",
+        SeparableMethod(),
+        IOM._add_sawtooth_bilinear_approx!,
+        (),
+        IOM._add_sawtooth_bilinear_approx!,
+    ),
+    (
+        "HybS+sSOS",
+        SeparableMethod(),
+        IOM._add_hybs_sos2_bilinear_approx!,
+        (),
+        IOM._add_sos2_quadratic_approx!,
+    ),
+    (
+        "HybS+Saw",
+        SeparableMethod(),
+        IOM._add_hybs_sawtooth_bilinear_approx!,
+        (),
+        IOM._add_sawtooth_bilinear_approx!,
+    ),
+    (
+        "DNMDT",
+        DNMDTMethod(),
+        IOM._add_dnmdt_bilinear_approx!,
+        (),
+        IOM._add_dnmdt_quadratic_approx!,
+    ),
 )
 
 """
-    build_mip_model(net, method, refinement) -> NamedTuple
+    build_mip_model(net, method_family, bilinear_fn!, bilinear_kwargs, refinement; quad_fn!) -> NamedTuple
 
-Build the MIP approximation of the bilinear delta model.
-
-# Arguments
-- `net::NetworkData`: network data
-- `method::Symbol`: `:sos2`, `:manual_sos2`, or `:sawtooth`
-- `refinement::Int`: number of PWL segments (SOS2) or sawtooth depth
+Build the MIP (or NLP) model for any `AbstractNetworkProblem`. Generator power
+constraints and bilinear precomputation are dispatched on the network type and
+method family.
 """
-function build_mip_model(net::NetworkData, bilinear_fn!, bilinear_kwargs, refinement::Int)
+function build_mip_model(
+    net::AbstractNetworkProblem, method_family::MethodFamily,
+    bilinear_fn!, bilinear_kwargs, refinement::Int;
+    quad_fn! = IOM._add_sos2_quadratic_approx!,
+)
     container = make_container()
     jump_model = IOM.get_jump_model(container)
     time_steps = 1:1
     adj = adjacency_list(net)
 
-    # --- V and I variable containers via IOM ---
+    # --- V and I variable containers ---
     V_container = IOM.add_variable_container!(
         container, VoltageVariable(), NetworkNode,
         net.all_nodes, time_steps,
@@ -257,23 +469,21 @@ function build_mip_model(net::NetworkData, bilinear_fn!, bilinear_kwargs, refine
         )
     end
 
-    # Generator bilinear: z_gen ≈ V · I_gen
-    z_gen = bilinear_fn!(
-        container, NetworkNode, net.gen_nodes, time_steps,
-        V_container, I_container, 
-        V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
-        refinement, "gen"; bilinear_kwargs...
+    # --- Bilinear gen: dispatched on network type and method family ---
+    z_gen, I_sq = build_gen_bilinear(
+        container, net, V_container, I_container, time_steps,
+        method_family, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
     )
 
-    # Demand bilinear: z_dem ≈ V · I_dem
+    # --- Bilinear dem: always uses the wrapper (no precomputation needed) ---
     z_dem = bilinear_fn!(
         container, NetworkNode, net.dem_nodes, time_steps,
-        V_container, I_container, 
+        V_container, I_container,
         V_MIN, V_MAX, I_DEM_MIN, I_DEM_MAX,
-        refinement, "dem"; bilinear_kwargs...
+        refinement, "dem"; bilinear_kwargs...,
     )
 
-    # --- Remaining linear model components (directly in JuMP) ---
+    # --- Pg, delta variables ---
     Pg = Dict{String, JuMP.VariableRef}()
     delta = Dict{Tuple{String, Int}, JuMP.VariableRef}()
 
@@ -286,23 +496,25 @@ function build_mip_model(net::NetworkData, bilinear_fn!, bilinear_kwargs, refine
         end
     end
 
-    # Objective: min Σ m_{i,k} · δ_{i,k}
-    JuMP.@objective(jump_model, Min, sum(
-        net.marginal_costs[g][k] * delta[g, k]
-        for g in net.gen_nodes, k in 1:(net.K)
-    ))
+    # --- Objective: min Σ m_{i,k} · δ_{i,k} ---
+    JuMP.@objective(
+        jump_model,
+        Min,
+        sum(
+            net.marginal_costs[g][k] * delta[g, k]
+            for g in net.gen_nodes, k in 1:(net.K)
+        )
+    )
 
-    # Pg == bilinear approx of V·I (generators)
-    for g in net.gen_nodes
-        JuMP.@constraint(jump_model, Pg[g] == z_gen[g, 1])
-    end
+    # --- Generator power (dispatched) ---
+    add_gen_power_constraints!(jump_model, net, net.gen_nodes, z_gen, I_container, I_sq, Pg)
 
-    # V·I == -d (demands)
+    # --- Demand: V·I == -d ---
     for d in net.dem_nodes
         JuMP.@constraint(jump_model, z_dem[d, 1] == -net.demands[d])
     end
 
-    # KCL: I_i = Σ g_{ij}(V_i - V_j)
+    # --- KCL: I_i = Σ g_{ij}(V_i - V_j) ---
     for n in net.all_nodes
         JuMP.@constraint(jump_model,
             I_container[n, 1] == sum(
@@ -311,34 +523,67 @@ function build_mip_model(net::NetworkData, bilinear_fn!, bilinear_kwargs, refine
             ))
     end
 
-    # Delta link: Pg = Σ δ_{g,k}
+    # --- Delta link: Pg = Σ δ_{g,k} ---
     for g in net.gen_nodes
         JuMP.@constraint(jump_model,
             Pg[g] == sum(delta[g, k] for k in 1:(net.K)))
     end
 
-    return (; container, jump_model, V_container, I_container, z_gen, z_dem)
+    return (; container, jump_model, V_container, I_container, z_gen, z_dem, I_sq)
 end
 
 # ─── Metrics ──────────────────────────────────────────────────────────────────
 
-function compute_bilinear_residuals(result, net)
+"""
+Compute per-node relative residuals |true − approx| / |true| for the bilinear
+product. For lossless generators the ground truth is V·I; for lossy generators
+it is V·I − a·I² − b·I − c.
+"""
+function compute_bilinear_residuals(result, net::LosslessNetworkProblem)
     V = result.V_container
     I = result.I_container
     residuals = Float64[]
-    grouped_nodes = (net.gen_nodes, net.dem_nodes)
-    zs = (result.z_gen, result.z_dem)
-    for (nodes, z) in zip(grouped_nodes, zs)
+    for (nodes, z) in ((net.gen_nodes, result.z_gen), (net.dem_nodes, result.z_dem))
         for n in nodes
             product = JuMP.value(V[n, 1]) * JuMP.value(I[n, 1])
-            if product == 0.0
-                continue
-            end
+            product == 0.0 && continue
             resid = abs(product - JuMP.value(z[n, 1])) / abs(product)
             push!(residuals, resid)
         end
     end
-    geometric_mean = reduce(*, residuals)^(1/length(residuals))
+    geometric_mean = reduce(*, residuals)^(1 / length(residuals))
+    return geometric_mean, maximum(residuals)
+end
+
+function compute_bilinear_residuals(result, net::LossyNetworkProblem)
+    V = result.V_container
+    I = result.I_container
+    I_sq = result.I_sq
+    residuals = Float64[]
+
+    # Generator nodes: ground truth = V·I − a·I² − b·I − c
+    for g in net.gen_nodes
+        v = JuMP.value(V[g, 1])
+        i = JuMP.value(I[g, 1])
+        true_power = v * i - net.loss_a[g] * i^2 - net.loss_b[g] * i - net.loss_c[g]
+        approx_power =
+            JuMP.value(result.z_gen[g, 1]) -
+            net.loss_a[g] * JuMP.value(I_sq[g, 1]) -
+            net.loss_b[g] * i -
+            net.loss_c[g]
+        true_power == 0.0 && continue
+        push!(residuals, abs(true_power - approx_power) / abs(true_power))
+    end
+
+    # Demand nodes: ground truth = V·I (unchanged)
+    for d in net.dem_nodes
+        product = JuMP.value(V[d, 1]) * JuMP.value(I[d, 1])
+        product == 0.0 && continue
+        resid = abs(product - JuMP.value(result.z_dem[d, 1])) / abs(product)
+        push!(residuals, resid)
+    end
+
+    geometric_mean = reduce(*, residuals)^(1 / length(residuals))
     return geometric_mean, maximum(residuals)
 end
 
@@ -352,100 +597,128 @@ function model_size(jump_model)
     return (; variables = nv, constraints = nc, binaries = nb)
 end
 
+# ─── Benchmark output helpers ─────────────────────────────────────────────────
+
+function print_network_info(net::LosslessNetworkProblem)
+    println(
+        "Lossless Network: $(net.N) nodes, $(length(net.edges)) edges, $(net.K) cost segments",
+    )
+    println("Generators: $(length(net.gen_nodes)), Demands: $(length(net.dem_nodes))")
+end
+
+function print_network_info(net::LossyNetworkProblem)
+    println(
+        "Lossy Network: $(net.N) nodes, $(length(net.edges)) edges, $(net.K) cost segments",
+    )
+    println("Generators: $(length(net.gen_nodes)), Demands: $(length(net.dem_nodes))")
+    println("Loss coefficients (a, b, c) per generator:")
+    for g in net.gen_nodes
+        @printf("  %s: a=%.6f  b=%.6f  c=%.6f\n",
+            g, net.loss_a[g], net.loss_b[g], net.loss_c[g])
+    end
+end
+
 # ─── Main benchmark ──────────────────────────────────────────────────────────
 
 """
-    run_benchmark(; N, K, seed, segment_counts, sawtooth_depths)
+    run_benchmark(::Type{T}; N, K, seed) where T <: AbstractNetworkProblem
 
-Run the full benchmark comparing the three Bin2 bilinear approximation methods.
+Run the full benchmark for the given network problem type.
 
-# Keyword arguments
-- `N::Int = 10`: number of nodes (must be even)
-- `K::Int = 3`: number of PWL cost segments per generator
-- `seed::Int = 42`: random seed for network generation
-- `segment_counts::Vector{Int} = [2, 4, 8, 16]`: segment counts for SOS2 methods
-- `sawtooth_depths::Vector{Int} = [2, 4, 8]`: depths for sawtooth method
+If Ipopt is available, an exact NLP reference is included as the first method
+row (using Ipopt to solve exact bilinear/quadratic constraints).
 """
-function run_benchmark(;
+function run_benchmark(
+    ::Type{T};
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
-    # segment_counts::Vector{Int} = [2, 4, 8],
-    # sawtooth_depths::Vector{Int} = [2, 4, 8],
-)
-    net = generate_network(; N, K, seed)
-    println("Network: $(net.N) nodes, $(length(net.edges)) edges, $(net.K) cost segments")
-    println("Generators: $(length(net.gen_nodes)), Demands: $(length(net.dem_nodes))")
+) where {T <: AbstractNetworkProblem}
+    net = generate_network(T; N, K, seed)
+    print_network_info(net)
     println()
 
-    # --- NLP reference ---
-    nlp_obj = NaN
+    # Build method list; include exact NLP reference when Ipopt is available
+    all_methods = Any[bilinear_methods...]
     if HAS_IPOPT
-        println("=" ^ 100)
-        println("NLP Reference (Ipopt, bilinear V·I constraints)")
-        println("=" ^ 100)
-        nlp_model = build_nlp_model(net)
-        JuMP.set_optimizer(nlp_model, Ipopt.Optimizer)
-        JuMP.set_optimizer_attribute(nlp_model, "print_level", 0)
-        nlp_t = @elapsed JuMP.optimize!(nlp_model)
-        nlp_status = JuMP.termination_status(nlp_model)
-        sz = model_size(nlp_model)
-        if nlp_status == JuMP.LOCALLY_SOLVED
-            nlp_obj = JuMP.objective_value(nlp_model)
-        end
-        @printf("  Status:      %s\n", nlp_status)
-        @printf("  Objective:   %.6f\n", nlp_obj)
-        @printf("  Variables:   %d\n", sz.variables)
-        @printf("  Constraints: %d\n", sz.constraints)
-        @printf("  Solve time:  %.4f s\n", nlp_t)
+        pushfirst!(all_methods,
+            ("Exact (NLP)", ExactMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
+        )
     else
         println("Ipopt not available — skipping NLP reference.")
         println("Install Ipopt.jl in the test environment for NLP comparison.")
+        println()
     end
-    println()
 
-    # --- MIP benchmarks ---
-    println("=" ^ 100)
-    println("MIP Bilinear Approximations (HiGHS)")
-    println("  Refinement = num_segments for SOS2 methods, depth for Sawtooth")
-    println("=" ^ 100)
+    println("="^100)
+    println("Bilinear Approximation Benchmarks")
+    println("  Refinement = num_segments for SOS2 methods, depth for Sawtooth/DNMDT")
+    println("="^100)
     @printf("%-17s %4s %6s %7s %6s %12s %9s %11s %10s %8s\n",
-        "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
-    println("-" ^ 100)
+        "Method", "Ref", "Vars", "Constrs", "Bins", "Objective",
+        "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
+    println("-"^100)
 
+    nlp_obj = NaN
     refinements = [2, 4, 6]
-    for (label, fn, kw) in bilinear_methods, ref in refinements
-        build_t = @elapsed begin
-            result = build_mip_model(net, fn, kw, ref)
-        end
 
-        JuMP.set_optimizer(result.jump_model, HiGHS.Optimizer)
-        JuMP.set_optimizer_attribute(result.jump_model, "log_to_console", false)
-        JuMP.set_optimizer_attribute(result.jump_model, "time_limit", 300.0)
+    for (label, family, fn, kw, qfn) in all_methods
+        is_exact = family isa ExactMethod
+        refs = is_exact ? [0] : refinements
 
-        solve_t = @elapsed JuMP.optimize!(result.jump_model)
-        status = JuMP.termination_status(result.jump_model)
-        sz = model_size(result.jump_model)
+        for ref in refs
+            build_t = @elapsed begin
+                result = build_mip_model(net, family, fn, kw, ref; quad_fn! = qfn)
+            end
 
-        if status in (JuMP.OPTIMAL, JuMP.TIME_LIMIT) &&
-            JuMP.has_values(result.jump_model)
-            obj = JuMP.objective_value(result.jump_model)
-            gap = isnan(nlp_obj) ? NaN : abs(nlp_obj - obj) / max(abs(nlp_obj), 1e-10) * 100.0
-            geometric_mean, max = compute_bilinear_residuals(result, net)
-            gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
-            @printf("%-17s %4d %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
-                label, ref,
-                sz.variables, sz.constraints, sz.binaries,
-                obj, gap_str, geometric_mean, max, solve_t)
-        else
-            @printf("%-15s %4d %6d %7d %6d %12s %9s %10s %8.4f\n",
-                label, ref,
-                sz.variables, sz.constraints, sz.binaries,
-                string(status), "-", "-", solve_t)
+            if is_exact
+                JuMP.set_optimizer(result.jump_model, Ipopt.Optimizer)
+                JuMP.set_optimizer_attribute(result.jump_model, "print_level", 0)
+            else
+                JuMP.set_optimizer(result.jump_model, HiGHS.Optimizer)
+                JuMP.set_optimizer_attribute(result.jump_model, "log_to_console", false)
+                JuMP.set_optimizer_attribute(result.jump_model, "time_limit", 300.0)
+            end
+
+            solve_t = @elapsed JuMP.optimize!(result.jump_model)
+            status = JuMP.termination_status(result.jump_model)
+            sz = model_size(result.jump_model)
+
+            solved = if is_exact
+                status == JuMP.LOCALLY_SOLVED
+            else
+                status in (JuMP.OPTIMAL, JuMP.TIME_LIMIT) &&
+                    JuMP.has_values(result.jump_model)
+            end
+
+            if solved
+                obj = JuMP.objective_value(result.jump_model)
+                if is_exact
+                    nlp_obj = obj
+                end
+                gap = if isnan(nlp_obj)
+                    NaN
+                else
+                    abs(nlp_obj - obj) / max(abs(nlp_obj), 1e-10) * 100.0
+                end
+                geometric_mean, max_resid = compute_bilinear_residuals(result, net)
+                gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
+                ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
+                @printf("%-17s %4s %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
+                    label, ref_str,
+                    sz.variables, sz.constraints, sz.binaries,
+                    obj, gap_str, geometric_mean, max_resid, solve_t)
+            else
+                ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
+                @printf("%-17s %4s %6d %7d %6d %12s %9s %10s %8.4f\n",
+                    label, ref_str,
+                    sz.variables, sz.constraints, sz.binaries,
+                    string(status), "-", "-", solve_t)
+            end
         end
         println()
     end
-    println("=" ^ 100)
+    println("="^100)
 end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
@@ -454,5 +727,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     N = get(ARGS, 1, "10") |> x -> parse(Int, x)
     K = get(ARGS, 2, "3") |> x -> parse(Int, x)
     seed = get(ARGS, 3, "42") |> x -> parse(Int, x)
-    run_benchmark(; N, K, seed)
+    run_benchmark(LosslessNetworkProblem; N, K, seed)
+    if "--lossy" in ARGS
+        println("\n")
+        run_benchmark(LossyNetworkProblem; N, K, seed)
+    end
 end
