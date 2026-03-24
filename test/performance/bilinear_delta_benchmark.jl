@@ -6,8 +6,8 @@ balance constraints. Compares bilinear approximation methods from
 InfrastructureOptimizationModels against an exact NLP reference (Ipopt).
 
 Supports two network problem types via multiple dispatch:
-  - `LosslessNetworkProblem`: P = V·I
-  - `LossyNetworkProblem`:    P = V·I − a·I² − b·I − c
+  - `MockLosslessNetworkProblem`: P = V·I
+  - `MockLossyNetworkProblem`:    P = V·I − a·I² − b·I − c
 
 Usage:
     julia --project=test scripts/bilinear_delta_benchmark_github.jl [N] [K] [seed] [--lossy]
@@ -32,9 +32,9 @@ const IS = IOM.IS
 include("../mocks/mock_system.jl")
 include("../mocks/mock_components.jl")
 
-abstract type AbstractNetworkProblem end
+abstract type MockAbstractNetworkProblem end
 
-struct LosslessNetworkProblem <: AbstractNetworkProblem
+struct MockLosslessNetworkProblem <: MockAbstractNetworkProblem
     N::Int
     K::Int
     gen_nodes::Vector{String}
@@ -47,7 +47,7 @@ struct LosslessNetworkProblem <: AbstractNetworkProblem
     segment_widths::Dict{String, Vector{Float64}}
 end
 
-struct LossyNetworkProblem <: AbstractNetworkProblem
+struct MockLossyNetworkProblem <: MockAbstractNetworkProblem
     N::Int
     K::Int
     gen_nodes::Vector{String}
@@ -118,7 +118,7 @@ function _generate_base_network(rng, N::Int, K::Int)
 end
 
 function generate_network(
-    ::Type{LosslessNetworkProblem};
+    ::Type{MockLosslessNetworkProblem};
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
@@ -126,7 +126,7 @@ function generate_network(
     @assert iseven(N) "N must be even"
     rng = MersenneTwister(seed)
     b = _generate_base_network(rng, N, K)
-    return LosslessNetworkProblem(
+    return MockLosslessNetworkProblem(
         N, K, b.gen_nodes, b.dem_nodes, b.all_nodes,
         b.edges, b.conductances, b.demands,
         b.marginal_costs, b.segment_widths,
@@ -138,7 +138,7 @@ Generate a lossy network. Same base topology as the lossless variant, with
 additional per-generator loss coefficients a, b, c ∈ [0, 0.01].
 """
 function generate_network(
-    ::Type{LossyNetworkProblem};
+    ::Type{MockLossyNetworkProblem};
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
@@ -147,7 +147,7 @@ function generate_network(
     rng = MersenneTwister(seed)
     b = _generate_base_network(rng, N, K)
     loss = Dict(g => 0.01 * rand(rng, 3) for g in b.gen_nodes)
-    return LossyNetworkProblem(
+    return MockLossyNetworkProblem(
         N, K, b.gen_nodes, b.dem_nodes, b.all_nodes,
         b.edges, b.conductances, b.demands,
         b.marginal_costs, b.segment_widths,
@@ -156,7 +156,7 @@ function generate_network(
 end
 
 """Build adjacency list from edge set."""
-function adjacency_list(net::AbstractNetworkProblem)
+function adjacency_list(net::MockAbstractNetworkProblem)
     adj = Dict{String, Vector{Tuple{String, Float64}}}()
     for n in net.all_nodes
         adj[n] = Tuple{String, Float64}[]
@@ -238,7 +238,7 @@ end
 # ─── Dispatched model components ─────────────────────────────────────────────
 
 function add_gen_power_constraints!(
-    cons_container, jump_model, ::LosslessNetworkProblem, gen_nodes, z_gen, _I_container, _I_sq, Pg,
+    cons_container, jump_model, ::MockLosslessNetworkProblem, gen_nodes, z_gen, _I_container, _I_sq, Pg,
 )
     for g in gen_nodes
         cons_container[g, 1] = JuMP.@constraint(jump_model, Pg[g, 1] == z_gen[g, 1])
@@ -246,7 +246,7 @@ function add_gen_power_constraints!(
 end
 
 function add_gen_power_constraints!(
-    cons_container, jump_model, net::LossyNetworkProblem, gen_nodes, z_gen, I_container, I_sq, Pg,
+    cons_container, jump_model, net::MockLossyNetworkProblem, gen_nodes, z_gen, I_container, I_sq, Pg,
 )
     for g in gen_nodes
         cons_container[g, 1] = JuMP.@constraint(jump_model,
@@ -271,11 +271,11 @@ struct ExactMethod <: MethodFamily end
 Lossless networks: no precomputation, call the bilinear wrapper directly.
 """
 function build_gen_bilinear(
-    container, net::LosslessNetworkProblem, V_container, I_container, time_steps,
+    container, net::MockLosslessNetworkProblem, V_container, I_container, time_steps,
     ::MethodFamily, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
 )
     z_gen = bilinear_fn!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         V_container, I_container,
         V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
         refinement, "gen"; bilinear_kwargs...,
@@ -288,19 +288,19 @@ Lossy + separable methods: precompute V² and I², call wrapper's precomputed ov
 I² is reused in the loss constraint.
 """
 function build_gen_bilinear(
-    container, net::LossyNetworkProblem, V_container, I_container, time_steps,
+    container, net::MockLossyNetworkProblem, V_container, I_container, time_steps,
     ::SeparableMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
 )
     V_sq = quad_fn!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         V_container, V_MIN, V_MAX, refinement, "gen_x",
     )
     I_sq = quad_fn!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         I_container, I_GEN_MIN, I_GEN_MAX, refinement, "gen_y",
     )
     z_gen = bilinear_fn!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         V_sq, I_sq,
         V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
         V_sq, I_sq, refinement, "gen"; bilinear_kwargs...,
@@ -313,23 +313,23 @@ Lossy + DNMDT: discretize V and I, compute I² from I's discretization,
 call DNMDT bilinear with pre-built discretizations. I² is reused in the loss constraint.
 """
 function build_gen_bilinear(
-    container, net::LossyNetworkProblem, V_container, I_container, time_steps,
+    container, net::MockLossyNetworkProblem, V_container, I_container, time_steps,
     ::DNMDTMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
 )
     V_disc = IOM._discretize!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         V_container, V_MIN, V_MAX, refinement, "gen_V",
     )
     I_disc = IOM._discretize!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         I_container, I_GEN_MIN, I_GEN_MAX, refinement, "gen_I",
     )
     I_sq = IOM._add_dnmdt_quadratic_approx!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         I_disc, "gen_I_sq",
     )
     z_gen = IOM._add_dnmdt_bilinear_approx!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         V_disc, I_disc, "gen",
     )
     return z_gen, I_sq
@@ -339,17 +339,17 @@ end
 Lossy + exact (NLP): exact bilinear V·I and exact quadratic I².
 """
 function build_gen_bilinear(
-    container, net::LossyNetworkProblem, V_container, I_container, time_steps,
+    container, net::MockLossyNetworkProblem, V_container, I_container, time_steps,
     ::ExactMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
 )
     z_gen = _add_exact_bilinear!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         V_container, I_container,
         V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
         refinement, "gen"; bilinear_kwargs...,
     )
     I_sq = _add_exact_quadratic!(
-        container, NetworkNode, net.gen_nodes, time_steps,
+        container, MockNetworkNode, net.gen_nodes, time_steps,
         I_container, I_GEN_MIN, I_GEN_MAX,
         refinement, "gen_I_sq",
     )
@@ -366,7 +366,7 @@ constraints and bilinear precomputation are dispatched on the network type and
 method family.
 """
 function build_mip_model(
-    net::AbstractNetworkProblem, method_family::MethodFamily,
+    net::MockAbstractNetworkProblem, method_family::MethodFamily,
     bilinear_fn!, bilinear_kwargs, refinement::Int;
     quad_fn! = IOM._add_sos2_quadratic_approx!,
 )
@@ -375,17 +375,17 @@ function build_mip_model(
     time_steps = 1:1
     adj = adjacency_list(net)
 
-    gen_devices = [NetworkNode(g, true) for g in net.gen_nodes]
-    dem_devices = [NetworkNode(d, false) for d in net.dem_nodes]
+    gen_devices = [MockNetworkNode(g, true) for g in net.gen_nodes]
+    dem_devices = [MockNetworkNode(d, false) for d in net.dem_nodes]
     all_devices = [gen_devices; dem_devices]
 
     IOM.add_variables!(container, ActivePowerVariable, gen_devices, nothing)
-    IOM.add_variables!(container, VoltageVariable, all_devices, nothing)
-    IOM.add_variables!(container, CurrentVariable, all_devices, nothing)
+    IOM.add_variables!(container, MockVoltageVariable, all_devices, nothing)
+    IOM.add_variables!(container, MockCurrentVariable, all_devices, nothing)
 
-    V_container = IOM.get_variable(container, VoltageVariable(), NetworkNode)
-    I_container = IOM.get_variable(container, CurrentVariable(), NetworkNode)
-    Pg = IOM.get_variable(container, ActivePowerVariable(), NetworkNode)
+    V_container = IOM.get_variable(container, MockVoltageVariable(), MockNetworkNode)
+    I_container = IOM.get_variable(container, MockCurrentVariable(), MockNetworkNode)
+    Pg = IOM.get_variable(container, ActivePowerVariable(), MockNetworkNode)
 
     # --- Bilinear gen: dispatched on network type and method family ---
     z_gen, I_sq = build_gen_bilinear(
@@ -395,7 +395,7 @@ function build_mip_model(
 
     # --- Bilinear dem: always uses the wrapper (no precomputation needed) ---
     z_dem = bilinear_fn!(
-        container, NetworkNode, net.dem_nodes, time_steps,
+        container, MockNetworkNode, net.dem_nodes, time_steps,
         V_container, I_container,
         V_MIN, V_MAX, I_DEM_MIN, I_DEM_MAX,
         refinement, "dem"; bilinear_kwargs...,
@@ -404,7 +404,7 @@ function build_mip_model(
     pwl_link_constraints = IOM.add_constraints_container!(
         container,
         IOM.PiecewiseLinearBlockIncrementalOfferConstraint(),
-        NetworkNode,
+        MockNetworkNode,
         net.gen_nodes,
         time_steps,
     )
@@ -413,7 +413,7 @@ function build_mip_model(
         pwl_vars = IOM.add_pwl_variables_delta!(
             container,
             IOM.PiecewiseLinearBlockIncrementalOffer,
-            NetworkNode,
+            MockNetworkNode,
             g,
             1,
             net.K;
@@ -444,8 +444,8 @@ function build_mip_model(
     # --- Generator power (dispatched) ---
     gen_pwr_constraints = IOM.add_constraints_container!(
         container,
-        PowerEqualityConstraint(),
-        NetworkNode,
+        MockPowerEqualityConstraint(),
+        MockNetworkNode,
         net.gen_nodes,
         time_steps;
         meta = "Pg"
@@ -455,8 +455,8 @@ function build_mip_model(
     # --- Demand: V·I == -d ---
     dem_pwr_constraints = IOM.add_constraints_container!(
         container,
-        PowerEqualityConstraint(),
-        NetworkNode,
+        MockPowerEqualityConstraint(),
+        MockNetworkNode,
         net.dem_nodes,
         time_steps;
         meta = "Pd"
@@ -470,15 +470,15 @@ function build_mip_model(
     # --- KCL: I_i = Σ g_{ij}(V_i - V_j) ---
     kcl_expressions = IOM.add_expression_container!(
         container,
-        KCLExpression(),
-        NetworkNode,
+        MockKCLExpression(),
+        MockNetworkNode,
         net.all_nodes,
         time_steps
     )
     kcl_constraints = IOM.add_constraints_container!(
         container,
-        KCLConstraint(),
-        NetworkNode,
+        MockKCLConstraint(),
+        MockNetworkNode,
         net.all_nodes,
         time_steps
     )
@@ -523,7 +523,7 @@ Compute per-node relative residuals |true − approx| / |true| for the bilinear
 product. For lossless generators the ground truth is V·I; for lossy generators
 it is V·I − a·I² − b·I − c.
 """
-function compute_bilinear_residuals(result, net::LosslessNetworkProblem)
+function compute_bilinear_residuals(result, net::MockLosslessNetworkProblem)
     V = result.V_container
     I = result.I_container
     residuals = Float64[]
@@ -539,7 +539,7 @@ function compute_bilinear_residuals(result, net::LosslessNetworkProblem)
     return geometric_mean, maximum(residuals)
 end
 
-function compute_bilinear_residuals(result, net::LossyNetworkProblem)
+function compute_bilinear_residuals(result, net::MockLossyNetworkProblem)
     V = result.V_container
     I = result.I_container
     I_sq = result.I_sq
@@ -583,14 +583,14 @@ end
 
 # ─── Benchmark output helpers ─────────────────────────────────────────────────
 
-function print_network_info(net::LosslessNetworkProblem)
+function print_network_info(net::MockLosslessNetworkProblem)
     println(
         "Lossless Network: $(net.N) nodes, $(length(net.edges)) edges, $(net.K) cost segments",
     )
     println("Generators: $(length(net.gen_nodes)), Demands: $(length(net.dem_nodes))")
 end
 
-function print_network_info(net::LossyNetworkProblem)
+function print_network_info(net::MockLossyNetworkProblem)
     println(
         "Lossy Network: $(net.N) nodes, $(length(net.edges)) edges, $(net.K) cost segments",
     )
@@ -605,7 +605,7 @@ end
 # ─── Main benchmark ──────────────────────────────────────────────────────────
 
 """
-    run_benchmark(::Type{T}; N, K, seed) where T <: AbstractNetworkProblem
+    run_benchmark(::Type{T}; N, K, seed) where T <: MockAbstractNetworkProblem
 
 Run the full benchmark for the given network problem type.
 
@@ -618,7 +618,7 @@ function run_benchmark(
     K::Int = 3,
     seed::Int = 42,
     build_only::Bool = false,
-) where {T <: AbstractNetworkProblem}
+) where {T <: MockAbstractNetworkProblem}
     net = generate_network(T; N, K, seed)
     print_network_info(net)
     println()
@@ -873,7 +873,7 @@ else
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    T = "--lossy" in ARGS ? LossyNetworkProblem : LosslessNetworkProblem
+    T = "--lossy" in ARGS ? MockLossyNetworkProblem : MockLosslessNetworkProblem
     N = get(ARGS, 1, "10") |> x -> parse(Int, x)
     K = get(ARGS, 2, "3") |> x -> parse(Int, x)
     seed = get(ARGS, 3, "42") |> x -> parse(Int, x)

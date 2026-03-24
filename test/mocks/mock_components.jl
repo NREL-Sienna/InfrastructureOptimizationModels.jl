@@ -126,33 +126,33 @@ get_rate(b::MockBranch) = b.rating
 struct MockComponentType <: IS.InfrastructureSystemsComponent end
 
 # Structures for the network problem
-struct NetworkNode <: IS.InfrastructureSystemsComponent
+struct MockNetworkNode <: IS.InfrastructureSystemsComponent
     name::String
     i_min::Float64
     i_max::Float64
 end
-function NetworkNode(name::String, is_gen::Bool)
+function MockNetworkNode(name::String, is_gen::Bool)
     if is_gen
-        return NetworkNode(name, I_GEN_MIN, I_GEN_MAX)
+        return MockNetworkNode(name, I_GEN_MIN, I_GEN_MAX)
     else
-        return NetworkNode(name, I_DEM_MIN, I_DEM_MAX)
+        return MockNetworkNode(name, I_DEM_MIN, I_DEM_MAX)
     end
 end
 
-struct VoltageVariable <: IOM.VariableType end
-struct CurrentVariable <: IOM.VariableType end
+struct MockVoltageVariable <: IOM.VariableType end
+struct MockCurrentVariable <: IOM.VariableType end
 
-struct PowerEqualityConstraint <: IOM.ConstraintType end
-struct KCLConstraint <: IOM.ConstraintType end
+struct MockPowerEqualityConstraint <: IOM.ConstraintType end
+struct MockKCLConstraint <: IOM.ConstraintType end
 
-struct KCLExpression <: IOM.ExpressionType end
+struct MockKCLExpression <: IOM.ExpressionType end
 
-IOM.get_variable_binary(::ActivePowerVariable, NetworkNode, _) = false
-IOM.get_variable_binary(::VoltageVariable, _, _) = false
-IOM.get_variable_binary(::CurrentVariable, _, _) = false
-IOM.get_variable_lower_bound(::ActivePowerVariable, NetworkNode, _) = 0.0
-IOM.get_variable_upper_bound(::ActivePowerVariable, NetworkNode, _) = 1.5
-IOM.get_variable_lower_bound(::VoltageVariable, _, _) = V_MIN
-IOM.get_variable_upper_bound(::VoltageVariable, _, _) = V_MAX
-IOM.get_variable_lower_bound(::CurrentVariable, n, _) = n.i_min
-IOM.get_variable_upper_bound(::CurrentVariable, n, _) = n.i_max
+IOM.get_variable_binary(::ActivePowerVariable, MockNetworkNode, _) = false
+IOM.get_variable_binary(::MockVoltageVariable, _, _) = false
+IOM.get_variable_binary(::MockCurrentVariable, _, _) = false
+IOM.get_variable_lower_bound(::ActivePowerVariable, MockNetworkNode, _) = 0.0
+IOM.get_variable_upper_bound(::ActivePowerVariable, MockNetworkNode, _) = 1.5
+IOM.get_variable_lower_bound(::MockVoltageVariable, _, _) = V_MIN
+IOM.get_variable_upper_bound(::MockVoltageVariable, _, _) = V_MAX
+IOM.get_variable_lower_bound(::MockCurrentVariable, n, _) = n.i_min
+IOM.get_variable_upper_bound(::MockCurrentVariable, n, _) = n.i_max
