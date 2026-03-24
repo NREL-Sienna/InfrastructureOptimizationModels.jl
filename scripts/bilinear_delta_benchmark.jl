@@ -86,9 +86,7 @@ struct LossyNetworkProblem <: AbstractNetworkProblem
     demands::Dict{String, Float64}
     marginal_costs::Dict{String, Vector{Float64}}
     segment_widths::Dict{String, Vector{Float64}}
-    loss_a::Dict{String, Float64}
-    loss_b::Dict{String, Float64}
-    loss_c::Dict{String, Float64}
+    loss::Dict{String, Float64}
 end
 
 # ─── Network generation ──────────────────────────────────────────────────────
@@ -176,14 +174,12 @@ function generate_network(
     @assert iseven(N) "N must be even"
     rng = MersenneTwister(seed)
     b = _generate_base_network(rng, N, K)
-    loss_a = Dict(g => 0.01 * rand(rng) for g in b.gen_nodes)
-    loss_b = Dict(g => 0.01 * rand(rng) for g in b.gen_nodes)
-    loss_c = Dict(g => 0.01 * rand(rng) for g in b.gen_nodes)
+    loss = Dict(g => 0.01 * rand(rng, 3) for g in b.gen_nodes)
     return LossyNetworkProblem(
         N, K, b.gen_nodes, b.dem_nodes, b.all_nodes,
         b.edges, b.conductances, b.demands,
         b.marginal_costs, b.segment_widths,
-        loss_a, loss_b, loss_c,
+        loss,
     )
 end
 
@@ -291,12 +287,9 @@ function add_gen_power_constraints!(
         JuMP.@constraint(jump_model,
             Pg[g] ==
             z_gen[g, 1]
-            -
-            net.loss_a[g] * I_sq[g, 1]
-            -
-            net.loss_b[g] * I_container[g, 1]
-            -
-            net.loss_c[g])
+            - net.loss[g][1] * I_sq[g, 1]
+            - net.loss[g][2] * I_container[g, 1]
+            - net.loss[g][3])
     end
 end
 
@@ -535,12 +528,12 @@ function compute_bilinear_residuals(result, net::LossyNetworkProblem)
     for g in net.gen_nodes
         v = JuMP.value(V[g, 1])
         i = JuMP.value(I[g, 1])
-        true_power = v * i - net.loss_a[g] * i^2 - net.loss_b[g] * i - net.loss_c[g]
+        true_power = v * i - net.loss[g][1] * i^2 - net.loss[g][2] * i - net.loss[g][3]
         approx_power =
             JuMP.value(result.z_gen[g, 1]) -
-            net.loss_a[g] * JuMP.value(I_sq[g, 1]) -
-            net.loss_b[g] * i -
-            net.loss_c[g]
+            net.loss[g][1] * JuMP.value(I_sq[g, 1]) -
+            net.loss[g][2] * i -
+            net.loss[g][3]
         true_power == 0.0 && continue
         push!(residuals, abs(true_power - approx_power) / abs(true_power))
     end
@@ -584,7 +577,7 @@ function print_network_info(net::LossyNetworkProblem)
     println("Loss coefficients (a, b, c) per generator:")
     for g in net.gen_nodes
         @printf("  %s: a=%.6f  b=%.6f  c=%.6f\n",
-            g, net.loss_a[g], net.loss_b[g], net.loss_c[g])
+            g, net.loss[g][1], net.loss[g][2], net.loss[g][3])
     end
 end
 
@@ -707,7 +700,7 @@ if on_github()
             SeparableMethod(),
             IOM._add_sawtooth_bilinear_approx!,
             (),
-            IOM._add_sawtooth_bilinear_approx!,
+            IOM._add_sawtooth_quadratic_approx!,
         ),
         (
             "HybS+sSOS",
@@ -721,7 +714,7 @@ if on_github()
             SeparableMethod(),
             IOM._add_hybs_sawtooth_bilinear_approx!,
             (),
-            IOM._add_sawtooth_bilinear_approx!,
+            IOM._add_sawtooth_quadratic_approx!,
         ),
         (
             "DNMDT",
@@ -752,7 +745,7 @@ elseif on_hpc()
             SeparableMethod(),
             IOM._add_sawtooth_bilinear_approx!,
             (),
-            IOM._add_sawtooth_bilinear_approx!,
+            IOM._add_sawtooth_quadratic_approx!,
         ),
         (
             "Bin2+DNMDT",
@@ -794,28 +787,28 @@ elseif on_hpc()
             SeparableMethod(),
             IOM._add_hybs_sawtooth_bilinear_approx!,
             (),
-            IOM._add_sawtooth_bilinear_approx!,
+            IOM._add_sawtooth_quadratic_approx!,
         ),
         (
             "HybS+Saw+McAll",
             SeparableMethod(),
             IOM._add_hybs_sawtooth_bilinear_approx!,
             (add_mccormick = true, add_quad_mccormick = true),
-            IOM._add_sawtooth_bilinear_approx!,
+            IOM._add_sawtooth_quadratic_approx!,
         ),
         (
             "HybS+T-Saw",
             SeparableMethod(),
             IOM._add_hybs_sawtooth_bilinear_approx!,
             (tighten = true,),
-            IOM._add_sawtooth_bilinear_approx!,
+            IOM._add_sawtooth_quadratic_approx!,
         ),
         (
             "HybS+T-Saw+McBil",
             SeparableMethod(),
             IOM._add_hybs_sawtooth_bilinear_approx!,
             (tighten = true, add_mccormick = true),
-            IOM._add_sawtooth_bilinear_approx!,
+            IOM._add_sawtooth_quadratic_approx!,
         ),
         (
             "NMDT",
