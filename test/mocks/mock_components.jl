@@ -142,11 +142,6 @@ end
 struct MockVoltageVariable <: IOM.VariableType end
 struct MockCurrentVariable <: IOM.VariableType end
 
-struct MockPowerEqualityConstraint <: IOM.ConstraintType end
-struct MockKCLConstraint <: IOM.ConstraintType end
-
-struct MockKCLExpression <: IOM.ExpressionType end
-
 IOM.get_variable_binary(::ActivePowerVariable, MockNetworkNode, _) = false
 IOM.get_variable_binary(::MockVoltageVariable, _, _) = false
 IOM.get_variable_binary(::MockCurrentVariable, _, _) = false

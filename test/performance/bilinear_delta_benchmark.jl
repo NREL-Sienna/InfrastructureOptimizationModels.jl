@@ -32,6 +32,13 @@ const IS = IOM.IS
 include("../mocks/mock_system.jl")
 include("../mocks/mock_components.jl")
 
+struct MockLineLossAuxVariable <: IOM.AuxVariableType end
+
+struct MockPowerEqualityConstraint <: IOM.ConstraintType end
+struct MockKCLConstraint <: IOM.ConstraintType end
+
+struct MockKCLExpression <: IOM.ExpressionType end
+
 abstract type MockAbstractNetworkProblem end
 
 struct MockLosslessNetworkProblem <: MockAbstractNetworkProblem
@@ -244,25 +251,40 @@ end
 
 function add_gen_power_constraints!(
     cons_container, jump_model, ::MockLosslessNetworkProblem, gen_nodes, z_gen,
-    _I_container, _I_sq, Pg,
+    _I_container, _I_sq, Pg, time_steps
 )
-    for g in gen_nodes
-        cons_container[g, 1] = JuMP.@constraint(jump_model, Pg[g, 1] == z_gen[g, 1])
+    for g in gen_nodes, t in time_steps
+        cons_container[g, t] = JuMP.@constraint(jump_model, Pg[g, t] == z_gen[g, t])
     end
 end
 
 function add_gen_power_constraints!(
     cons_container, jump_model, net::MockLossyNetworkProblem, gen_nodes, z_gen, I_container,
-    I_sq, Pg,
+    I_sq, Pg, time_steps,
 )
-    for g in gen_nodes
-        cons_container[g, 1] = JuMP.@constraint(jump_model,
-            Pg[g, 1] ==
-            z_gen[g, 1]
-            - net.loss[g][1] * I_sq[g, 1]
-            - net.loss[g][2] * I_container[g, 1]
-            -
-            net.loss[g][3])
+    line_loss_expressions = add_expression_container!(
+        container,
+        LineLossExpression(),
+        NetworkNode,
+        gen_nodes,
+        time_steps,
+    )
+    line_loss_constraints = add_constraints_container!(
+        container,
+        LineLossConstraint(),
+        NetworkNode,
+        gen_nodes,
+        time_steps,
+    )
+    line_loss_variables = IOM.get_aux_variable(container, MockLineLossAuxVariable(), NetworkNode)
+    for g in gen_nodes, t in time_steps
+        line_loss = line_loss_expressions[g, t] = JuMP.AffExpr(0.0)
+        line_loss_var = line_loss_variables[g, t]
+        IOM.add_proportional_to_jump_expression(line_loss, I_sq[g, t], -net.loss[g][1])
+        IOM.add_proportional_to_jump_expression(line_loss, I_container[g, t], -net.loss[g][2])
+        IOM.add_constant_to_jump_expression(line_loss, -net.loss[g][2])
+        line_loss_constraints[g, t] = JuMP.@constraint(jump_model, line_loss_var == line_loss)
+        cons_container[g, t] = JuMP.@constraint(jump_model, Pg[g, t] == z_gen[g, 1] - line_loss_var)
     end
 end
 
@@ -390,6 +412,7 @@ function build_mip_model(
     IOM.add_variables!(container, ActivePowerVariable, gen_devices, nothing)
     IOM.add_variables!(container, MockVoltageVariable, all_devices, nothing)
     IOM.add_variables!(container, MockCurrentVariable, all_devices, nothing)
+    IOM.add_variables!(container, MockLineLossAuxVariable, gen_devices, nothing)
 
     V_container = IOM.get_variable(container, MockVoltageVariable(), MockNetworkNode)
     I_container = IOM.get_variable(container, MockCurrentVariable(), MockNetworkNode)
@@ -467,6 +490,7 @@ function build_mip_model(
         I_container,
         I_sq,
         Pg,
+        time_steps,
     )
 
     # --- Demand: V·I == -d ---
