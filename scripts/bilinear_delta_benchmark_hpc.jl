@@ -388,6 +388,7 @@ function run_benchmark(;
     println("Network: $(net.N) nodes, $(length(net.edges)) edges, $(net.K) cost segments")
     println("Generators: $(length(net.gen_nodes)), Demands: $(length(net.dem_nodes))")
     println()
+    flush(stdout)
 
     # --- NLP reference ---
     nlp_obj = NaN
@@ -409,9 +410,11 @@ function run_benchmark(;
         @printf("  Variables:   %d\n", sz.variables)
         @printf("  Constraints: %d\n", sz.constraints)
         @printf("  Solve time:  %.4f s\n", nlp_t)
+        flush(stdout)
     else
         println("Ipopt not available — skipping NLP reference.")
         println("Install Ipopt.jl in the test environment for NLP comparison.")
+        flush(stdout)
     end
     println()
 
@@ -423,6 +426,7 @@ function run_benchmark(;
     @printf("%-17s %4s %6s %7s %6s %12s %9s %11s %10s %8s\n",
         "Method", "Ref", "Vars", "Constrs", "Bins", "Objective", "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
     println("-" ^ 100)
+    flush(stdout)
 
     refinements = [4, 6, 8]
     for (label, fn, kw) in bilinear_methods
@@ -449,11 +453,13 @@ function run_benchmark(;
                     label, ref,
                     sz.variables, sz.constraints, sz.binaries,
                     obj, gap_str, geometric_mean, max, solve_t)
+                flush(stdout)
             else
                 @printf("%-15s %4d %6d %7d %6d %12s %9s %10s %8.4f\n",
                     label, ref,
                     sz.variables, sz.constraints, sz.binaries,
                     string(status), "-", "-", solve_t)
+                flush(stdout)
             end
         end
         println()
@@ -464,9 +470,16 @@ end
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    K = 3
-    seed = 42
-    for N in [10, 100, 500, 1000]
-        run_benchmark(; N, K, seed)
+    try
+        K = 3
+        seed = 42
+        for N in [10, 100, 500, 1000]
+            run_benchmark(; N, K, seed)
+        end
+    catch e
+        @error "Benchmark failed" exception = (e, catch_backtrace())
+    finally
+        flush(stdout)
+        flush(stderr)
     end
 end
