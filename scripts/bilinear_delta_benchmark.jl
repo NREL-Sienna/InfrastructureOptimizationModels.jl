@@ -58,6 +58,11 @@ struct NetworkNode <: IS.InfrastructureSystemsComponent end
 struct VoltageVariable <: IOM.VariableType end
 struct CurrentVariable <: IOM.VariableType end
 
+struct PowerEqualityConstraint <: IOM.ConstraintType end
+struct KCLConstraint <: IOM.ConstraintType end
+
+struct KCLExpression <: IOM.ExpressionType end
+
 # ─── Network problem types ───────────────────────────────────────────────────
 
 abstract type AbstractNetworkProblem end
@@ -273,18 +278,18 @@ struct ExactMethod <: MethodFamily end
 # ─── Dispatched model components ─────────────────────────────────────────────
 
 function add_gen_power_constraints!(
-    jump_model, ::LosslessNetworkProblem, gen_nodes, z_gen, _I_container, _I_sq, Pg,
+    cons_container, jump_model, ::LosslessNetworkProblem, gen_nodes, z_gen, _I_container, _I_sq, Pg,
 )
     for g in gen_nodes
-        JuMP.@constraint(jump_model, Pg[g, 1] == z_gen[g, 1])
+        cons_container[g, 1] = JuMP.@constraint(jump_model, Pg[g, 1] == z_gen[g, 1])
     end
 end
 
 function add_gen_power_constraints!(
-    jump_model, net::LossyNetworkProblem, gen_nodes, z_gen, I_container, I_sq, Pg,
+    cons_container, jump_model, net::LossyNetworkProblem, gen_nodes, z_gen, I_container, I_sq, Pg,
 )
     for g in gen_nodes
-        JuMP.@constraint(jump_model,
+        cons_container[g, 1] = JuMP.@constraint(jump_model,
             Pg[g, 1] ==
             z_gen[g, 1]
             - net.loss[g][1] * I_sq[g, 1]
@@ -449,9 +454,9 @@ function build_mip_model(
     # --- Power variable ---
     Pg = IOM.add_variable_container!(
         container, ActivePowerVariable(), NetworkNode,
-        net.all_nodes, time_steps,
+        net.gen_nodes, time_steps,
     )
-    pwl_link_constraints = IOM.lazy_container_addition!(
+    pwl_link_constraints = IOM.add_constraints_container!(
         container,
         IOM.PiecewiseLinearBlockIncrementalOfferConstraint(),
         NetworkNode,
@@ -495,20 +500,59 @@ function build_mip_model(
     IOM.update_objective_function!(container)
 
     # --- Generator power (dispatched) ---
-    add_gen_power_constraints!(jump_model, net, net.gen_nodes, z_gen, I_container, I_sq, Pg)
+    gen_pwr_constraints = IOM.add_constraints_container!(
+        container,
+        PowerEqualityConstraint(),
+        NetworkNode,
+        net.gen_nodes,
+        time_steps;
+        meta = "Pg"
+    )
+    add_gen_power_constraints!(gen_pwr_constraints, jump_model, net, net.gen_nodes, z_gen, I_container, I_sq, Pg)
 
     # --- Demand: V·I == -d ---
+    dem_pwr_constraints = IOM.add_constraints_container!(
+        container,
+        PowerEqualityConstraint(),
+        NetworkNode,
+        net.dem_nodes,
+        time_steps;
+        meta = "Pd"
+    )
     for d in net.dem_nodes
-        JuMP.@constraint(jump_model, z_dem[d, 1] == -net.demands[d])
+        dem_pwr_constraints[d, 1] = JuMP.@constraint(
+            jump_model, z_dem[d, 1] == -net.demands[d]
+        )
     end
 
     # --- KCL: I_i = Σ g_{ij}(V_i - V_j) ---
+    kcl_expressions = IOM.add_expression_container!(
+        container,
+        KCLExpression(),
+        NetworkNode,
+        net.all_nodes,
+        time_steps
+    )
+    kcl_constraints = IOM.add_constraints_container!(
+        container,
+        KCLConstraint(),
+        NetworkNode,
+        net.all_nodes,
+        time_steps
+    )
     for n in net.all_nodes
-        JuMP.@constraint(jump_model,
-            I_container[n, 1] == sum(
-                c * (V_container[n, 1] - V_container[j, 1])
-                for (j, c) in adj[n]
-            ))
+        expr = kcl_expressions[n, 1] = JuMP.AffExpr(0.0)
+        for (j, c) in adj[n]
+            IOM.add_proportional_to_jump_expression!(
+                expr, V_container[n, 1], c
+            )
+            IOM.add_proportional_to_jump_expression!(
+                expr, V_container[j, 1], -c
+            )
+        end
+        kcl_constraints[n, 1] = JuMP.@constraint(
+            jump_model, I_container[n, 1] == expr
+        )
     end
 
     return (; container, jump_model, V_container, I_container, z_gen, z_dem, I_sq)
