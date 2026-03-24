@@ -276,7 +276,7 @@ function add_gen_power_constraints!(
     jump_model, ::LosslessNetworkProblem, gen_nodes, z_gen, _I_container, _I_sq, Pg,
 )
     for g in gen_nodes
-        JuMP.@constraint(jump_model, Pg[g] == z_gen[g, 1])
+        JuMP.@constraint(jump_model, Pg[g, 1] == z_gen[g, 1])
     end
 end
 
@@ -285,7 +285,7 @@ function add_gen_power_constraints!(
 )
     for g in gen_nodes
         JuMP.@constraint(jump_model,
-            Pg[g] ==
+            Pg[g, 1] ==
             z_gen[g, 1]
             - net.loss[g][1] * I_sq[g, 1]
             - net.loss[g][2] * I_container[g, 1]
@@ -446,28 +446,53 @@ function build_mip_model(
         refinement, "dem"; bilinear_kwargs...,
     )
 
-    # --- Pg, delta variables ---
-    Pg = Dict{String, JuMP.VariableRef}()
-    delta = Dict{Tuple{String, Int}, JuMP.VariableRef}()
-
+    # --- Power variable ---
+    Pg = IOM.add_variable_container!(
+        container, ActivePowerVariable(), NetworkNode,
+        net.all_nodes, time_steps,
+    )
+    pwl_link_constraints = IOM.lazy_container_addition!(
+        container,
+        IOM.PiecewiseLinearBlockIncrementalOfferConstraint(),
+        NetworkNode,
+        net.gen_nodes,
+        time_steps,
+    )
     for g in net.gen_nodes
-        Pg[g] = JuMP.@variable(jump_model, base_name = "Pg_$(g)",
+        Pg[g, 1] = JuMP.@variable(jump_model, base_name = "Pg_$(g)",
             lower_bound = 0.0, upper_bound = P_MAX)
-        for k in 1:(net.K)
-            delta[g, k] = JuMP.@variable(jump_model, base_name = "delta_$(g)_$(k)",
-                lower_bound = 0.0, upper_bound = net.segment_widths[g][k])
-        end
+
+        breakpoints = vcat(0.0, cumsum(net.segment_widths[g]))
+        pwl_vars = IOM.add_pwl_variables_delta!(
+            container,
+            IOM.PiecewiseLinearBlockIncrementalOffer,
+            NetworkNode,
+            g,
+            1,
+            net.K;
+            upper_bound = Inf,
+        )
+        IOM.add_pwl_block_offer_constraints!(
+            jump_model,
+            pwl_link_constraints,
+            g,
+            1,
+            Pg[g, 1],
+            pwl_vars,
+            breakpoints,
+        )
+
+        pwl_cost = IOM.get_pwl_cost_expression_delta(
+            pwl_vars,
+            net.marginal_costs[g],
+            1.0,
+        )
+        IOM.add_to_objective_invariant_expression!(container, pwl_cost)
     end
 
-    # --- Objective: min Σ m_{i,k} · δ_{i,k} ---
-    JuMP.@objective(
-        jump_model,
-        Min,
-        sum(
-            net.marginal_costs[g][k] * delta[g, k]
-            for g in net.gen_nodes, k in 1:(net.K)
-        )
-    )
+    # Objective: min Σ m_{i,k} · δ_{i,k}, assembled via IOM's delta-PWL helper.
+    # With a 1-hour benchmark resolution, the formulation multiplier is dt = 1.0.
+    IOM.update_objective_function!(container)
 
     # --- Generator power (dispatched) ---
     add_gen_power_constraints!(jump_model, net, net.gen_nodes, z_gen, I_container, I_sq, Pg)
@@ -484,12 +509,6 @@ function build_mip_model(
                 c * (V_container[n, 1] - V_container[j, 1])
                 for (j, c) in adj[n]
             ))
-    end
-
-    # --- Delta link: Pg = Σ δ_{g,k} ---
-    for g in net.gen_nodes
-        JuMP.@constraint(jump_model,
-            Pg[g] == sum(delta[g, k] for k in 1:(net.K)))
     end
 
     return (; container, jump_model, V_container, I_container, z_gen, z_dem, I_sq)
@@ -841,7 +860,7 @@ else
             IOM._add_sos2_bilinear_approx!,
             (),
             IOM._add_sos2_quadratic_approx!,
-        )
+        ),
     )
 end
 
