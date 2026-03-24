@@ -161,7 +161,7 @@ function _add_epigraph_quadratic_approx!(
 
         fL = fL_expr[name, t] = JuMP.AffExpr(0.0)
         for j in 1:depth
-            JuMP.add_to_expression!(fL, delta * delta * 2.0^(-2j), g_var[name, j, t])
+            add_proportional_to_jump_expression!(fL, g_var[name, j, t], delta * delta * 2.0^(-2j))
             tangent_cons[(name, j + 1, t)] = JuMP.@constraint(
                 jump_model,
                 z >=

@@ -89,13 +89,13 @@ function _add_hybs_bilinear_approx_impl!(
 
         # p1 = x + y
         p1 = p1_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(p1, x)
-        JuMP.add_to_expression!(p1, y)
+        add_proportional_to_jump_expression!(p1, x, 1.0)
+        add_proportional_to_jump_expression!(p1, y, 1.0)
 
         # p2 = x − y
         p2 = p2_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(p2, x)
-        JuMP.add_to_expression!(p2, -1.0, y)
+        add_proportional_to_jump_expression!(p2, x, 1.0)
+        add_proportional_to_jump_expression!(p2, y, -1.0)
     end
 
     # --- Epigraph Q^{L1} lower bound for (x+y)² and (x−y)² (no binaries) ---

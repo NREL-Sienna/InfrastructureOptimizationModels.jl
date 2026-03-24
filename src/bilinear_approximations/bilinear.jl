@@ -78,8 +78,8 @@ function _add_bilinear_approx_impl!(
     )
     for name in names, t in time_steps
         p = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(p, x_var[name, t])
-        JuMP.add_to_expression!(p, y_var[name, t])
+        add_proportional_to_jump_expression!(p, x_var[name, t], 1.0)
+        add_proportional_to_jump_expression!(p, y_var[name, t], 1.0)
         p_expr[name, t] = p
     end
 
@@ -132,9 +132,9 @@ function _add_bilinear_approx_impl!(
 
         # z = (1/2) * (p² − x² - y²)
         z_expr = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(z_expr, 0.5, zp_expr[name, t])
-        JuMP.add_to_expression!(z_expr, -0.5, zx_expr[name, t])
-        JuMP.add_to_expression!(z_expr, -0.5, zy_expr[name, t])
+        add_proportional_to_jump_expression!(z_expr, zp_expr[name, t], 0.5)
+        add_proportional_to_jump_expression!(z_expr, zx_expr[name, t], -0.5)
+        add_proportional_to_jump_expression!(z_expr, zy_expr[name, t], -0.5)
         link_cons[name, t] = JuMP.@constraint(jump_model, z == z_expr)
 
         result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
