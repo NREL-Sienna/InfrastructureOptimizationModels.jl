@@ -16,6 +16,7 @@ Usage:
     K       = number of PWL cost segments per generator (default 3)
     seed    = random seed for network generation (default 42)
     --lossy = also run the lossy generator benchmark
+    --build-only = don't solve
 """
 
 using InfrastructureOptimizationModels
@@ -28,63 +29,8 @@ using Printf
 const IOM = InfrastructureOptimizationModels
 const IS = IOM.IS
 
-# Try to load Ipopt for NLP reference; skip if unavailable
-const HAS_IPOPT = try
-    @eval using Ipopt
-    true
-catch
-    false
-end
-
-function on_github()
-    return get(ENV, "CI", "false") == "true" || haskey(ENV, "GITHUB_ACTIONS")
-end
-
-function on_hpc()
-    return false
-end
-
-# ─── Minimal types for IOM container infrastructure ──────────────────────────
-
-mutable struct BenchmarkSystem <: IS.InfrastructureSystemsContainer
-    base_power::Float64
-end
-
-IOM.get_base_power(sys::BenchmarkSystem) = sys.base_power
-IOM.stores_time_series_in_memory(::BenchmarkSystem) = false
-
-struct NetworkNode <: IS.InfrastructureSystemsComponent
-    name::String
-    i_min::Float64
-    i_max::Float64
-end
-function NetworkNode(name::String, is_gen::Bool)
-    if is_gen
-        return NetworkNode(name, I_GEN_MIN, I_GEN_MAX)
-    else
-        return NetworkNode(name, I_DEM_MIN, I_DEM_MAX)
-    end
-end
-
-struct VoltageVariable <: IOM.VariableType end
-struct CurrentVariable <: IOM.VariableType end
-
-struct PowerEqualityConstraint <: IOM.ConstraintType end
-struct KCLConstraint <: IOM.ConstraintType end
-
-struct KCLExpression <: IOM.ExpressionType end
-
-IOM.get_variable_binary(::ActivePowerVariable, NetworkNode, _) = false
-IOM.get_variable_binary(::VoltageVariable, _, _) = false
-IOM.get_variable_binary(::CurrentVariable, _, _) = false
-IOM.get_variable_lower_bound(::ActivePowerVariable, NetworkNode, _) = 0.0
-IOM.get_variable_upper_bound(::ActivePowerVariable, NetworkNode, _) = 1.5
-IOM.get_variable_lower_bound(::VoltageVariable, _, _) = V_MIN
-IOM.get_variable_upper_bound(::VoltageVariable, _, _) = V_MAX
-IOM.get_variable_lower_bound(::CurrentVariable, n, _) = n.i_min
-IOM.get_variable_upper_bound(::CurrentVariable, n, _) = n.i_max
-
-# ─── Network problem types ───────────────────────────────────────────────────
+include("../mocks/mock_system.jl")
+include("../mocks/mock_components.jl")
 
 abstract type AbstractNetworkProblem end
 
@@ -112,7 +58,7 @@ struct LossyNetworkProblem <: AbstractNetworkProblem
     demands::Dict{String, Float64}
     marginal_costs::Dict{String, Vector{Float64}}
     segment_widths::Dict{String, Vector{Float64}}
-    loss::Dict{String, Float64}
+    loss::Dict{String, Vector{Float64}}
 end
 
 # ─── Network generation ──────────────────────────────────────────────────────
@@ -282,19 +228,12 @@ end
 # ─── IOM container setup ─────────────────────────────────────────────────────
 
 function make_container()
-    sys = BenchmarkSystem(100.0)
+    sys = MockSystem(100.0)
     settings = IOM.Settings(sys; horizon = Dates.Hour(1), resolution = Dates.Hour(1), warm_start = false)
     container = IOM.OptimizationContainer(sys, settings, JuMP.Model(), IS.Deterministic)
     IOM.set_time_steps!(container, 1:1)
     return container
 end
-
-# ─── Method family types for dispatch ─────────────────────────────────────────
-
-abstract type MethodFamily end
-struct SeparableMethod <: MethodFamily end
-struct DNMDTMethod <: MethodFamily end
-struct ExactMethod <: MethodFamily end
 
 # ─── Dispatched model components ─────────────────────────────────────────────
 
@@ -318,6 +257,13 @@ function add_gen_power_constraints!(
             - net.loss[g][3])
     end
 end
+
+# ─── Method family types for dispatch ─────────────────────────────────────────
+
+abstract type MethodFamily end
+struct SeparableMethod <: MethodFamily end
+struct DNMDTMethod <: MethodFamily end
+struct ExactMethod <: MethodFamily end
 
 # ─── Dispatched gen bilinear construction ─────────────────────────────────────
 
@@ -396,13 +342,13 @@ function build_gen_bilinear(
     container, net::LossyNetworkProblem, V_container, I_container, time_steps,
     ::ExactMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
 )
-    z_gen = bilinear_fn!(
+    z_gen = _add_exact_bilinear!(
         container, NetworkNode, net.gen_nodes, time_steps,
         V_container, I_container,
         V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
         refinement, "gen"; bilinear_kwargs...,
     )
-    I_sq = quad_fn!(
+    I_sq = _add_exact_quadratic!(
         container, NetworkNode, net.gen_nodes, time_steps,
         I_container, I_GEN_MIN, I_GEN_MAX,
         refinement, "gen_I_sq",
@@ -554,6 +500,22 @@ function build_mip_model(
     return (; container, jump_model, V_container, I_container, z_gen, z_dem, I_sq)
 end
 
+# Try to load Ipopt for NLP reference; skip if unavailable
+const HAS_IPOPT = try
+    @eval using Ipopt
+    true
+catch
+    false
+end
+
+function on_github()
+    return get(ENV, "CI", "false") == "true" || haskey(ENV, "GITHUB_ACTIONS")
+end
+
+function on_hpc()
+    return false
+end
+
 # ─── Metrics ──────────────────────────────────────────────────────────────────
 
 """
@@ -655,6 +617,7 @@ function run_benchmark(
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
+    build_only::Bool = false,
 ) where {T <: AbstractNetworkProblem}
     net = generate_network(T; N, K, seed)
     print_network_info(net)
@@ -672,14 +635,14 @@ function run_benchmark(
         println()
     end
 
-    println("="^100)
+    println("="^110)
     println("Bilinear Approximation Benchmarks")
     println("  Refinement = num_segments for SOS2 methods, depth for Sawtooth/DNMDT")
-    println("="^100)
-    @printf("%-17s %4s %6s %7s %6s %12s %9s %11s %10s %8s\n",
-        "Method", "Ref", "Vars", "Constrs", "Bins", "Objective",
-        "Gap(%)", "Mean Resid", "Max Resid", "Time(s)")
-    println("-"^100)
+    println("="^110)
+    @printf("%-17s %4s %6s %7s %6s %12s %9s %11s %10s %8s %8s\n",
+    "Method", "Ref", "Vars", "Constrs", "Bins", "Objective",
+    "Gap(%)", "Mean Resid", "Max Resid", "build_t", "solve_t")
+    println("-"^110)
 
     nlp_obj = NaN
     refinements = [2, 4, 6]
@@ -702,8 +665,13 @@ function run_benchmark(
                 JuMP.set_optimizer_attribute(result.jump_model, "time_limit", 300.0)
             end
 
-            solve_t = @elapsed JuMP.optimize!(result.jump_model)
-            status = JuMP.termination_status(result.jump_model)
+            if !build_only
+                solve_t = @elapsed JuMP.optimize!(result.jump_model)
+                status = JuMP.termination_status(result.jump_model)
+            else
+                solve_t = 0.0
+                status = nothing
+            end
             sz = model_size(result.jump_model)
 
             solved = if is_exact
@@ -726,21 +694,21 @@ function run_benchmark(
                 geometric_mean, max_resid = compute_bilinear_residuals(result, net)
                 gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
                 ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
-                @printf("%-17s %4s %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f\n",
+                @printf("%-17s %4s %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f %8.4f\n",
                     label, ref_str,
                     sz.variables, sz.constraints, sz.binaries,
-                    obj, gap_str, geometric_mean, max_resid, solve_t)
+                    obj, gap_str, geometric_mean, max_resid, build_t, solve_t)
             else
                 ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
-                @printf("%-17s %4s %6d %7d %6d %12s %9s %10s %8.4f\n",
+                @printf("%-17s %4s %6d %7d %6d %12s %8s %11s %10s %8.4f %8.4f\n",
                     label, ref_str,
                     sz.variables, sz.constraints, sz.binaries,
-                    string(status), "-", "-", solve_t)
+                    string(status), "-", "-", "-", build_t, solve_t)
             end
         end
         println()
     end
-    println("="^100)
+    println("="^110)
 end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
@@ -905,12 +873,10 @@ else
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
+    T = "--lossy" in ARGS ? LossyNetworkProblem : LosslessNetworkProblem
     N = get(ARGS, 1, "10") |> x -> parse(Int, x)
     K = get(ARGS, 2, "3") |> x -> parse(Int, x)
     seed = get(ARGS, 3, "42") |> x -> parse(Int, x)
-    run_benchmark(LosslessNetworkProblem; N, K, seed)
-    if "--lossy" in ARGS
-        println("\n")
-        run_benchmark(LossyNetworkProblem; N, K, seed)
-    end
+    build_only = "--build-only" in ARGS
+    run_benchmark(T; N, K, seed, build_only)
 end

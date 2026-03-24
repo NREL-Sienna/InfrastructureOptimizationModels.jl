@@ -124,3 +124,35 @@ get_rate(b::MockBranch) = b.rating
 # This replaces PSY.ThermalStandard etc. in tests that don't need real PSY types
 # Subtypes IS.InfrastructureSystemsComponent so it works with VariableKey, ConstraintKey, etc.
 struct MockComponentType <: IS.InfrastructureSystemsComponent end
+
+# Structures for the network problem
+struct NetworkNode <: IS.InfrastructureSystemsComponent
+    name::String
+    i_min::Float64
+    i_max::Float64
+end
+function NetworkNode(name::String, is_gen::Bool)
+    if is_gen
+        return NetworkNode(name, I_GEN_MIN, I_GEN_MAX)
+    else
+        return NetworkNode(name, I_DEM_MIN, I_DEM_MAX)
+    end
+end
+
+struct VoltageVariable <: IOM.VariableType end
+struct CurrentVariable <: IOM.VariableType end
+
+struct PowerEqualityConstraint <: IOM.ConstraintType end
+struct KCLConstraint <: IOM.ConstraintType end
+
+struct KCLExpression <: IOM.ExpressionType end
+
+IOM.get_variable_binary(::ActivePowerVariable, NetworkNode, _) = false
+IOM.get_variable_binary(::VoltageVariable, _, _) = false
+IOM.get_variable_binary(::CurrentVariable, _, _) = false
+IOM.get_variable_lower_bound(::ActivePowerVariable, NetworkNode, _) = 0.0
+IOM.get_variable_upper_bound(::ActivePowerVariable, NetworkNode, _) = 1.5
+IOM.get_variable_lower_bound(::VoltageVariable, _, _) = V_MIN
+IOM.get_variable_upper_bound(::VoltageVariable, _, _) = V_MAX
+IOM.get_variable_lower_bound(::CurrentVariable, n, _) = n.i_min
+IOM.get_variable_upper_bound(::CurrentVariable, n, _) = n.i_max
