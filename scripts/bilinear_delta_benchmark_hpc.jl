@@ -472,7 +472,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     try
         K = 3
         seed = 42
-        for N in [10, 100, 500, 1000]
+        for N in [100, 500, 1000]
             run_benchmark(; N, K, seed)
         end
     catch e
