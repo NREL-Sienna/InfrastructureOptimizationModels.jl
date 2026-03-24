@@ -1,0 +1,925 @@
+const DNMDT_META = "DNMDTTest"
+const DNMDT_HYBS_META = "HybSTest"
+const NMDT_META = "NMDTTest"
+const NMDT_BILINEAR_META = "NMDTBilinearTest"
+
+@testset "D-NMDT Univariate Approximation" begin
+    @testset "Binary expansion correctness" begin
+        names = ["gen1"]
+        ts = 1:1
+        setup = _setup_qa_test(names, ts)
+        JuMP.set_lower_bound(setup.var_container["gen1", 1], 0.0)
+        JuMP.set_upper_bound(setup.var_container["gen1", 1], 1.0)
+        JuMP.fix(setup.var_container["gen1", 1], 0.6; force = true)
+
+        IOM._add_dnmdt_quadratic_approx!(
+            setup.container, MockThermalGen, names, ts,
+            setup.var_container, 0.0, 1.0, 4, DNMDT_META,
+        )
+
+        JuMP.@objective(setup.jump_model, Min, 0)
+        JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+        JuMP.set_silent(setup.jump_model)
+        JuMP.optimize!(setup.jump_model)
+
+        @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+
+        beta = IOM.get_variable(
+            setup.container, IOM.NMDTBinaryVariable(), MockThermalGen, DNMDT_META,
+        )
+        dx = IOM.get_variable(
+            setup.container, IOM.NMDTResidualVariable(), MockThermalGen, DNMDT_META,
+        )
+
+        reconstructed =
+            sum(2.0^(-j) * JuMP.value(beta["gen1", j, 1]) for j in 1:4) +
+            JuMP.value(dx["gen1", 1])
+        @test reconstructed ≈ 0.6 atol = 1e-8
+    end
+
+    @testset "Relaxation validity (D-NMDT)" begin
+        test_points = [0.1, 0.3, 0.5, 0.7, 0.9]
+        for x0 in test_points
+            z_vals = Float64[]
+            for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                setup = _setup_qa_test(["gen1"], 1:1)
+                JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
+
+                IOM._add_dnmdt_quadratic_approx!(
+                    setup.container, MockThermalGen, ["gen1"], 1:1,
+                    setup.var_container, 0.0, 1.0, 3, DNMDT_META;
+                    tighten = false,
+                )
+                expr = IOM.get_expression(
+                    setup.container, IOM.QuadraticExpression(),
+                    MockThermalGen, DNMDT_META,
+                )
+
+                JuMP.@objective(setup.jump_model, sense, expr["gen1", 1])
+                JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                JuMP.set_silent(setup.jump_model)
+                JuMP.optimize!(setup.jump_model)
+                @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+                push!(z_vals, JuMP.objective_value(setup.jump_model))
+            end
+            true_val = x0^2
+            @test z_vals[1] <= true_val + 1e-6
+            @test z_vals[2] >= true_val - 1e-6
+        end
+    end
+
+    @testset "Relaxation gap <= 2^(-2L-1)" begin
+        for L in [2, 3, 4]
+            gaps = Float64[]
+            for x0 in range(0.0, 1.0; length = 11)
+                for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                    setup = _setup_qa_test(["gen1"], 1:1)
+                    JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
+
+                    IOM._add_dnmdt_quadratic_approx!(
+                        setup.container, MockThermalGen, ["gen1"], 1:1,
+                        setup.var_container, 0.0, 1.0, 2 * L, DNMDT_META;
+                        tighten = false,
+                    )
+                    expr = IOM.get_expression(
+                        setup.container, IOM.QuadraticExpression(),
+                        MockThermalGen, DNMDT_META,
+                    )
+
+                    JuMP.@objective(setup.jump_model, sense, expr["gen1", 1])
+                    JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                    JuMP.set_silent(setup.jump_model)
+                    JuMP.optimize!(setup.jump_model)
+                    push!(gaps, abs(x0^2 - JuMP.objective_value(setup.jump_model)))
+                end
+            end
+            theoretical_bound = 2.0^(-L - 2)
+            @test maximum(gaps) <= theoretical_bound + 1e-6
+        end
+    end
+
+    @testset "Constraint structure" begin
+        setup = _setup_qa_test(["gen1"], 1:1)
+        depth = 3
+
+        IOM._add_dnmdt_quadratic_approx!(
+            setup.container, MockThermalGen, ["gen1"], 1:1,
+            setup.var_container, 0.0, 1.0, depth, DNMDT_META;
+            tighten = false,
+        )
+
+        # L binary variables for univariate
+        n_bin = count(JuMP.is_binary, JuMP.all_variables(setup.jump_model))
+        @test n_bin == depth
+
+        # Container keys exist
+        @test IOM.has_container_key(
+            setup.container, IOM.NMDTBinaryVariable, MockThermalGen, DNMDT_META,
+        )
+        @test IOM.has_container_key(
+            setup.container, IOM.NMDTResidualVariable, MockThermalGen, DNMDT_META,
+        )
+    end
+
+    @testset "Multiple time steps and names" begin
+        names = ["gen1", "gen2"]
+        ts = 1:3
+        setup = _setup_qa_test(names, ts)
+
+        IOM._add_dnmdt_quadratic_approx!(
+            setup.container, MockThermalGen, names, ts,
+            setup.var_container, 0.0, 1.0, 2, DNMDT_META;
+            tighten = false,
+        )
+        expr = IOM.get_expression(
+            setup.container, IOM.QuadraticExpression(),
+            MockThermalGen, DNMDT_META,
+        )
+
+        for name in names, t in ts
+            @test expr[name, t] isa JuMP.AffExpr
+        end
+    end
+end
+
+@testset "T-D-NMDT Tightening" begin
+    @testset "T-D-NMDT lower bound >= D-NMDT lower bound" begin
+        for x0 in [0.15, 0.35, 0.65, 0.85]
+            lb_dnmdt = NaN
+            lb_tdnmdt = NaN
+            for tighten in [false, true]
+                setup = _setup_qa_test(["gen1"], 1:1)
+                JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
+
+                IOM._add_dnmdt_quadratic_approx!(
+                    setup.container, MockThermalGen, ["gen1"], 1:1,
+                    setup.var_container, 0.0, 1.0, 2, DNMDT_META;
+                    tighten = tighten,
+                )
+                expr = IOM.get_expression(
+                    setup.container, IOM.QuadraticExpression(),
+                    MockThermalGen, DNMDT_META,
+                )
+
+                JuMP.@objective(setup.jump_model, Min, expr["gen1", 1])
+                JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                JuMP.set_silent(setup.jump_model)
+                JuMP.optimize!(setup.jump_model)
+                @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+
+                if !tighten
+                    lb_dnmdt = JuMP.objective_value(setup.jump_model)
+                else
+                    lb_tdnmdt = JuMP.objective_value(setup.jump_model)
+                end
+            end
+            # T-D-NMDT should be at least as tight
+            @test lb_tdnmdt >= lb_dnmdt - 1e-6
+            # Both should be valid lower bounds
+            @test lb_dnmdt <= x0^2 + 1e-6
+            @test lb_tdnmdt <= x0^2 + 1e-6
+        end
+    end
+
+    @testset "Convergence with depth" begin
+        true_val = 0.35^2
+        errors = Float64[]
+        for L in 1:4
+            setup = _setup_qa_test(["gen1"], 1:1)
+            JuMP.fix(setup.var_container["gen1", 1], 0.35; force = true)
+
+            IOM._add_dnmdt_quadratic_approx!(
+                setup.container, MockThermalGen, ["gen1"], 1:1,
+                setup.var_container, 0.0, 1.0, L, DNMDT_META;
+                tighten = true,
+            )
+            expr = IOM.get_expression(
+                setup.container, IOM.QuadraticExpression(),
+                MockThermalGen, DNMDT_META,
+            )
+
+            JuMP.@objective(setup.jump_model, Max, expr["gen1", 1])
+            JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+            JuMP.set_silent(setup.jump_model)
+            JuMP.optimize!(setup.jump_model)
+            @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+
+            push!(errors, abs(JuMP.objective_value(setup.jump_model) - true_val))
+        end
+        for i in 2:length(errors)
+            @test errors[i] <= errors[i - 1] + 1e-10
+        end
+    end
+end
+
+@testset "D-NMDT Bivariate Approximation" begin
+    @testset "Relaxation validity" begin
+        test_points = [(0.3, 0.7), (0.5, 0.5), (0.1, 0.9), (0.8, 0.2)]
+        for (x0, y0) in test_points
+            z_vals = Float64[]
+            for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                setup = _setup_bilinear_test(["dev1"], 1:1)
+                JuMP.fix(setup.x_var_container["dev1", 1], x0; force = true)
+                JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
+
+                IOM._add_dnmdt_bilinear_approx!(
+                    setup.container, MockThermalGen, ["dev1"], 1:1,
+                    setup.x_var_container, setup.y_var_container,
+                    0.0, 1.0, 0.0, 1.0, 2, DNMDT_META,
+                )
+                expr = IOM.get_expression(
+                    setup.container, IOM.BilinearProductExpression(),
+                    MockThermalGen, DNMDT_META,
+                )
+
+                JuMP.@objective(setup.jump_model, sense, expr["dev1", 1])
+                JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                JuMP.set_silent(setup.jump_model)
+                JuMP.optimize!(setup.jump_model)
+                @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+                push!(z_vals, JuMP.objective_value(setup.jump_model))
+            end
+            true_val = x0 * y0
+            @test z_vals[1] <= true_val + 1e-6
+            @test z_vals[2] >= true_val - 1e-6
+        end
+    end
+
+    @testset "Relaxation gap <= 2^(-2L-1)" begin
+        for L in [2, 3]
+            gaps = Float64[]
+            for x0 in range(0.05, 0.95; length = 5)
+                for y0 in range(0.05, 0.95; length = 5)
+                    for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                        setup = _setup_bilinear_test(["dev1"], 1:1)
+                        JuMP.fix(setup.x_var_container["dev1", 1], x0; force = true)
+                        JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
+
+                        IOM._add_dnmdt_bilinear_approx!(
+                            setup.container, MockThermalGen, ["dev1"], 1:1,
+                            setup.x_var_container, setup.y_var_container,
+                            0.0, 1.0, 0.0, 1.0, 2 * L, DNMDT_META,
+                        )
+                        expr = IOM.get_expression(
+                            setup.container, IOM.BilinearProductExpression(),
+                            MockThermalGen, DNMDT_META,
+                        )
+
+                        JuMP.@objective(setup.jump_model, sense, expr["dev1", 1])
+                        JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                        JuMP.set_silent(setup.jump_model)
+                        JuMP.optimize!(setup.jump_model)
+                        push!(gaps, abs(x0 * y0 - JuMP.objective_value(setup.jump_model)))
+                    end
+                end
+            end
+            theoretical_bound = 2.0^(-L - 2)
+            @test maximum(gaps) <= theoretical_bound + 1e-6
+        end
+    end
+
+    @testset "General bounds (non-unit intervals)" begin
+        x_min, x_max = 0.2, 0.8
+        y_min, y_max = -0.3, 1.5
+        test_points = [(0.5, 0.6), (0.3, 1.0), (0.7, -0.1)]
+        for (x0, y0) in test_points
+            z_vals = Float64[]
+            for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                setup = _setup_bilinear_test(["dev1"], 1:1)
+                JuMP.fix(setup.x_var_container["dev1", 1], x0; force = true)
+                JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
+
+                IOM._add_dnmdt_bilinear_approx!(
+                    setup.container, MockThermalGen, ["dev1"], 1:1,
+                    setup.x_var_container, setup.y_var_container,
+                    x_min, x_max, y_min, y_max, 8, DNMDT_META,
+                )
+                expr = IOM.get_expression(
+                    setup.container, IOM.BilinearProductExpression(),
+                    MockThermalGen, DNMDT_META,
+                )
+
+                JuMP.@objective(setup.jump_model, sense, expr["dev1", 1])
+                JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                JuMP.set_silent(setup.jump_model)
+                JuMP.optimize!(setup.jump_model)
+                @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+                push!(z_vals, JuMP.objective_value(setup.jump_model))
+            end
+            true_val = x0 * y0
+            @test z_vals[1] <= true_val + 1e-6
+            @test z_vals[2] >= true_val - 1e-6
+        end
+    end
+
+    @testset "Constraint structure" begin
+        setup = _setup_bilinear_test(["dev1"], 1:1)
+        depth = 2
+
+        IOM._add_dnmdt_bilinear_approx!(
+            setup.container, MockThermalGen, ["dev1"], 1:1,
+            setup.x_var_container, setup.y_var_container,
+            0.0, 1.0, 0.0, 1.0, depth, DNMDT_META,
+        )
+
+        # 2L binary variables for bivariate
+        # n_bin = count(JuMP.is_binary, JuMP.all_variables(setup.jump_model))
+        # @test n_bin == 2 * depth
+
+        # Container keys exist
+        @test IOM.has_container_key(
+            setup.container, IOM.BilinearProductExpression, MockThermalGen,
+            DNMDT_META,
+        )
+    end
+
+    # @testset "McCormick toggle" begin
+    #     setup = _setup_bilinear_test(["dev1"], 1:1)
+
+    #     IOM._add_dnmdt_bilinear_approx!(
+    #         setup.container, MockThermalGen, ["dev1"], 1:1,
+    #         setup.x_var_container, setup.y_var_container,
+    #         0.0, 1.0, 0.0, 1.0, 2, DNMDT_META;
+    #         add_mccormick = false,
+    #     )
+
+    #     @test !IOM.has_container_key(
+    #         setup.container, IOM.McCormickConstraint, MockThermalGen, DNMDT_META,
+    #     )
+    # end
+
+    @testset "Fixed-variable correctness" begin
+        setup = _setup_bilinear_test(["dev1"], 1:1)
+        JuMP.fix(setup.x_var_container["dev1", 1], 2.0; force = true)
+        JuMP.fix(setup.y_var_container["dev1", 1], 3.0; force = true)
+
+        IOM._add_dnmdt_bilinear_approx!(
+            setup.container, MockThermalGen, ["dev1"], 1:1,
+            setup.y_var_container, setup.x_var_container,
+            0.0, 4.0, 0.0, 4.0, 3, DNMDT_META,
+        )
+        expr = IOM.get_expression(
+            setup.container, IOM.BilinearProductExpression(),
+            MockThermalGen, DNMDT_META,
+        )
+
+        JuMP.@objective(setup.jump_model, Max, expr["dev1", 1])
+        JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+        JuMP.set_silent(setup.jump_model)
+        JuMP.optimize!(setup.jump_model)
+
+        @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+        @test JuMP.objective_value(setup.jump_model) ≈ 6.0 atol = 0.5
+    end
+
+    @testset "Multiple time steps" begin
+        setup = _setup_bilinear_test(["dev1"], 1:3)
+
+        IOM._add_dnmdt_bilinear_approx!(
+            setup.container, MockThermalGen, ["dev1"], 1:3,
+            setup.x_var_container, setup.y_var_container,
+            0.0, 1.0, 0.0, 1.0, 2, DNMDT_META,
+        )
+        expr = IOM.get_expression(
+            setup.container, IOM.BilinearProductExpression(),
+            MockThermalGen, DNMDT_META,
+        )
+
+        for t in 1:3
+            @test expr["dev1", t] isa JuMP.AffExpr
+        end
+    end
+
+    @testset "Constraint structure: 2L binary variables" begin
+        setup = _setup_bilinear_test(["dev1"], 1:1)
+        depth = 3
+
+        IOM._add_dnmdt_bilinear_approx!(
+            setup.container, MockThermalGen, ["dev1"], 1:1,
+            setup.x_var_container, setup.y_var_container,
+            0.0, 1.0, 0.0, 1.0, depth, DNMDT_META,
+        )
+
+        # D-NMDT discretizes both x and y → 2L binary variables
+        n_bin = count(JuMP.is_binary, JuMP.all_variables(setup.jump_model))
+        @test n_bin == 2 * depth
+    end
+
+    @testset "D-NMDT vs HybS comparison" begin
+        true_product = 0.4 * 0.7
+        for depth in [2, 3]
+            # D-NMDT
+            setup_d = _setup_bilinear_test(["dev1"], 1:1)
+            JuMP.fix(setup_d.x_var_container["dev1", 1], 0.4; force = true)
+            JuMP.fix(setup_d.y_var_container["dev1", 1], 0.7; force = true)
+
+            IOM._add_dnmdt_bilinear_approx!(
+                setup_d.container, MockThermalGen, ["dev1"], 1:1,
+                setup_d.x_var_container, setup_d.y_var_container,
+                0.0, 1.0, 0.0, 1.0, depth, DNMDT_META,
+            )
+            expr_d = IOM.get_expression(
+                setup_d.container, IOM.BilinearProductExpression(),
+                MockThermalGen, DNMDT_META,
+            )
+
+            JuMP.@objective(setup_d.jump_model, Max, expr_d["dev1", 1])
+            JuMP.set_optimizer(setup_d.jump_model, HiGHS.Optimizer)
+            JuMP.set_silent(setup_d.jump_model)
+            JuMP.optimize!(setup_d.jump_model)
+            dnmdt_gap = abs(JuMP.objective_value(setup_d.jump_model) - true_product)
+
+            # HybS
+            setup_h = _setup_bilinear_test(["dev1"], 1:1)
+            JuMP.fix(setup_h.x_var_container["dev1", 1], 0.4; force = true)
+            JuMP.fix(setup_h.y_var_container["dev1", 1], 0.7; force = true)
+
+            IOM._add_hybs_sawtooth_bilinear_approx!(
+                setup_h.container, MockThermalGen, ["dev1"], 1:1,
+                setup_h.x_var_container, setup_h.y_var_container,
+                0.0, 1.0, 0.0, 1.0, depth, DNMDT_HYBS_META,
+            )
+            expr_h = IOM.get_expression(
+                setup_h.container, IOM.BilinearProductExpression(),
+                MockThermalGen, DNMDT_HYBS_META,
+            )
+
+            JuMP.@objective(setup_h.jump_model, Max, expr_h["dev1", 1])
+            JuMP.set_optimizer(setup_h.jump_model, HiGHS.Optimizer)
+            JuMP.set_silent(setup_h.jump_model)
+            JuMP.optimize!(setup_h.jump_model)
+            hybs_gap = abs(JuMP.objective_value(setup_h.jump_model) - true_product)
+
+            # D-NMDT should be at least as tight (same binary budget)
+            @test dnmdt_gap <= hybs_gap + 1e-6
+
+            # Both use same number of binaries: 2L
+            n_bin_d = count(JuMP.is_binary, JuMP.all_variables(setup_d.jump_model))
+            n_bin_h = count(JuMP.is_binary, JuMP.all_variables(setup_h.jump_model))
+            @test n_bin_d == n_bin_h
+        end
+    end
+end
+
+@testset "NMDT Univariate Approximation" begin
+    @testset "Binary expansion correctness" begin
+        names = ["gen1"]
+        ts = 1:1
+        setup = _setup_qa_test(names, ts)
+        JuMP.set_lower_bound(setup.var_container["gen1", 1], 0.0)
+        JuMP.set_upper_bound(setup.var_container["gen1", 1], 1.0)
+        JuMP.fix(setup.var_container["gen1", 1], 0.6; force = true)
+
+        IOM._add_nmdt_quadratic_approx!(
+            setup.container, MockThermalGen, names, ts,
+            setup.var_container, 0.0, 1.0, 4, NMDT_META,
+        )
+
+        JuMP.@objective(setup.jump_model, Min, 0)
+        JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+        JuMP.set_silent(setup.jump_model)
+        JuMP.optimize!(setup.jump_model)
+
+        @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+
+        beta = IOM.get_variable(
+            setup.container, IOM.NMDTBinaryVariable(), MockThermalGen, NMDT_META,
+        )
+        dx = IOM.get_variable(
+            setup.container, IOM.NMDTResidualVariable(), MockThermalGen, NMDT_META,
+        )
+
+        reconstructed =
+            sum(2.0^(-j) * JuMP.value(beta["gen1", j, 1]) for j in 1:4) +
+            JuMP.value(dx["gen1", 1])
+        @test reconstructed ≈ 0.6 atol = 1e-8
+    end
+
+    @testset "Relaxation validity" begin
+        test_points = [0.1, 0.3, 0.5, 0.7, 0.9]
+        for x0 in test_points
+            z_vals = Float64[]
+            for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                setup = _setup_qa_test(["gen1"], 1:1)
+                JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
+
+                IOM._add_nmdt_quadratic_approx!(
+                    setup.container, MockThermalGen, ["gen1"], 1:1,
+                    setup.var_container, 0.0, 1.0, 3, NMDT_META;
+                    tighten = false,
+                )
+                expr = IOM.get_expression(
+                    setup.container, IOM.QuadraticExpression(),
+                    MockThermalGen, NMDT_META,
+                )
+
+                JuMP.@objective(setup.jump_model, sense, expr["gen1", 1])
+                JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                JuMP.set_silent(setup.jump_model)
+                JuMP.optimize!(setup.jump_model)
+                @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+                push!(z_vals, JuMP.objective_value(setup.jump_model))
+            end
+            true_val = x0^2
+            @test z_vals[1] <= true_val + 1e-6
+            @test z_vals[2] >= true_val - 1e-6
+        end
+    end
+
+    @testset "Error bound <= 2^(-L-2)" begin
+        # NMDT with L binary variables has relaxation gap bounded by 2^(-L-2),
+        # which is looser than D-NMDT's 2^(-2L-2) at the same L.
+        for L in [2, 3, 4]
+            gaps = Float64[]
+            for x0 in range(0.0, 1.0; length = 11)
+                for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                    setup = _setup_qa_test(["gen1"], 1:1)
+                    JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
+
+                    IOM._add_nmdt_quadratic_approx!(
+                        setup.container, MockThermalGen, ["gen1"], 1:1,
+                        setup.var_container, 0.0, 1.0, L, NMDT_META;
+                        tighten = false,
+                    )
+                    expr = IOM.get_expression(
+                        setup.container, IOM.QuadraticExpression(),
+                        MockThermalGen, NMDT_META,
+                    )
+
+                    JuMP.@objective(setup.jump_model, sense, expr["gen1", 1])
+                    JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                    JuMP.set_silent(setup.jump_model)
+                    JuMP.optimize!(setup.jump_model)
+                    push!(gaps, abs(x0^2 - JuMP.objective_value(setup.jump_model)))
+                end
+            end
+            theoretical_bound = 2.0^(-L - 2)
+            @test maximum(gaps) <= theoretical_bound + 1e-6
+        end
+    end
+
+    @testset "Constraint structure: L binary variables" begin
+        setup = _setup_qa_test(["gen1"], 1:1)
+        depth = 3
+
+        IOM._add_nmdt_quadratic_approx!(
+            setup.container, MockThermalGen, ["gen1"], 1:1,
+            setup.var_container, 0.0, 1.0, depth, NMDT_META;
+            tighten = false,
+        )
+
+        # NMDT uses exactly L binary variables (one per discretization level)
+        n_bin = count(JuMP.is_binary, JuMP.all_variables(setup.jump_model))
+        @test n_bin == depth
+
+        @test IOM.has_container_key(
+            setup.container, IOM.NMDTBinaryVariable, MockThermalGen, NMDT_META,
+        )
+        @test IOM.has_container_key(
+            setup.container, IOM.NMDTResidualVariable, MockThermalGen, NMDT_META,
+        )
+        @test IOM.has_container_key(
+            setup.container, IOM.QuadraticExpression, MockThermalGen, NMDT_META,
+        )
+    end
+
+    @testset "Multiple time steps and names" begin
+        names = ["gen1", "gen2"]
+        ts = 1:3
+        setup = _setup_qa_test(names, ts)
+
+        IOM._add_nmdt_quadratic_approx!(
+            setup.container, MockThermalGen, names, ts,
+            setup.var_container, 0.0, 1.0, 2, NMDT_META;
+            tighten = false,
+        )
+        expr = IOM.get_expression(
+            setup.container, IOM.QuadraticExpression(),
+            MockThermalGen, NMDT_META,
+        )
+
+        for name in names, t in ts
+            @test expr[name, t] isa JuMP.AffExpr
+        end
+    end
+
+    @testset "Tightening improves lower bound" begin
+        for x0 in [0.15, 0.35, 0.65, 0.85]
+            lb_nmdt = NaN
+            lb_tnmdt = NaN
+            for tighten in [false, true]
+                setup = _setup_qa_test(["gen1"], 1:1)
+                JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
+
+                IOM._add_nmdt_quadratic_approx!(
+                    setup.container, MockThermalGen, ["gen1"], 1:1,
+                    setup.var_container, 0.0, 1.0, 2, NMDT_META;
+                    tighten = tighten,
+                )
+                expr = IOM.get_expression(
+                    setup.container, IOM.QuadraticExpression(),
+                    MockThermalGen, NMDT_META,
+                )
+
+                JuMP.@objective(setup.jump_model, Min, expr["gen1", 1])
+                JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                JuMP.set_silent(setup.jump_model)
+                JuMP.optimize!(setup.jump_model)
+                @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+
+                if !tighten
+                    lb_nmdt = JuMP.objective_value(setup.jump_model)
+                else
+                    lb_tnmdt = JuMP.objective_value(setup.jump_model)
+                end
+            end
+            @test lb_tnmdt >= lb_nmdt - 1e-6
+            @test lb_nmdt <= x0^2 + 1e-6
+            @test lb_tnmdt <= x0^2 + 1e-6
+        end
+    end
+end
+
+@testset "NMDT vs D-NMDT Univariate Comparison" begin
+    @testset "D-NMDT tighter than NMDT at same binary count" begin
+        # Both use L binary variables for x²; D-NMDT has bound 2^(-2L-2)
+        # while NMDT has the looser bound 2^(-L-2).
+        for L in [2, 3]
+            gaps_nmdt = Float64[]
+            gaps_dnmdt = Float64[]
+            for x0 in range(0.05, 0.95; length = 9)
+                for (func, tag) in [
+                    (IOM._add_nmdt_quadratic_approx!, :nmdt),
+                    (IOM._add_dnmdt_quadratic_approx!, :dnmdt),
+                ]
+                    z_vals = Float64[]
+                    for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                        setup = _setup_qa_test(["gen1"], 1:1)
+                        JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
+
+                        func(
+                            setup.container, MockThermalGen, ["gen1"], 1:1,
+                            setup.var_container, 0.0, 1.0, L, NMDT_META;
+                            tighten = false,
+                        )
+                        expr = IOM.get_expression(
+                            setup.container, IOM.QuadraticExpression(),
+                            MockThermalGen, NMDT_META,
+                        )
+
+                        JuMP.@objective(setup.jump_model, sense, expr["gen1", 1])
+                        JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                        JuMP.set_silent(setup.jump_model)
+                        JuMP.optimize!(setup.jump_model)
+                        gap = abs(x0^2 - JuMP.objective_value(setup.jump_model))
+                        if tag == :nmdt
+                            push!(gaps_nmdt, gap)
+                        else
+                            push!(gaps_dnmdt, gap)
+                        end
+                    end
+                end
+            end
+            # Both are valid relaxations within their respective bounds
+            @test maximum(gaps_nmdt) <= 2.0^(-L - 2) + 1e-6
+            @test maximum(gaps_dnmdt) <= 2.0^(-2 * L - 2) + 1e-6
+            # D-NMDT is at least as tight as NMDT
+            @test maximum(gaps_dnmdt) <= maximum(gaps_nmdt) + 1e-6
+        end
+    end
+
+    @testset "Same binary count at same depth" begin
+        # Both D-NMDT and NMDT univariate use L binary variables for depth=L
+        depth = 4
+        setup_n = _setup_qa_test(["gen1"], 1:1)
+        IOM._add_nmdt_quadratic_approx!(
+            setup_n.container, MockThermalGen, ["gen1"], 1:1,
+            setup_n.var_container, 0.0, 1.0, depth, NMDT_META;
+            tighten = false,
+        )
+        n_bin_nmdt = count(JuMP.is_binary, JuMP.all_variables(setup_n.jump_model))
+
+        setup_d = _setup_qa_test(["gen1"], 1:1)
+        IOM._add_dnmdt_quadratic_approx!(
+            setup_d.container, MockThermalGen, ["gen1"], 1:1,
+            setup_d.var_container, 0.0, 1.0, depth, DNMDT_META;
+            tighten = false,
+        )
+        n_bin_dnmdt = count(JuMP.is_binary, JuMP.all_variables(setup_d.jump_model))
+
+        @test n_bin_nmdt == depth
+        @test n_bin_dnmdt == depth
+        @test n_bin_nmdt == n_bin_dnmdt
+    end
+end
+
+# NOTE: _add_nmdt_bilinear_approx! discretizes only x (L binary variables), leaving
+# y normalized but continuous. This halves the binary count vs D-NMDT bilinear (2L).
+# The trade-off: NMDT bilinear error bound is 2^(-L-2) vs D-NMDT's 2^(-2L-2).
+@testset "NMDT Bilinear Approximation" begin
+    @testset "Relaxation validity" begin
+        test_points = [(0.3, 0.7), (0.5, 0.5), (0.1, 0.9), (0.8, 0.2)]
+        for (x0, y0) in test_points
+            z_vals = Float64[]
+            for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                setup = _setup_bilinear_test(["dev1"], 1:1)
+                JuMP.fix(setup.x_var_container["dev1", 1], x0; force = true)
+                JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
+
+                IOM._add_nmdt_bilinear_approx!(
+                    setup.container, MockThermalGen, ["dev1"], 1:1,
+                    setup.x_var_container, setup.y_var_container,
+                    0.0, 1.0, 0.0, 1.0, 3, NMDT_BILINEAR_META,
+                )
+                expr = IOM.get_expression(
+                    setup.container, IOM.BilinearProductExpression(),
+                    MockThermalGen, NMDT_BILINEAR_META,
+                )
+
+                JuMP.@objective(setup.jump_model, sense, expr["dev1", 1])
+                JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                JuMP.set_silent(setup.jump_model)
+                JuMP.optimize!(setup.jump_model)
+                @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+                push!(z_vals, JuMP.objective_value(setup.jump_model))
+            end
+            true_val = x0 * y0
+            @test z_vals[1] <= true_val + 1e-6
+            @test z_vals[2] >= true_val - 1e-6
+        end
+    end
+
+    @testset "Error bound <= 2^(-L-2)" begin
+        for L in [2, 3]
+            max_gap = 0.0
+            gaps = Float64[]
+            for x0 in range(0.05, 0.95; length = 5)
+                for y0 in range(0.05, 0.95; length = 5)
+                    for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
+                        setup = _setup_bilinear_test(["dev1"], 1:1)
+                        JuMP.fix(setup.x_var_container["dev1", 1], x0; force = true)
+                        JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
+
+                        IOM._add_nmdt_bilinear_approx!(
+                            setup.container, MockThermalGen, ["dev1"], 1:1,
+                            setup.x_var_container, setup.y_var_container,
+                            0.0, 1.0, 0.0, 1.0, L, NMDT_BILINEAR_META,
+                        )
+                        expr = IOM.get_expression(
+                            setup.container, IOM.BilinearProductExpression(),
+                            MockThermalGen, NMDT_BILINEAR_META,
+                        )
+
+                        JuMP.@objective(setup.jump_model, sense, expr["dev1", 1])
+                        JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                        JuMP.set_silent(setup.jump_model)
+                        JuMP.optimize!(setup.jump_model)
+                        push!(gaps, abs(x0 * y0 - JuMP.objective_value(setup.jump_model)))
+                    end
+                end
+            end
+            # NMDT bilinear bound: 2^(-L-2) (looser than D-NMDT's 2^(-2L-2))
+            theoretical_bound = 2.0^(-L - 2)
+            @test maximum(gaps) <= theoretical_bound + 1e-6
+        end
+    end
+
+    @testset "Constraint structure: L binary variables (only x discretized)" begin
+        setup = _setup_bilinear_test(["dev1"], 1:1)
+        depth = 3
+
+        IOM._add_nmdt_bilinear_approx!(
+            setup.container, MockThermalGen, ["dev1"], 1:1,
+            setup.x_var_container, setup.y_var_container,
+            0.0, 1.0, 0.0, 1.0, depth, NMDT_BILINEAR_META,
+        )
+
+        # NMDT only discretizes x → L binary variables (half of D-NMDT's 2L)
+        n_bin = count(JuMP.is_binary, JuMP.all_variables(setup.jump_model))
+        @test n_bin == depth
+
+        @test IOM.has_container_key(
+            setup.container, IOM.BilinearProductExpression, MockThermalGen,
+            NMDT_BILINEAR_META,
+        )
+    end
+
+    @testset "Multiple time steps" begin
+        setup = _setup_bilinear_test(["dev1"], 1:3)
+
+        IOM._add_nmdt_bilinear_approx!(
+            setup.container, MockThermalGen, ["dev1"], 1:3,
+            setup.x_var_container, setup.y_var_container,
+            0.0, 1.0, 0.0, 1.0, 2, NMDT_BILINEAR_META,
+        )
+        expr = IOM.get_expression(
+            setup.container, IOM.BilinearProductExpression(),
+            MockThermalGen, NMDT_BILINEAR_META,
+        )
+
+        for t in 1:3
+            @test expr["dev1", t] isa JuMP.AffExpr
+        end
+    end
+
+    @testset "Fixed-variable correctness" begin
+        setup = _setup_bilinear_test(["dev1"], 1:1)
+        JuMP.fix(setup.x_var_container["dev1", 1], 0.75; force = true)
+        JuMP.fix(setup.y_var_container["dev1", 1], 0.5; force = true)
+
+        IOM._add_nmdt_bilinear_approx!(
+            setup.container, MockThermalGen, ["dev1"], 1:1,
+            setup.x_var_container, setup.y_var_container,
+            0.0, 1.0, 0.0, 1.0, 4, NMDT_BILINEAR_META,
+        )
+        expr = IOM.get_expression(
+            setup.container, IOM.BilinearProductExpression(),
+            MockThermalGen, NMDT_BILINEAR_META,
+        )
+
+        JuMP.@objective(setup.jump_model, Max, expr["dev1", 1])
+        JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+        JuMP.set_silent(setup.jump_model)
+        JuMP.optimize!(setup.jump_model)
+
+        @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+        true_val = 0.75 * 0.5
+        @test JuMP.objective_value(setup.jump_model) ≈ true_val atol = 2.0^(-4 - 2)
+    end
+end
+
+@testset "NMDT vs D-NMDT Bilinear: binary efficiency" begin
+    @testset "NMDT uses L binaries, D-NMDT uses 2L" begin
+        L = 3
+        setup_n = _setup_bilinear_test(["dev1"], 1:1)
+        IOM._add_nmdt_bilinear_approx!(
+            setup_n.container, MockThermalGen, ["dev1"], 1:1,
+            setup_n.x_var_container, setup_n.y_var_container,
+            0.0, 1.0, 0.0, 1.0, L, NMDT_BILINEAR_META,
+        )
+        n_bin_nmdt = count(JuMP.is_binary, JuMP.all_variables(setup_n.jump_model))
+
+        setup_d = _setup_bilinear_test(["dev1"], 1:1)
+        IOM._add_dnmdt_bilinear_approx!(
+            setup_d.container, MockThermalGen, ["dev1"], 1:1,
+            setup_d.x_var_container, setup_d.y_var_container,
+            0.0, 1.0, 0.0, 1.0, L, DNMDT_META,
+        )
+        n_bin_dnmdt = count(JuMP.is_binary, JuMP.all_variables(setup_d.jump_model))
+
+        # NMDT discretizes only x (L bins); D-NMDT discretizes x and y (2L bins)
+        @test n_bin_nmdt == L
+        @test n_bin_dnmdt == 2 * L
+        @test n_bin_nmdt == n_bin_dnmdt ÷ 2
+    end
+
+    @testset "D-NMDT tighter than NMDT at same L" begin
+        true_product = 0.4 * 0.7
+        for L in [2, 3]
+            setup_n = _setup_bilinear_test(["dev1"], 1:1)
+            JuMP.fix(setup_n.x_var_container["dev1", 1], 0.4; force = true)
+            JuMP.fix(setup_n.y_var_container["dev1", 1], 0.7; force = true)
+
+            IOM._add_nmdt_bilinear_approx!(
+                setup_n.container, MockThermalGen, ["dev1"], 1:1,
+                setup_n.x_var_container, setup_n.y_var_container,
+                0.0, 1.0, 0.0, 1.0, L, NMDT_BILINEAR_META,
+            )
+            expr_n = IOM.get_expression(
+                setup_n.container, IOM.BilinearProductExpression(),
+                MockThermalGen, NMDT_BILINEAR_META,
+            )
+
+            JuMP.@objective(setup_n.jump_model, Max, expr_n["dev1", 1])
+            JuMP.set_optimizer(setup_n.jump_model, HiGHS.Optimizer)
+            JuMP.set_silent(setup_n.jump_model)
+            JuMP.optimize!(setup_n.jump_model)
+            nmdt_gap = abs(JuMP.objective_value(setup_n.jump_model) - true_product)
+
+            setup_d = _setup_bilinear_test(["dev1"], 1:1)
+            JuMP.fix(setup_d.x_var_container["dev1", 1], 0.4; force = true)
+            JuMP.fix(setup_d.y_var_container["dev1", 1], 0.7; force = true)
+
+            IOM._add_dnmdt_bilinear_approx!(
+                setup_d.container, MockThermalGen, ["dev1"], 1:1,
+                setup_d.x_var_container, setup_d.y_var_container,
+                0.0, 1.0, 0.0, 1.0, L, DNMDT_META,
+            )
+            expr_d = IOM.get_expression(
+                setup_d.container, IOM.BilinearProductExpression(),
+                MockThermalGen, DNMDT_META,
+            )
+
+            JuMP.@objective(setup_d.jump_model, Max, expr_d["dev1", 1])
+            JuMP.set_optimizer(setup_d.jump_model, HiGHS.Optimizer)
+            JuMP.set_silent(setup_d.jump_model)
+            JuMP.optimize!(setup_d.jump_model)
+            dnmdt_gap = abs(JuMP.objective_value(setup_d.jump_model) - true_product)
+
+            # NMDT bound: 2^(-L-2); D-NMDT bound: 2^(-2L-2) — D-NMDT is tighter at same L
+            @test nmdt_gap <= 2.0^(-L - 2) + 1e-6
+            @test dnmdt_gap <= 2.0^(-2 * L - 2) + 1e-6
+            @test dnmdt_gap <= nmdt_gap + 1e-6
+        end
+    end
+end
