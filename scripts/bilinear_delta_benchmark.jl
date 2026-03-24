@@ -53,7 +53,18 @@ end
 IOM.get_base_power(sys::BenchmarkSystem) = sys.base_power
 IOM.stores_time_series_in_memory(::BenchmarkSystem) = false
 
-struct NetworkNode <: IS.InfrastructureSystemsComponent end
+struct NetworkNode <: IS.InfrastructureSystemsComponent
+    name::String
+    i_min::Float64
+    i_max::Float64
+end
+function NetworkNode(name::String, is_gen::Bool)
+    if is_gen
+        return NetworkNode(name, I_GEN_MIN, I_GEN_MAX)
+    else
+        return NetworkNode(name, I_DEM_MIN, I_DEM_MAX)
+    end
+end
 
 struct VoltageVariable <: IOM.VariableType end
 struct CurrentVariable <: IOM.VariableType end
@@ -62,6 +73,16 @@ struct PowerEqualityConstraint <: IOM.ConstraintType end
 struct KCLConstraint <: IOM.ConstraintType end
 
 struct KCLExpression <: IOM.ExpressionType end
+
+IOM.get_variable_binary(::ActivePowerVariable, NetworkNode, _) = false
+IOM.get_variable_binary(::VoltageVariable, _, _) = false
+IOM.get_variable_binary(::CurrentVariable, _, _) = false
+IOM.get_variable_lower_bound(::ActivePowerVariable, NetworkNode, _) = 0.0
+IOM.get_variable_upper_bound(::ActivePowerVariable, NetworkNode, _) = 1.5
+IOM.get_variable_lower_bound(::VoltageVariable, _, _) = V_MIN
+IOM.get_variable_upper_bound(::VoltageVariable, _, _) = V_MAX
+IOM.get_variable_lower_bound(::CurrentVariable, n, _) = n.i_min
+IOM.get_variable_upper_bound(::CurrentVariable, n, _) = n.i_max
 
 # ─── Network problem types ───────────────────────────────────────────────────
 
@@ -262,7 +283,7 @@ end
 
 function make_container()
     sys = BenchmarkSystem(100.0)
-    settings = IOM.Settings(sys; horizon = Dates.Hour(1), resolution = Dates.Hour(1))
+    settings = IOM.Settings(sys; horizon = Dates.Hour(1), resolution = Dates.Hour(1), warm_start = false)
     container = IOM.OptimizationContainer(sys, settings, JuMP.Model(), IS.Deterministic)
     IOM.set_time_steps!(container, 1:1)
     return container
@@ -408,34 +429,17 @@ function build_mip_model(
     time_steps = 1:1
     adj = adjacency_list(net)
 
-    # --- V and I variable containers ---
-    V_container = IOM.add_variable_container!(
-        container, VoltageVariable(), NetworkNode,
-        net.all_nodes, time_steps,
-    )
-    I_container = IOM.add_variable_container!(
-        container, CurrentVariable(), NetworkNode,
-        net.all_nodes, time_steps,
-    )
+    gen_devices = [NetworkNode(g, true) for g in net.gen_nodes]
+    dem_devices = [NetworkNode(d, false) for d in net.dem_nodes]
+    all_devices = [gen_devices; dem_devices]
 
-    for n in net.all_nodes
-        V_container[n, 1] = JuMP.@variable(
-            jump_model, base_name = "V_$(n)",
-            lower_bound = V_MIN, upper_bound = V_MAX,
-        )
-    end
-    for g in net.gen_nodes
-        I_container[g, 1] = JuMP.@variable(
-            jump_model, base_name = "I_$(g)",
-            lower_bound = I_GEN_MIN, upper_bound = I_GEN_MAX,
-        )
-    end
-    for d in net.dem_nodes
-        I_container[d, 1] = JuMP.@variable(
-            jump_model, base_name = "I_$(d)",
-            lower_bound = I_DEM_MIN, upper_bound = I_DEM_MAX,
-        )
-    end
+    IOM.add_variables!(container, ActivePowerVariable, gen_devices, nothing)
+    IOM.add_variables!(container, VoltageVariable, all_devices, nothing)
+    IOM.add_variables!(container, CurrentVariable, all_devices, nothing)
+
+    V_container = IOM.get_variable(container, VoltageVariable(), NetworkNode)
+    I_container = IOM.get_variable(container, CurrentVariable(), NetworkNode)
+    Pg = IOM.get_variable(container, ActivePowerVariable(), NetworkNode)
 
     # --- Bilinear gen: dispatched on network type and method family ---
     z_gen, I_sq = build_gen_bilinear(
@@ -451,11 +455,6 @@ function build_mip_model(
         refinement, "dem"; bilinear_kwargs...,
     )
 
-    # --- Power variable ---
-    Pg = IOM.add_variable_container!(
-        container, ActivePowerVariable(), NetworkNode,
-        net.gen_nodes, time_steps,
-    )
     pwl_link_constraints = IOM.add_constraints_container!(
         container,
         IOM.PiecewiseLinearBlockIncrementalOfferConstraint(),
@@ -464,9 +463,6 @@ function build_mip_model(
         time_steps,
     )
     for g in net.gen_nodes
-        Pg[g, 1] = JuMP.@variable(jump_model, base_name = "Pg_$(g)",
-            lower_bound = 0.0, upper_bound = P_MAX)
-
         breakpoints = vcat(0.0, cumsum(net.segment_widths[g]))
         pwl_vars = IOM.add_pwl_variables_delta!(
             container,
