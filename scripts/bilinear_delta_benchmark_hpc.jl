@@ -437,7 +437,6 @@ function run_benchmark(;
 
             JuMP.set_optimizer(result.jump_model, HiGHS.Optimizer)
             JuMP.set_optimizer_attribute(result.jump_model, "log_to_console", false)
-            JuMP.set_optimizer_attribute(result.jump_model, "time_limit", 300.0)
 
             solve_t = @elapsed JuMP.optimize!(result.jump_model)
             status = JuMP.termination_status(result.jump_model)
