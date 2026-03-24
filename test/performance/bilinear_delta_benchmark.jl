@@ -229,7 +229,12 @@ end
 
 function make_container()
     sys = MockSystem(100.0)
-    settings = IOM.Settings(sys; horizon = Dates.Hour(1), resolution = Dates.Hour(1), warm_start = false)
+    settings = IOM.Settings(
+        sys;
+        horizon = Dates.Hour(1),
+        resolution = Dates.Hour(1),
+        warm_start = false,
+    )
     container = IOM.OptimizationContainer(sys, settings, JuMP.Model(), IS.Deterministic)
     IOM.set_time_steps!(container, 1:1)
     return container
@@ -238,7 +243,8 @@ end
 # ─── Dispatched model components ─────────────────────────────────────────────
 
 function add_gen_power_constraints!(
-    cons_container, jump_model, ::MockLosslessNetworkProblem, gen_nodes, z_gen, _I_container, _I_sq, Pg,
+    cons_container, jump_model, ::MockLosslessNetworkProblem, gen_nodes, z_gen,
+    _I_container, _I_sq, Pg,
 )
     for g in gen_nodes
         cons_container[g, 1] = JuMP.@constraint(jump_model, Pg[g, 1] == z_gen[g, 1])
@@ -246,7 +252,8 @@ function add_gen_power_constraints!(
 end
 
 function add_gen_power_constraints!(
-    cons_container, jump_model, net::MockLossyNetworkProblem, gen_nodes, z_gen, I_container, I_sq, Pg,
+    cons_container, jump_model, net::MockLossyNetworkProblem, gen_nodes, z_gen, I_container,
+    I_sq, Pg,
 )
     for g in gen_nodes
         cons_container[g, 1] = JuMP.@constraint(jump_model,
@@ -254,7 +261,8 @@ function add_gen_power_constraints!(
             z_gen[g, 1]
             - net.loss[g][1] * I_sq[g, 1]
             - net.loss[g][2] * I_container[g, 1]
-            - net.loss[g][3])
+            -
+            net.loss[g][3])
     end
 end
 
@@ -448,9 +456,18 @@ function build_mip_model(
         MockNetworkNode,
         net.gen_nodes,
         time_steps;
-        meta = "Pg"
+        meta = "Pg",
     )
-    add_gen_power_constraints!(gen_pwr_constraints, jump_model, net, net.gen_nodes, z_gen, I_container, I_sq, Pg)
+    add_gen_power_constraints!(
+        gen_pwr_constraints,
+        jump_model,
+        net,
+        net.gen_nodes,
+        z_gen,
+        I_container,
+        I_sq,
+        Pg,
+    )
 
     # --- Demand: V·I == -d ---
     dem_pwr_constraints = IOM.add_constraints_container!(
@@ -459,7 +476,7 @@ function build_mip_model(
         MockNetworkNode,
         net.dem_nodes,
         time_steps;
-        meta = "Pd"
+        meta = "Pd",
     )
     for d in net.dem_nodes
         dem_pwr_constraints[d, 1] = JuMP.@constraint(
@@ -473,23 +490,23 @@ function build_mip_model(
         MockKCLExpression(),
         MockNetworkNode,
         net.all_nodes,
-        time_steps
+        time_steps,
     )
     kcl_constraints = IOM.add_constraints_container!(
         container,
         MockKCLConstraint(),
         MockNetworkNode,
         net.all_nodes,
-        time_steps
+        time_steps,
     )
     for n in net.all_nodes
         expr = kcl_expressions[n, 1] = JuMP.AffExpr(0.0)
         for (j, c) in adj[n]
             IOM.add_proportional_to_jump_expression!(
-                expr, V_container[n, 1], c
+                expr, V_container[n, 1], c,
             )
             IOM.add_proportional_to_jump_expression!(
-                expr, V_container[j, 1], -c
+                expr, V_container[j, 1], -c,
             )
         end
         kcl_constraints[n, 1] = JuMP.@constraint(
@@ -640,8 +657,8 @@ function run_benchmark(
     println("  Refinement = num_segments for SOS2 methods, depth for Sawtooth/DNMDT")
     println("="^110)
     @printf("%-17s %4s %6s %7s %6s %12s %9s %11s %10s %8s %8s\n",
-    "Method", "Ref", "Vars", "Constrs", "Bins", "Objective",
-    "Gap(%)", "Mean Resid", "Max Resid", "build_t", "solve_t")
+        "Method", "Ref", "Vars", "Constrs", "Bins", "Objective",
+        "Gap(%)", "Mean Resid", "Max Resid", "build_t", "solve_t")
     println("-"^110)
 
     nlp_obj = NaN
@@ -863,12 +880,12 @@ else
     # Running locally
     bilinear_methods = (
         (
-            "Bin2+sSOS",
-            SeparableMethod(),
-            IOM._add_sos2_bilinear_approx!,
-            (),
-            IOM._add_sos2_quadratic_approx!,
-        ),
+        "Bin2+sSOS",
+        SeparableMethod(),
+        IOM._add_sos2_bilinear_approx!,
+        (),
+        IOM._add_sos2_quadratic_approx!,
+    ),
     )
 end
 
