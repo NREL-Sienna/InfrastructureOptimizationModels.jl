@@ -194,7 +194,11 @@ function _add_sawtooth_quadratic_approx!(
             2.0 * x_min * delta + delta * delta,
         )
         for j in alpha_levels
-            add_proportional_to_jump_expression!(x_sq_approx, g_var[name, j, t], -saw_coeffs[j])
+            add_proportional_to_jump_expression!(
+                x_sq_approx,
+                g_var[name, j, t],
+                -saw_coeffs[j],
+            )
         end
 
         if tighten

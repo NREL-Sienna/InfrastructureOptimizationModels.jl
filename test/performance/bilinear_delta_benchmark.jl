@@ -251,7 +251,7 @@ end
 
 function add_gen_power_constraints!(
     cons_container, jump_model, ::MockLosslessNetworkProblem, gen_nodes, z_gen,
-    _I_container, _I_sq, Pg, time_steps
+    _I_container, _I_sq, Pg, time_steps,
 )
     for g in gen_nodes, t in time_steps
         cons_container[g, t] = JuMP.@constraint(jump_model, Pg[g, t] == z_gen[g, t])
@@ -276,15 +276,22 @@ function add_gen_power_constraints!(
         gen_nodes,
         time_steps,
     )
-    line_loss_variables = IOM.get_aux_variable(container, MockLineLossAuxVariable(), NetworkNode)
+    line_loss_variables =
+        IOM.get_aux_variable(container, MockLineLossAuxVariable(), NetworkNode)
     for g in gen_nodes, t in time_steps
         line_loss = line_loss_expressions[g, t] = JuMP.AffExpr(0.0)
         line_loss_var = line_loss_variables[g, t]
         IOM.add_proportional_to_jump_expression(line_loss, I_sq[g, t], -net.loss[g][1])
-        IOM.add_proportional_to_jump_expression(line_loss, I_container[g, t], -net.loss[g][2])
+        IOM.add_proportional_to_jump_expression(
+            line_loss,
+            I_container[g, t],
+            -net.loss[g][2],
+        )
         IOM.add_constant_to_jump_expression(line_loss, -net.loss[g][2])
-        line_loss_constraints[g, t] = JuMP.@constraint(jump_model, line_loss_var == line_loss)
-        cons_container[g, t] = JuMP.@constraint(jump_model, Pg[g, t] == z_gen[g, 1] - line_loss_var)
+        line_loss_constraints[g, t] =
+            JuMP.@constraint(jump_model, line_loss_var == line_loss)
+        cons_container[g, t] =
+            JuMP.@constraint(jump_model, Pg[g, t] == z_gen[g, 1] - line_loss_var)
     end
 end
 
@@ -416,7 +423,14 @@ function build_mip_model(
     IOM.add_variables!(container, MockLineLossAuxVariable, gen_devices, tdf)
 
     dm = DeviceModel(MockNetworkNode, TestDeviceFormulation)
-    add_range_constraints!(container, MockPowerRangeConstraint, ActivePowerVariable, gen_devices, dm, TestPowerModel)
+    add_range_constraints!(
+        container,
+        MockPowerRangeConstraint,
+        ActivePowerVariable,
+        gen_devices,
+        dm,
+        TestPowerModel,
+    )
 
     V_container = IOM.get_variable(container, MockVoltageVariable(), MockNetworkNode)
     I_container = IOM.get_variable(container, MockCurrentVariable(), MockNetworkNode)
