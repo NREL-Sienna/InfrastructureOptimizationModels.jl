@@ -203,11 +203,12 @@ function _add_sos2_bilinear_approx!(
     meta::String;
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    qa = (x, lo, hi, meta) -> _add_sos2_quadratic_approx!(
-        container, C, names, time_steps,
-        x, lo, hi,
-        num_segments, meta; add_mccormick
-    )
+    qa =
+        (x, lo, hi, meta) -> _add_sos2_quadratic_approx!(
+            container, C, names, time_steps,
+            x, lo, hi,
+            num_segments, meta; add_mccormick,
+        )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
@@ -283,11 +284,12 @@ function _add_manual_sos2_bilinear_approx!(
     meta::String;
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    qa = (x, lo, hi, meta) -> _add_manual_sos2_quadratic_approx!(
-        container, C, names, time_steps,
-        x, lo, hi,
-        num_segments, meta; add_mccormick
-    )
+    qa =
+        (x, lo, hi, meta) -> _add_manual_sos2_quadratic_approx!(
+            container, C, names, time_steps,
+            x, lo, hi,
+            num_segments, meta; add_mccormick,
+        )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
@@ -365,11 +367,12 @@ function _add_sawtooth_bilinear_approx!(
     tighten::Bool = false,
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    qa = (x, lo, hi, meta) -> _add_sawtooth_quadratic_approx!(
-        container, C, names, time_steps,
-        x, lo, hi,
-        depth, meta; tighten, add_mccormick
-    )
+    qa =
+        (x, lo, hi, meta) -> _add_sawtooth_quadratic_approx!(
+            container, C, names, time_steps,
+            x, lo, hi,
+            depth, meta; tighten, add_mccormick,
+        )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
@@ -410,7 +413,7 @@ function _add_dnmdt_quadratic_bilinear_approx!(
         x_var, y_var,
         x_min, x_max, y_min, y_max,
         zx_expr, zy_expr, depth, meta;
-        double, tighten, add_mccormick
+        double, tighten, add_mccormick,
     )
 end
 
@@ -437,14 +440,14 @@ function _add_dnmdt_quadratic_bilinear_approx!(
         (x, lo, hi, meta) -> _add_dnmdt_quadratic_approx!(
             container, C, names, time_steps,
             x, lo, hi,
-            depth, meta; tighten
+            depth, meta; tighten,
         )
     else
         (x, lo, hi, meta) -> _add_nmdt_quadratic_approx!(
             container, C, names, time_steps,
             x, lo, hi,
-            depth, meta; tighten
-        ) 
+            depth, meta; tighten,
+        )
     end
 
     return _add_bilinear_approx_impl!(

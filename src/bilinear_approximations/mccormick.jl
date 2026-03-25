@@ -14,7 +14,12 @@ Supports 2- and 3-length tuples.
     cons[index[1], n, index[2]] = constraint
 end
 
-@inline function _mc_setindex!(cons, index::Tuple{A, B, C}, n::Int, constraint) where {A, B, C}
+@inline function _mc_setindex!(
+    cons,
+    index::Tuple{A, B, C},
+    n::Int,
+    constraint,
+) where {A, B, C}
     cons[index[1], index[2], n, index[3]] = constraint
 end
 
@@ -32,23 +37,43 @@ function _add_mccormick_envelope!(
     lower_bounds::Bool = true,
 )
     if lower_bounds
-        _mc_setindex!(cons, index, 1, JuMP.@constraint(
-            jump_model,
-            z >= x_min * y + x * y_min - x_min * y_min,
-        ))
-        _mc_setindex!(cons, index, 2, JuMP.@constraint(
-            jump_model,
-            z >= x_max * y + x * y_max - x_max * y_max,
-        ))
+        _mc_setindex!(
+            cons,
+            index,
+            1,
+            JuMP.@constraint(
+                jump_model,
+                z >= x_min * y + x * y_min - x_min * y_min,
+            )
+        )
+        _mc_setindex!(
+            cons,
+            index,
+            2,
+            JuMP.@constraint(
+                jump_model,
+                z >= x_max * y + x * y_max - x_max * y_max,
+            )
+        )
     end
-    _mc_setindex!(cons, index, 3, JuMP.@constraint(
-        jump_model,
-        z <= x_max * y + x * y_min - x_max * y_min,
-    ))
-    _mc_setindex!(cons, index, 4, JuMP.@constraint(
-        jump_model,
-        z <= x_min * y + x * y_max - x_min * y_max,
-    ))
+    _mc_setindex!(
+        cons,
+        index,
+        3,
+        JuMP.@constraint(
+            jump_model,
+            z <= x_max * y + x * y_min - x_max * y_min,
+        )
+    )
+    _mc_setindex!(
+        cons,
+        index,
+        4,
+        JuMP.@constraint(
+            jump_model,
+            z <= x_min * y + x * y_max - x_min * y_max,
+        )
+    )
 end
 
 """
