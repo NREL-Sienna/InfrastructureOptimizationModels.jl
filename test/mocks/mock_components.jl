@@ -22,8 +22,8 @@ struct MockOperationCost
     proportional_term::Float64
     is_time_variant::Bool
     fuel_cost::Float64
-    start_up::Float64
-    shut_down::Float64
+    start_up::Union{Float64, IS.TimeSeriesKey}
+    shut_down::Union{Float64, IS.TimeSeriesKey}
 end
 
 MockOperationCost(proportional_term::Float64) =
