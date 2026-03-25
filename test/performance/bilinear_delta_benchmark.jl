@@ -401,6 +401,7 @@ function build_mip_model(
     quad_fn! = IOM._add_sos2_quadratic_approx!,
 )
     container = make_container()
+    tdf = TestDeviceFormulation()
     jump_model = IOM.get_jump_model(container)
     time_steps = 1:1
     adj = adjacency_list(net)
@@ -409,10 +410,13 @@ function build_mip_model(
     dem_devices = [MockNetworkNode(d, false) for d in net.dem_nodes]
     all_devices = [gen_devices; dem_devices]
 
-    IOM.add_variables!(container, ActivePowerVariable, gen_devices, nothing)
-    IOM.add_variables!(container, MockVoltageVariable, all_devices, nothing)
-    IOM.add_variables!(container, MockCurrentVariable, all_devices, nothing)
-    IOM.add_variables!(container, MockLineLossAuxVariable, gen_devices, nothing)
+    IOM.add_variables!(container, ActivePowerVariable, gen_devices, tdf)
+    IOM.add_variables!(container, MockVoltageVariable, all_devices, tdf)
+    IOM.add_variables!(container, MockCurrentVariable, all_devices, tdf)
+    IOM.add_variables!(container, MockLineLossAuxVariable, gen_devices, tdf)
+
+    dm = DeviceModel(MockNetworkNode, TestDeviceFormulation)
+    add_range_constraints!(container, MockPowerRangeConstraint, ActivePowerVariable, gen_devices, dm, TestPowerModel)
 
     V_container = IOM.get_variable(container, MockVoltageVariable(), MockNetworkNode)
     I_container = IOM.get_variable(container, MockCurrentVariable(), MockNetworkNode)

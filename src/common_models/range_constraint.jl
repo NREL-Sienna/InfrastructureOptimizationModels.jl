@@ -27,13 +27,13 @@ function add_range_constraints!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
     ::Type{X},
 ) where {
     T <: ConstraintType,
     U <: VariableType,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -47,13 +47,13 @@ function add_range_constraints!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
     ::Type{X},
 ) where {
     T <: ConstraintType,
     U <: RangeConstraintLBExpressions,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -66,13 +66,13 @@ function add_range_constraints!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
     ::Type{X},
 ) where {
     T <: ConstraintType,
     U <: RangeConstraintUBExpressions,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -86,9 +86,9 @@ function _add_bound_range_constraints_impl!(
     ::Type{T},
     dir::BoundDirection,
     array,
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
-) where {T <: ConstraintType, V <: PSY.Component, W <: AbstractDeviceFormulation}
+) where {T <: ConstraintType, V <: IS.InfrastructureSystemsComponent, W <: AbstractDeviceFormulation}
     time_steps = get_time_steps(container)
     device_names = PSY.get_name.(devices)
     jump_model = get_jump_model(container)
@@ -133,13 +133,13 @@ function add_semicontinuous_range_constraints!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
     ::Type{X},
 ) where {
     T <: ConstraintType,
     U <: VariableType,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -155,13 +155,13 @@ function add_semicontinuous_range_constraints!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
     ::Type{X},
 ) where {
     T <: ConstraintType,
     U <: RangeConstraintLBExpressions,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -175,13 +175,13 @@ function add_semicontinuous_range_constraints!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
     ::Type{X},
 ) where {
     T <: ConstraintType,
     U <: RangeConstraintUBExpressions,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -197,9 +197,9 @@ function _add_semicontinuous_bound_range_constraints_impl!(
     ::Type{T},
     dir::BoundDirection,
     array,
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     ::DeviceModel{V, W},
-) where {T <: ConstraintType, V <: PSY.Component, W <: AbstractDeviceFormulation}
+) where {T <: ConstraintType, V <: IS.InfrastructureSystemsComponent, W <: AbstractDeviceFormulation}
     time_steps = get_time_steps(container)
     names = PSY.get_name.(devices)
     jump_model = get_jump_model(container)
@@ -223,7 +223,7 @@ function _add_semicontinuous_bound_range_constraints_impl!(
     ::Type{T},
     dir::BoundDirection,
     array,
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     ::DeviceModel{V, W},
 ) where {T <: ConstraintType, V <: PSY.ThermalGen, W <: AbstractDeviceFormulation}
     time_steps = get_time_steps(container)
@@ -253,10 +253,10 @@ function add_reserve_bound_range_constraints!(
     ::Type{T},
     dir::BoundDirection,
     array,
-    devices::IS.FlattenIteratorWrapper{V},
+    devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     ::DeviceModel{V, W},
     invert_binary::Bool,
-) where {T <: ConstraintType, V <: PSY.Component, W <: AbstractDeviceFormulation}
+) where {T <: ConstraintType, V <: IS.InfrastructureSystemsComponent, W <: AbstractDeviceFormulation}
     time_steps = get_time_steps(container)
     names = PSY.get_name.(devices)
     jump_model = get_jump_model(container)
@@ -289,7 +289,7 @@ function add_parameterized_bound_range_constraints(
     T <: ConstraintType,
     U <: ExpressionType,
     P <: ParameterType,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -312,7 +312,7 @@ function add_parameterized_bound_range_constraints(
     T <: ConstraintType,
     U <: VariableType,
     P <: ParameterType,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -335,7 +335,7 @@ function add_parameterized_lower_bound_range_constraints(
     T <: ConstraintType,
     U <: Union{ExpressionType, VariableType},
     P <: ParameterType,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -364,7 +364,7 @@ function add_parameterized_upper_bound_range_constraints(
     T <: ConstraintType,
     U <: Union{ExpressionType, VariableType},
     P <: ParameterType,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
     X <: AbstractPowerModel,
 }
@@ -397,7 +397,7 @@ function _add_parameterized_bound_range_constraints_impl!(
 ) where {
     T <: ConstraintType,
     P <: TimeSeriesParameter,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
 }
     time_steps = get_time_steps(container)
@@ -429,7 +429,7 @@ function _add_parameterized_bound_range_constraints_impl!(
 ) where {
     T <: ConstraintType,
     P <: ParameterType,
-    V <: PSY.Component,
+    V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
 }
     time_steps = get_time_steps(container)
@@ -451,7 +451,7 @@ function _bound_range_with_parameter!(
     param::P,
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     ::DeviceModel{V, W},
-) where {P <: ParameterType, V <: PSY.Component, W <: AbstractDeviceFormulation}
+) where {P <: ParameterType, V <: IS.InfrastructureSystemsComponent, W <: AbstractDeviceFormulation}
     param_array = get_parameter_array(container, param, V)
     param_multiplier = get_parameter_multiplier_array(container, P(), V)
     jump_model = get_jump_model(container)
@@ -478,7 +478,7 @@ function _bound_range_with_parameter!(
     param::P,
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     ::DeviceModel{V, W},
-) where {P <: EventParameter, V <: PSY.Component, W <: AbstractDeviceFormulation}
+) where {P <: EventParameter, V <: IS.InfrastructureSystemsComponent, W <: AbstractDeviceFormulation}
     param_array = get_parameter_array(container, param, V)
     jump_model = get_jump_model(container)
     time_steps = axes(constraint_container)[2]
@@ -501,7 +501,7 @@ function _bound_range_with_parameter!(
     param::P,
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
-) where {P <: TimeSeriesParameter, V <: PSY.Component, W <: AbstractDeviceFormulation}
+) where {P <: TimeSeriesParameter, V <: IS.InfrastructureSystemsComponent, W <: AbstractDeviceFormulation}
     param_container = get_parameter(container, param, V)
     mult = get_multiplier_array(param_container)
     jump_model = get_jump_model(container)
@@ -532,7 +532,7 @@ function lower_bound_range_with_parameter!(
     param::P,
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
-) where {P <: ParameterType, V <: PSY.Component, W <: AbstractDeviceFormulation}
+) where {P <: ParameterType, V <: IS.InfrastructureSystemsComponent, W <: AbstractDeviceFormulation}
     _bound_range_with_parameter!(
         container, LowerBound(), constraint_container, lhs_array, param, devices, model)
     return
@@ -545,7 +545,7 @@ function upper_bound_range_with_parameter!(
     param::P,
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
-) where {P <: ParameterType, V <: PSY.Component, W <: AbstractDeviceFormulation}
+) where {P <: ParameterType, V <: IS.InfrastructureSystemsComponent, W <: AbstractDeviceFormulation}
     _bound_range_with_parameter!(
         container, UpperBound(), constraint_container, lhs_array, param, devices, model)
     return

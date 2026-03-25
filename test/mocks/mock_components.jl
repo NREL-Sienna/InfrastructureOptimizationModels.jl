@@ -15,6 +15,7 @@ const IS = InfrastructureSystems
 
 # Mock formulation type for testing DeviceModel
 struct TestDeviceFormulation <: PSI.AbstractDeviceFormulation end
+struct TestPowerModel <: IS.Optimization.AbstractPowerModel end
 
 # Mock operation cost for testing proportional cost functions
 struct MockOperationCost
@@ -130,24 +131,61 @@ struct MockNetworkNode <: IS.InfrastructureSystemsComponent
     name::String
     i_min::Float64
     i_max::Float64
-end
-function MockNetworkNode(name::String, is_gen::Bool)
-    if is_gen
-        return MockNetworkNode(name, I_GEN_MIN, I_GEN_MAX)
-    else
-        return MockNetworkNode(name, I_DEM_MIN, I_DEM_MAX)
+    function MockNetworkNode(name::String, is_gen::Bool)
+        if is_gen
+            new(name, I_GEN_MIN, I_GEN_MAX)
+        else
+            new(name, I_DEM_MIN, I_DEM_MAX)
+        end
     end
 end
+
 
 struct MockVoltageVariable <: IOM.VariableType end
 struct MockCurrentVariable <: IOM.VariableType end
 
-IOM.get_variable_binary(::ActivePowerVariable, MockNetworkNode, _) = false
-IOM.get_variable_binary(::MockVoltageVariable, _, _) = false
-IOM.get_variable_binary(::MockCurrentVariable, _, _) = false
-IOM.get_variable_lower_bound(::ActivePowerVariable, MockNetworkNode, _) = 0.0
-IOM.get_variable_upper_bound(::ActivePowerVariable, MockNetworkNode, _) = 1.5
-IOM.get_variable_lower_bound(::MockVoltageVariable, _, _) = V_MIN
-IOM.get_variable_upper_bound(::MockVoltageVariable, _, _) = V_MAX
-IOM.get_variable_lower_bound(::MockCurrentVariable, n, _) = n.i_min
-IOM.get_variable_upper_bound(::MockCurrentVariable, n, _) = n.i_max
+struct MockPowerRangeConstraint <: IOM.ConstraintType end
+
+IOM.get_variable_binary(
+    ::ActivePowerVariable,
+    ::Type{MockNetworkNode},
+    ::TestDeviceFormulation
+) = false
+IOM.get_variable_binary(
+    ::MockVoltageVariable,
+    ::Type{MockNetworkNode},
+    ::TestDeviceFormulation
+) = false
+IOM.get_variable_binary(
+    ::MockCurrentVariable,
+    ::Type{MockNetworkNode},
+    ::TestDeviceFormulation
+) = false
+
+IOM.get_variable_lower_bound(
+    ::MockVoltageVariable,
+    ::MockNetworkNode,
+    ::TestDeviceFormulation
+) = V_MIN
+IOM.get_variable_upper_bound(
+    ::MockVoltageVariable,
+    ::MockNetworkNode,
+    ::TestDeviceFormulation
+) = V_MAX
+
+IOM.get_variable_lower_bound(
+    ::MockCurrentVariable,
+    n::MockNetworkNode,
+    ::TestDeviceFormulation
+) = n.i_min
+IOM.get_variable_upper_bound(
+    ::MockCurrentVariable,
+    n::MockNetworkNode,
+    ::TestDeviceFormulation
+) = n.i_max
+
+IOM.get_min_max_limits(
+    ::MockNetworkNode,
+    ::Type{MockPowerRangeConstraint},
+    ::Type{TestDeviceFormulation}
+) = (min = 0.0, max = 1.5)
