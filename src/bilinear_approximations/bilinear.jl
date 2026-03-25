@@ -56,9 +56,7 @@ function _add_bilinear_approx_impl!(
     zx_expr,
     zy_expr,
     quad_approx_fn,
-    refinement,
     meta::String;
-    quad_kwargs...,
 ) where {C <: IS.InfrastructureSystemsComponent}
     # Bounds for p = x + y
     p_min = x_min + y_min
@@ -84,11 +82,7 @@ function _add_bilinear_approx_impl!(
     end
 
     # Approximate p² = (x+y)² using the provided quadratic approximation function
-    zp_expr = quad_approx_fn(
-        container, C, names, time_steps,
-        p_expr, p_min, p_max, refinement, meta_plus;
-        quad_kwargs...,
-    )
+    zp_expr = quad_approx_fn(p_expr, p_min, p_max, meta_plus)
 
     z_var = add_variable_container!(
         container,
@@ -157,8 +151,8 @@ function _add_sos2_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -171,19 +165,18 @@ function _add_sos2_bilinear_approx!(
     meta_y = meta * "_y"
     zx_expr = _add_sos2_quadratic_approx!(
         container, C, names, time_steps,
-        x_var_container, x_min, x_max, num_segments, meta_x;
+        x_var, x_min, x_max, num_segments, meta_x;
         add_mccormick,
     )
     zy_expr = _add_sos2_quadratic_approx!(
         container, C, names, time_steps,
-        y_var_container, y_min, y_max, num_segments, meta_y;
+        y_var, y_min, y_max, num_segments, meta_y;
         add_mccormick,
     )
-    return _add_bilinear_approx_impl!(
+    return _add_sos2_bilinear_approx!(
         container, C, names, time_steps,
-        x_var_container, y_var_container,
-        x_min, x_max, y_min, y_max,
-        zx_expr, zy_expr, _add_sos2_quadratic_approx!, num_segments, meta;
+        x_var, y_var, x_min, x_max, y_min, y_max,
+        zx_expr, zy_expr, num_segments, meta;
         add_mccormick,
     )
 end
@@ -198,8 +191,8 @@ function _add_sos2_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -210,12 +203,16 @@ function _add_sos2_bilinear_approx!(
     meta::String;
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    qa = (x, lo, hi, meta) -> _add_sos2_quadratic_approx!(
+        container, C, names, time_steps,
+        x, lo, hi,
+        num_segments, meta; add_mccormick
+    )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
-        x_var_container, y_var_container,
+        x_var, y_var,
         x_min, x_max, y_min, y_max,
-        zx_precomputed, zy_precomputed, _add_sos2_quadratic_approx!, num_segments, meta;
-        add_mccormick,
+        zx_precomputed, zy_precomputed, qa, meta;
     )
 end
 
@@ -233,8 +230,8 @@ function _add_manual_sos2_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -247,19 +244,19 @@ function _add_manual_sos2_bilinear_approx!(
     meta_y = meta * "_y"
     zx_expr = _add_manual_sos2_quadratic_approx!(
         container, C, names, time_steps,
-        x_var_container, x_min, x_max, num_segments, meta_x;
+        x_var, x_min, x_max, num_segments, meta_x;
         add_mccormick,
     )
     zy_expr = _add_manual_sos2_quadratic_approx!(
         container, C, names, time_steps,
-        y_var_container, y_min, y_max, num_segments, meta_y;
+        y_var, y_min, y_max, num_segments, meta_y;
         add_mccormick,
     )
-    return _add_bilinear_approx_impl!(
+    return _add_manual_sos2_bilinear_approx!(
         container, C, names, time_steps,
-        x_var_container, y_var_container,
+        x_var, y_var,
         x_min, x_max, y_min, y_max,
-        zx_expr, zy_expr, _add_manual_sos2_quadratic_approx!, num_segments, meta;
+        zx_expr, zy_expr, num_segments, meta;
         add_mccormick,
     )
 end
@@ -274,8 +271,8 @@ function _add_manual_sos2_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -286,13 +283,16 @@ function _add_manual_sos2_bilinear_approx!(
     meta::String;
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    qa = (x, lo, hi, meta) -> _add_manual_sos2_quadratic_approx!(
+        container, C, names, time_steps,
+        x, lo, hi,
+        num_segments, meta; add_mccormick
+    )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
-        x_var_container, y_var_container,
+        x_var, y_var,
         x_min, x_max, y_min, y_max,
-        zx_precomputed, zy_precomputed, _add_manual_sos2_quadratic_approx!, num_segments,
-        meta;
-        add_mccormick,
+        zx_precomputed, zy_precomputed, qa, meta;
     )
 end
 
@@ -310,8 +310,8 @@ function _add_sawtooth_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -325,19 +325,19 @@ function _add_sawtooth_bilinear_approx!(
     meta_y = meta * "_y"
     zx_expr = _add_sawtooth_quadratic_approx!(
         container, C, names, time_steps,
-        x_var_container, x_min, x_max, depth, meta_x;
+        x_var, x_min, x_max, depth, meta_x;
         tighten, add_mccormick,
     )
     zy_expr = _add_sawtooth_quadratic_approx!(
         container, C, names, time_steps,
-        y_var_container, y_min, y_max, depth, meta_y;
+        y_var, y_min, y_max, depth, meta_y;
         tighten, add_mccormick,
     )
-    return _add_bilinear_approx_impl!(
+    return _add_sawtooth_bilinear_approx!(
         container, C, names, time_steps,
-        x_var_container, y_var_container,
+        x_var, y_var,
         x_min, x_max, y_min, y_max,
-        zx_expr, zy_expr, _add_sawtooth_quadratic_approx!, depth, meta;
+        zx_expr, zy_expr, depth, meta;
         tighten, add_mccormick,
     )
 end
@@ -352,8 +352,8 @@ function _add_sawtooth_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -365,12 +365,16 @@ function _add_sawtooth_bilinear_approx!(
     tighten::Bool = false,
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    qa = (x, lo, hi, meta) -> _add_sawtooth_quadratic_approx!(
+        container, C, names, time_steps,
+        x, lo, hi,
+        depth, meta; tighten, add_mccormick
+    )
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
-        x_var_container, y_var_container,
+        x_var, y_var,
         x_min, x_max, y_min, y_max,
-        zx_precomputed, zy_precomputed, _add_sawtooth_quadratic_approx!, depth, meta;
-        tighten, add_mccormick,
+        zx_precomputed, zy_precomputed, qa, meta;
     )
 end
 
@@ -379,8 +383,8 @@ function _add_dnmdt_quadratic_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -391,27 +395,22 @@ function _add_dnmdt_quadratic_bilinear_approx!(
     tighten::Bool = false,
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    quad_fn =
-        (cont, CT, nms, ts, vc, lo, hi, d, m; kw...) ->
-            _add_dnmdt_univariate_approx!(
-                cont, CT, nms, ts, vc, lo, hi, d, m;
-                double, tighten, add_mccormick, kw...,
-            )
     meta_x = meta * "_x"
     meta_y = meta * "_y"
     zx_expr = quad_fn(
         container, C, names, time_steps,
-        x_var_container, x_min, x_max, depth, meta_x,
+        x_var, x_min, x_max, depth, meta_x,
     )
     zy_expr = quad_fn(
         container, C, names, time_steps,
-        y_var_container, y_min, y_max, depth, meta_y,
+        y_var, y_min, y_max, depth, meta_y,
     )
-    return _add_bilinear_approx_impl!(
+    return _add_dnmdt_quadratic_bilinear_approx!(
         container, C, names, time_steps,
-        x_var_container, y_var_container,
+        x_var, y_var,
         x_min, x_max, y_min, y_max,
-        zx_expr, zy_expr, quad_fn, depth, meta;
+        zx_expr, zy_expr, depth, meta;
+        double, tighten, add_mccormick
     )
 end
 
@@ -420,8 +419,8 @@ function _add_dnmdt_quadratic_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
-    x_var_container,
-    y_var_container,
+    x_var,
+    y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
@@ -434,16 +433,23 @@ function _add_dnmdt_quadratic_bilinear_approx!(
     tighten::Bool = false,
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    quad_fn =
-        (cont, CT, nms, ts, vc, lo, hi, d, m; kw...) ->
-            _add_dnmdt_univariate_approx!(
-                cont, CT, nms, ts, vc, lo, hi, d, m;
-                double, tighten, add_mccormick, kw...,
-            )
+    qa = if double
+        (x, lo, hi, meta) -> _add_dnmdt_quadratic_approx!(
+            container, C, names, time_steps,
+            x, lo, hi,
+            depth, meta; tighten
+        )
+    else
+        (x, lo, hi, meta) -> _add_nmdt_quadratic_approx!(
+            container, C, names, time_steps,
+            x, lo, hi,
+            depth, meta; tighten
+        ) 
+    end
+
     return _add_bilinear_approx_impl!(
         container, C, names, time_steps,
-        x_var_container, y_var_container,
-        x_min, x_max, y_min, y_max,
-        zx_precomputed, zy_precomputed, quad_fn, depth, meta;
+        x_var, y_var, x_min, x_max, y_min, y_max,
+        zx_precomputed, zy_precomputed, qa, meta;
     )
 end

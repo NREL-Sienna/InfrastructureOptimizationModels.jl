@@ -133,7 +133,7 @@ function _discretize!(
                 lower_bound = 0.0,
                 upper_bound = 2.0^(-depth)
             )
-        add_proportional_to_jump_expression(disc, delta, 1.0)
+        add_proportional_to_jump_expression!(disc, delta, 1.0)
         disc_cons[name, t] = JuMP.@constraint(
             jump_model,
             xh_expr[name, t] == disc
