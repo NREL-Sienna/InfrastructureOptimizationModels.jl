@@ -300,7 +300,9 @@ end
 abstract type MethodFamily end
 struct SeparableMethod <: MethodFamily end
 struct DNMDTMethod <: MethodFamily end
-struct ExactMethod <: MethodFamily end
+abstract type ExactMethod <: MethodFamily end
+struct IpoptMethod <: ExactMethod end
+struct UnoMethod <: ExactMethod end
 
 # ─── Dispatched gen bilinear construction ─────────────────────────────────────
 
@@ -567,6 +569,13 @@ catch
     false
 end
 
+const HAS_UNO = try
+    @eval using UnoSolver
+    true
+catch
+    false
+end
+
 function on_github()
     return get(ENV, "CI", "false") == "true" || haskey(ENV, "GITHUB_ACTIONS")
 end
@@ -682,16 +691,16 @@ function run_benchmark(
     print_network_info(net)
     println()
 
-    # Build method list; include exact NLP reference when Ipopt is available
     all_methods = Any[bilinear_methods...]
+    if HAS_UNO
+        pushfirst!(all_methods,
+            ("NLP (Uno)", UnoMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
+        )
+    end
     if HAS_IPOPT
         pushfirst!(all_methods,
-            ("Exact (NLP)", ExactMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
+            ("NLP (Ipopt)", IpoptMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
         )
-    else
-        println("Ipopt not available — skipping NLP reference.")
-        println("Install Ipopt.jl in the test environment for NLP comparison.")
-        println()
     end
 
     println("="^110)
@@ -715,14 +724,15 @@ function run_benchmark(
                 result = build_mip_model(net, family, fn, kw, ref; quad_fn! = qfn)
             end
 
-            if is_exact
-                JuMP.set_optimizer(result.jump_model, Ipopt.Optimizer)
-                JuMP.set_optimizer_attribute(result.jump_model, "print_level", 0)
+            opt = if family isa IpoptMethod
+                Ipopt.Optimizer
+            elseif family isa UnoMethod
+                () -> UnoSolver.Optimizer(; preset = "filtersqp")
             else
-                JuMP.set_optimizer(result.jump_model, HiGHS.Optimizer)
-                JuMP.set_optimizer_attribute(result.jump_model, "log_to_console", false)
-                JuMP.set_optimizer_attribute(result.jump_model, "time_limit", 300.0)
+                HiGHS.Optimizer
             end
+            JuMP.set_optimizer(result.jump_model, opt)
+            JuMP.set_silent(result.jump_model)
 
             if !build_only
                 solve_t = @elapsed JuMP.optimize!(result.jump_model)
@@ -937,5 +947,14 @@ if abspath(PROGRAM_FILE) == @__FILE__
     K = get(ARGS, 2, "3") |> x -> parse(Int, x)
     seed = get(ARGS, 3, "42") |> x -> parse(Int, x)
     build_only = "--build-only" in ARGS
+    redirect_stdout(devnull) do
+        run_benchmark(
+            MockLosslessNetworkProblem;
+            N = 2,
+            K = 1,
+            seed = 0,
+            build_only = false,
+        )
+    end
     run_benchmark(T; N, K, seed, build_only)
 end
