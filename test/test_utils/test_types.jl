@@ -80,3 +80,5 @@ struct MockInitialCondition <: IOM.InitialConditionType end
 
 struct TestFormulation <: IOM.AbstractDeviceFormulation end
 struct TestPWLFormulation <: IOM.AbstractDeviceFormulation end
+struct TestConstantMinGenFormulation <: IOM.AbstractDeviceFormulation end
+struct TestCommitmentFormulation <: IOM.AbstractDeviceFormulation end

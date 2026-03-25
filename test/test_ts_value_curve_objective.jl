@@ -439,4 +439,93 @@ end
             MockThermalGen,
         )
     end
+
+    @testset "add_pwl_constraint_delta! with constant min-gen offset" begin
+        # Formulation where _include_constant_min_gen_power_in_constraint returns true
+        IOM._include_constant_min_gen_power_in_constraint(
+            ::Type{MockThermalGen}, ::TestVariableType, ::TestConstantMinGenFormulation,
+        ) = true
+
+        time_steps = 1:1
+        container = make_test_container(time_steps; base_power = 100.0)
+        device = make_mock_thermal("gen1")
+
+        add_test_variable!(container, TestVariableType, MockThermalGen, "gen1", 1)
+
+        breakpoints = [10.0, 50.0, 100.0]
+        pwl_vars = IOM.add_pwl_variables_delta!(
+            container,
+            IOM.PiecewiseLinearBlockIncrementalOffer,
+            MockThermalGen,
+            "gen1",
+            1,
+            2;
+            upper_bound = Inf,
+        )
+
+        IOM.add_pwl_constraint_delta!(
+            container,
+            device,
+            TestVariableType(),
+            TestConstantMinGenFormulation(),
+            breakpoints,
+            pwl_vars,
+            1,
+            IOM.PiecewiseLinearBlockIncrementalOfferConstraint,
+        )
+
+        @test IOM.has_container_key(
+            container,
+            IOM.PiecewiseLinearBlockIncrementalOfferConstraint,
+            MockThermalGen,
+        )
+    end
+
+    @testset "add_pwl_constraint_delta! with OnVariable min-gen offset" begin
+        # Formulation where _include_min_gen_power_in_constraint returns true
+        IOM._include_min_gen_power_in_constraint(
+            ::Type{MockThermalGen}, ::TestVariableType, ::TestCommitmentFormulation,
+        ) = true
+
+        time_steps = 1:1
+        container = make_test_container(time_steps; base_power = 100.0)
+        device = make_mock_thermal("gen1")
+
+        add_test_variable!(container, TestVariableType, MockThermalGen, "gen1", 1)
+
+        # Add OnVariable for the commitment path
+        on_var_container = IOM.add_variable_container!(
+            container, IOM.OnVariable(), MockThermalGen, ["gen1"], time_steps)
+        jump_model = IOM.get_jump_model(container)
+        on_var_container["gen1", 1] = JuMP.@variable(
+            jump_model, base_name = "On_gen1_1", binary = true)
+
+        breakpoints = [10.0, 50.0, 100.0]
+        pwl_vars = IOM.add_pwl_variables_delta!(
+            container,
+            IOM.PiecewiseLinearBlockIncrementalOffer,
+            MockThermalGen,
+            "gen1",
+            1,
+            2;
+            upper_bound = Inf,
+        )
+
+        IOM.add_pwl_constraint_delta!(
+            container,
+            device,
+            TestVariableType(),
+            TestCommitmentFormulation(),
+            breakpoints,
+            pwl_vars,
+            1,
+            IOM.PiecewiseLinearBlockIncrementalOfferConstraint,
+        )
+
+        @test IOM.has_container_key(
+            container,
+            IOM.PiecewiseLinearBlockIncrementalOfferConstraint,
+            MockThermalGen,
+        )
+    end
 end
