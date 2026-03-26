@@ -28,13 +28,17 @@ using Dates
 using Random
 using Printf
 
-using HiGHS
+function on_github()
+    return get(ENV, "CI", "false") == "true" || haskey(ENV, "GITHUB_ACTIONS")
+end
+
+function on_kestrel()
+    return get(ENV, "HOSTNAME", "") == "kl1"
+end
+
 using Ipopt
 using UnoSolver
-import Xpress_jll
-ENV["XPRESS_JL_LIBRARY"] = Xpress_jll.libxprs
-ENV["XPAUTH_PATH"] = "/Users/acostare/Downloads/xpauth.xpr"
-using Xpress
+
 
 const IOM = InfrastructureOptimizationModels
 const IS = IOM.IS
@@ -570,14 +574,6 @@ function build_mip_model(
     return (; container, jump_model, V_container, I_container, z_gen, z_dem, I_sq)
 end
 
-function on_github()
-    return get(ENV, "CI", "false") == "true" || haskey(ENV, "GITHUB_ACTIONS")
-end
-
-function on_hpc()
-    return false
-end
-
 # ─── Metrics ──────────────────────────────────────────────────────────────────
 
 """
@@ -675,7 +671,9 @@ If Ipopt is available, an exact NLP reference is included as the first method
 row (using Ipopt to solve exact bilinear/quadratic constraints).
 """
 function run_benchmark(
-    ::Type{T};
+    methods,
+    ::Type{T},
+    lp_opt;
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
@@ -686,11 +684,10 @@ function run_benchmark(
     print_network_info(net)
     println()
 
-    all_methods = Any[bilinear_methods...]
     all_methods = [
         ("NLP (Ipopt)", IpoptMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!, ()),
         ("NLP (Uno)", UnoMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!, ()),
-        bilinear_methods...,
+        methods...,
     ]
 
     println("="^110)
@@ -718,7 +715,7 @@ function run_benchmark(
             elseif family isa UnoMethod
                 () -> UnoSolver.Optimizer(; preset = "filtersqp")
             else
-                Xpress.Optimizer
+                lp_opt
             end
             JuMP.set_optimizer(result.jump_model, opt)
             JuMP.set_silent(result.jump_model)
@@ -771,8 +768,66 @@ end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
-if on_github()
-    bilinear_methods = (
+bilinear_methods = Dict(
+    :local => (
+        (
+            "Bin2+sSOS",
+            SeparableMethod(),
+            IOM._add_sos2_bilinear_approx!,
+            (),
+            IOM._add_sos2_quadratic_approx!,
+            (),
+        ),
+        (
+            "Bin2+mSOS",
+            SeparableMethod(),
+            IOM._add_manual_sos2_bilinear_approx!,
+            (),
+            IOM._add_manual_sos2_quadratic_approx!,
+            (),
+        ),
+        (
+            "Bin2+Saw",
+            SeparableMethod(),
+            IOM._add_sawtooth_bilinear_approx!,
+            (),
+            IOM._add_sawtooth_quadratic_approx!,
+            (),
+        ),
+        (
+            "HybS+sSOS",
+            SeparableMethod(),
+            IOM._add_hybs_sos2_bilinear_approx!,
+            (),
+            IOM._add_sos2_quadratic_approx!,
+            (),
+        ),
+        (
+            "HybS+mSOS",
+            SeparableMethod(),
+            IOM._add_hybs_manual_sos2_bilinear_approx!,
+            (),
+            IOM._add_manual_sos2_quadratic_approx!,
+            (),
+        ),
+        (
+            "HybS+Saw",
+            SeparableMethod(),
+            IOM._add_hybs_sawtooth_bilinear_approx!,
+            (),
+            IOM._add_sawtooth_quadratic_approx!,
+            (),
+        ),
+        (
+            "DNMDT",
+            DNMDTMethod(),
+            IOM._add_dnmdt_bilinear_approx!,
+            (),
+            IOM._add_dnmdt_quadratic_approx!,
+            (),
+        ),
+    ),
+    :github => (
         (
             "Bin2+sSOS",
             SeparableMethod(),
@@ -813,9 +868,8 @@ if on_github()
             IOM._add_dnmdt_quadratic_approx!,
             (),
         ),
-    )
-elseif on_hpc()
-    bilinear_methods = (
+    ),
+    :kestrel => (
         (
             "Bin2+sSOS",
             SeparableMethod(),
@@ -936,47 +990,41 @@ elseif on_hpc()
             IOM._add_dnmdt_quadratic_approx!,
             (double = true, add_mccormick = true),
         ),
-    )
-else
-    # Running locally
-    bilinear_methods = (
-        (
-        "Bin2+sSOS",
-        SeparableMethod(),
-        IOM._add_sos2_bilinear_approx!,
-        (),
-        IOM._add_sos2_quadratic_approx!,
-        (),
     ),
-    )
-end
+)
 
 function parse_commandline()
     s = ArgParseSettings()
     @add_arg_table! s begin
         "--nodes", "-N"
-        arg_type = Int
-        default = 10
-        help = "number of nodes (must be even)"
+            arg_type = Int
+            default = 10
+            help = "number of nodes (must be even)"
         "--cost", "-K"
-        arg_type = Int
-        default = 3
-        help = "number of PWL cost segments per generator"
+            arg_type = Int
+            default = 3
+            help = "number of PWL cost segments per generator"
         "--seed", "-S"
-        arg_type = Int
-        default = 42
-        help = "random seed for network generation"
+            arg_type = Int
+            default = 42
+            help = "random seed for network generation"
         "--build-only", "-B"
-        action = :store_true
-        help = "don't solve, only build the model"
+            action = :store_true
+            help = "don't solve, only build the model"
         "--refinements", "-R"
-        arg_type = Int
-        nargs = '+'
-        default = [4, 6, 8]
-        help = "refinement levels (list of integers)"
+            arg_type = Int
+            nargs = '+'
+            default = [4, 6, 8]
+            help = "refinement levels (list of integers)"
         "--lossy", "-L"
-        action = :store_true
-        help = "run with lossy generators"
+            action = :store_true
+            help = "run with lossy generators"
+        "--github", "-G"
+            action = :store_true
+            help = "for github ci/cd"
+        "--kestrel", "-E"
+            action = :store_true
+            help = "for kestrel"
     end
     return parse_args(s)
 end
@@ -990,10 +1038,28 @@ if abspath(PROGRAM_FILE) == @__FILE__
     refinements = parsed["refinements"]
     T = parsed["lossy"] ? MockLossyNetworkProblem : MockLosslessNetworkProblem
 
+    if parsed["github"]
+        methods = bilinear_methods[:github]
+        @eval using HiGHS
+        lp_opt = HiGHS.Optimizer
+    elseif parsed["kestrel"]
+        methods = bilinear_methods[:kestrel]
+        @eval using Xpress
+        lp_opt = Xpress.Optimizer
+    else
+        methods = bilinear_methods[:local]
+        @eval import Xpress_jll
+        ENV["XPRESS_JL_LIBRARY"] = Xpress_jll.libxprs
+        @eval using Xpress
+        lp_opt = Xpress.Optimizer
+    end
+
     # Run small network so second run is faster.
     redirect_stdout(devnull) do
         run_benchmark(
-            MockLosslessNetworkProblem;
+            methods,
+            MockLosslessNetworkProblem,
+            lp_opt;
             N = 2,
             K = 1,
             seed = 0,
@@ -1001,5 +1067,5 @@ if abspath(PROGRAM_FILE) == @__FILE__
             refinements = [1],
         )
     end
-    run_benchmark(T; N, K, seed, build_only, refinements)
+    run_benchmark(methods, T, lp_opt; N, K, seed, build_only, refinements)
 end
