@@ -853,12 +853,6 @@ function parse_commandline()
         nargs = '+'
         default = [4, 6, 8]
         help = "refinement levels (list of integers)"
-        "--github", "-G"
-        action = :store_true
-        help = "for github ci/cd"
-        "--kestrel", "-E"
-        action = :store_true
-        help = "for kestrel"
     end
     return parse_args(s)
 end
