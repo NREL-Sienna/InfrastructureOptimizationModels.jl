@@ -321,13 +321,13 @@ Lossless networks: no precomputation, call the bilinear wrapper directly.
 """
 function build_gen_bilinear(
     container, net::MockLosslessNetworkProblem, V_container, I_container, time_steps,
-    ::MethodFamily, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
+    ::MethodFamily, bilin_fn!, bilin_kwargs, quad_fn!, quad_kwargs, refinement,
 )
-    z_gen = bilinear_fn!(
+    z_gen = bilin_fn!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
         V_container, I_container,
         V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
-        refinement, "gen"; bilinear_kwargs...,
+        refinement, "gen"; bilin_kwargs...,
     )
     return z_gen, nothing
 end
@@ -338,21 +338,21 @@ I² is reused in the loss constraint.
 """
 function build_gen_bilinear(
     container, net::MockLossyNetworkProblem, V_container, I_container, time_steps,
-    ::SeparableMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
+    ::SeparableMethod, bilin_fn!, bilin_kwargs, quad_fn!, quad_kwargs, refinement,
 )
     V_sq = quad_fn!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
-        V_container, V_MIN, V_MAX, refinement, "gen_x",
+        V_container, V_MIN, V_MAX, refinement, "gen_x"; quad_kwargs...,
     )
     I_sq = quad_fn!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
-        I_container, I_GEN_MIN, I_GEN_MAX, refinement, "gen_y",
+        I_container, I_GEN_MIN, I_GEN_MAX, refinement, "gen_y"; quad_kwargs...,
     )
-    z_gen = bilinear_fn!(
+    z_gen = bilin_fn!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
         V_sq, I_sq,
         V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
-        V_sq, I_sq, refinement, "gen"; bilinear_kwargs...,
+        V_sq, I_sq, refinement, "gen"; bilin_kwargs...,
     )
     return z_gen, I_sq
 end
@@ -363,7 +363,7 @@ call DNMDT bilinear with pre-built discretizations. I² is reused in the loss co
 """
 function build_gen_bilinear(
     container, net::MockLossyNetworkProblem, V_container, I_container, time_steps,
-    ::DNMDTMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
+    ::DNMDTMethod, bilin_fn!, bilin_kwargs, quad_fn!, quad_kwargs, refinement,
 )
     V_disc = IOM._discretize!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
@@ -375,11 +375,11 @@ function build_gen_bilinear(
     )
     I_sq = IOM._add_dnmdt_quadratic_approx!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
-        I_disc, "gen_I_sq",
+        I_disc, "gen_I_sq"; quad_kwargs...
     )
     z_gen = IOM._add_dnmdt_bilinear_approx!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
-        V_disc, I_disc, "gen",
+        V_disc, I_disc, "gen"; bilin_kwargs...
     )
     return z_gen, I_sq
 end
@@ -389,18 +389,18 @@ Lossy + exact (NLP): exact bilinear V·I and exact quadratic I².
 """
 function build_gen_bilinear(
     container, net::MockLossyNetworkProblem, V_container, I_container, time_steps,
-    ::ExactMethod, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
+    ::ExactMethod, bilin_fn!, bilin_kwargs, quad_fn!, quad_kwargs, refinement,
 )
     z_gen = _add_exact_bilinear!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
         V_container, I_container,
         V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX,
-        refinement, "gen"; bilinear_kwargs...,
+        refinement, "gen"; bilin_kwargs...,
     )
     I_sq = _add_exact_quadratic!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
         I_container, I_GEN_MIN, I_GEN_MAX,
-        refinement, "gen_I_sq",
+        refinement, "gen_I_sq"; quad_kwargs...,
     )
     return z_gen, I_sq
 end
@@ -408,7 +408,7 @@ end
 # ─── MIP model (unified) ─────────────────────────────────────────────────────
 
 """
-    build_mip_model(net, method_family, bilinear_fn!, bilinear_kwargs, refinement; quad_fn!) -> NamedTuple
+    build_mip_model(net, method_family, bilin_fn!, bilin_kwargs, quad_fn!, quad_kwargs, refinement) -> NamedTuple
 
 Build the MIP (or NLP) model for any `AbstractNetworkProblem`. Generator power
 constraints and bilinear precomputation are dispatched on the network type and
@@ -416,8 +416,7 @@ method family.
 """
 function build_mip_model(
     net::MockAbstractNetworkProblem, method_family::MethodFamily,
-    bilinear_fn!, bilinear_kwargs, refinement::Int;
-    quad_fn! = IOM._add_sos2_quadratic_approx!,
+    bilin_fn!, bilin_kwargs, quad_fn!, quad_kwargs, refinement::Int,
 )
     container = make_container()
     tdf = TestDeviceFormulation()
@@ -451,15 +450,15 @@ function build_mip_model(
     # --- Bilinear gen: dispatched on network type and method family ---
     z_gen, I_sq = build_gen_bilinear(
         container, net, V_container, I_container, time_steps,
-        method_family, bilinear_fn!, bilinear_kwargs, refinement, quad_fn!,
+        method_family, bilin_fn!, bilin_kwargs, quad_fn!, quad_kwargs, refinement,
     )
 
     # --- Bilinear dem: always uses the wrapper (no precomputation needed) ---
-    z_dem = bilinear_fn!(
+    z_dem = bilin_fn!(
         container, MockNetworkNode, net.dem_nodes, time_steps,
         V_container, I_container,
         V_MIN, V_MAX, I_DEM_MIN, I_DEM_MAX,
-        refinement, "dem"; bilinear_kwargs...,
+        refinement, "dem"; bilin_kwargs...,
     )
 
     pwl_link_constraints = IOM.add_constraints_container!(
@@ -689,8 +688,8 @@ function run_benchmark(
 
     all_methods = Any[bilinear_methods...]
     all_methods = [
-        ("NLP (Ipopt)", IpoptMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
-        ("NLP (Uno)", UnoMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
+        ("NLP (Ipopt)", IpoptMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!, ()),
+        ("NLP (Uno)", UnoMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!, ()),
         bilinear_methods...,
     ]
 
@@ -705,13 +704,13 @@ function run_benchmark(
 
     nlp_obj = NaN
 
-    for (label, family, fn, kw, qfn) in all_methods
+    for (label, family, fn, kw, qfn, qkw) in all_methods
         is_exact = family isa ExactMethod
         refs = is_exact ? [0] : refinements
 
         for ref in refs
             build_t = @elapsed begin
-                result = build_mip_model(net, family, fn, kw, ref; quad_fn! = qfn)
+                result = build_mip_model(net, family, fn, kw, qfn, qkw, ref)
             end
 
             opt = if family isa IpoptMethod
@@ -780,6 +779,7 @@ if on_github()
             IOM._add_sos2_bilinear_approx!,
             (),
             IOM._add_sos2_quadratic_approx!,
+            (),
         ),
         (
             "Bin2+Saw",
@@ -787,6 +787,7 @@ if on_github()
             IOM._add_sawtooth_bilinear_approx!,
             (),
             IOM._add_sawtooth_quadratic_approx!,
+            (),
         ),
         (
             "HybS+sSOS",
@@ -794,6 +795,7 @@ if on_github()
             IOM._add_hybs_sos2_bilinear_approx!,
             (),
             IOM._add_sos2_quadratic_approx!,
+            (),
         ),
         (
             "HybS+Saw",
@@ -801,6 +803,7 @@ if on_github()
             IOM._add_hybs_sawtooth_bilinear_approx!,
             (),
             IOM._add_sawtooth_quadratic_approx!,
+            (),
         ),
         (
             "DNMDT",
@@ -808,6 +811,7 @@ if on_github()
             IOM._add_dnmdt_bilinear_approx!,
             (),
             IOM._add_dnmdt_quadratic_approx!,
+            (),
         ),
     )
 elseif on_hpc()
@@ -818,6 +822,7 @@ elseif on_hpc()
             IOM._add_sos2_bilinear_approx!,
             (),
             IOM._add_sos2_quadratic_approx!,
+            (),
         ),
         (
             "Bin2+mSOS+McQuad",
@@ -825,6 +830,7 @@ elseif on_hpc()
             IOM._add_manual_sos2_bilinear_approx!,
             (add_mccormick = true,),
             IOM._add_sos2_quadratic_approx!,
+            (add_mccormick = true,),
         ),
         (
             "Bin2+Saw",
@@ -832,27 +838,31 @@ elseif on_hpc()
             IOM._add_sawtooth_bilinear_approx!,
             (),
             IOM._add_sawtooth_quadratic_approx!,
+            (),
         ),
         (
             "Bin2+DNMDT",
             SeparableMethod(),
             IOM._add_dnmdt_quadratic_bilinear_approx!,
-            (double = true,),
+            (),
             IOM._add_dnmdt_quadratic_approx!,
+            (),
         ),
         (
             "Bin2+T-DNMDT",
             SeparableMethod(),
             IOM._add_dnmdt_quadratic_bilinear_approx!,
-            (double = true, tighten = true),
+            (tighten = true,),
             IOM._add_dnmdt_quadratic_approx!,
+            (tighten = true,),
         ),
         (
             "Bin2+DNMDT+McQuad",
             SeparableMethod(),
             IOM._add_dnmdt_bilinear_approx!,
-            (double = true, add_mccormick = true),
+            (add_mccormick = true,),
             IOM._add_dnmdt_quadratic_approx!,
+            (add_mccormick = true,),
         ),
         (
             "HybS+sSOS",
@@ -860,13 +870,15 @@ elseif on_hpc()
             IOM._add_hybs_sos2_bilinear_approx!,
             (),
             IOM._add_sos2_quadratic_approx!,
+            (),
         ),
         (
             "HybS+sSOS+McAll",
             SeparableMethod(),
             IOM._add_hybs_sos2_bilinear_approx!,
-            (add_mccormick = true, add_quad_mccormick = true),
+            (add_mccormick = true,),
             IOM._add_sos2_quadratic_approx!,
+            (add_mccormick = true,),
         ),
         (
             "HybS+Saw",
@@ -874,13 +886,15 @@ elseif on_hpc()
             IOM._add_hybs_sawtooth_bilinear_approx!,
             (),
             IOM._add_sawtooth_quadratic_approx!,
+            (),
         ),
         (
             "HybS+Saw+McAll",
             SeparableMethod(),
             IOM._add_hybs_sawtooth_bilinear_approx!,
-            (add_mccormick = true, add_quad_mccormick = true),
+            (add_mccormick = true,),
             IOM._add_sawtooth_quadratic_approx!,
+            (add_mccormick = true,),
         ),
         (
             "HybS+T-Saw",
@@ -888,6 +902,7 @@ elseif on_hpc()
             IOM._add_hybs_sawtooth_bilinear_approx!,
             (tighten = true,),
             IOM._add_sawtooth_quadratic_approx!,
+            (tighten = true,),
         ),
         (
             "HybS+T-Saw+McBil",
@@ -895,20 +910,23 @@ elseif on_hpc()
             IOM._add_hybs_sawtooth_bilinear_approx!,
             (tighten = true, add_mccormick = true),
             IOM._add_sawtooth_quadratic_approx!,
+            (tighten = true, add_mccormick = true),
         ),
         (
             "NMDT",
             DNMDTMethod(),
-            IOM._add_dnmdt_bilinear_approx!,
-            (double = false,),
-            IOM._add_dnmdt_quadratic_approx!,
+            IOM._add_nmdt_bilinear_approx!,
+            (),
+            IOM._add_nmdt_quadratic_approx!,
+            (),
         ),
         (
             "DNMDT",
             DNMDTMethod(),
             IOM._add_dnmdt_bilinear_approx!,
-            (double = true,),
+            (),
             IOM._add_dnmdt_quadratic_approx!,
+            (),
         ),
         (
             "DNMDT+McBil",
@@ -916,6 +934,7 @@ elseif on_hpc()
             IOM._add_dnmdt_bilinear_approx!,
             (double = true, add_mccormick = true),
             IOM._add_dnmdt_quadratic_approx!,
+            (double = true, add_mccormick = true),
         ),
     )
 else
@@ -927,6 +946,7 @@ else
         IOM._add_sos2_bilinear_approx!,
         (),
         IOM._add_sos2_quadratic_approx!,
+        (),
     ),
     )
 end
