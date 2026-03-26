@@ -72,14 +72,12 @@ function IOM.calculate_aux_variable_value!(
     names = axes(cont, 1)
     time_steps = get_time_steps(container)
 
-    # Isq_container = get_variable(container, BilinearProductExpression())
-    # I_container = get_variable(container, QuadraticExpresion())
+    Isq_container = get_expression(container, IOM.BilinearProductExpression(), MockNetworkNode, "gen")
+    I_container = get_expression(container, IOM.QuadraticExpression(), MockNetworkNode, "gen_I_sq")
 
     for name in names, t in time_steps
-        # Isq = JuMP.value(Isq_container[name, t])
-        # I = JuMP.value(I_container[name, t])
-        Isq = 1
-        I = 1
+        Isq = JuMP.value(Isq_container[name, t])
+        I = JuMP.value(I_container[name, t])
         a, b, c = get_component(MockNetworkNode, system, name).loss
         cont[name, t] = -a * Isq - b * I - c
     end
@@ -200,17 +198,23 @@ function _add_exact_bilinear!(
     x_var, y_var, x_min, x_max, y_min, y_max,
     _refinement, meta; _kwargs...,
 ) where {C}
-    jump_model = IOM.get_jump_model(container)
-    z_lo = min(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
-    z_hi = max(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
-    z = Dict{Tuple{String, Int}, JuMP.VariableRef}()
+    # jump_model = IOM.get_jump_model(container)
+    # z_lo = min(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
+    # z_hi = max(x_min * y_min, x_min * y_max, x_max * y_min, x_max * y_max)
+    # z = Dict{Tuple{String, Int}, JuMP.VariableRef}()
+    z_expr = add_expression_container!(
+        container,
+        IOM.BilinearProductExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+        expr_type = JuMP.QuadExpr
+    )
     for name in names, t in time_steps
-        z_var = JuMP.@variable(jump_model, base_name = "z_exact_$(meta)_$(name)",
-            lower_bound = z_lo, upper_bound = z_hi)
-        JuMP.@constraint(jump_model, z_var == x_var[name, t] * y_var[name, t])
-        z[(name, t)] = z_var
+        z_expr[name, t] = x_var[name, t] * y_var[name, t]
     end
-    return z
+    return z_expr
 end
 
 """
@@ -220,19 +224,21 @@ Same calling convention as IOM quadratic approximation functions.
 function _add_exact_quadratic!(
     container, ::Type{C}, names, time_steps,
     x_var, x_min, x_max,
-    _refinement, _meta; _kwargs...,
+    _refinement, meta; _kwargs...,
 ) where {C}
-    jump_model = IOM.get_jump_model(container)
-    sq_lo = min(x_min^2, x_max^2)
-    sq_hi = max(x_min^2, x_max^2)
-    z = Dict{Tuple{String, Int}, JuMP.VariableRef}()
+    z_expr = add_expression_container!(
+        container,
+        IOM.QuadraticExpression(),
+        C,
+        names,
+        time_steps;
+        meta,
+        expr_type = JuMP.QuadExpr
+    )
     for name in names, t in time_steps
-        z_var = JuMP.@variable(jump_model, base_name = "z_exact_sq_$(name)",
-            lower_bound = sq_lo, upper_bound = sq_hi)
-        JuMP.@constraint(jump_model, z_var == x_var[name, t]^2)
-        z[(name, t)] = z_var
+        z_expr[name, t] = x_var[name, t] * x_var[name, t]
     end
-    return z
+    return z_expr
 end
 
 # ─── IOM container setup ─────────────────────────────────────────────────────
@@ -273,11 +279,11 @@ function build_gen_bilinear(
 )
     V_sq = quad_fn!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
-        V_container, V_MIN, V_MAX, refinement, "gen_x"; quad_kwargs...,
+        V_container, V_MIN, V_MAX, refinement, "gen_V_sq"; quad_kwargs...,
     )
     I_sq = quad_fn!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
-        I_container, I_GEN_MIN, I_GEN_MAX, refinement, "gen_y"; quad_kwargs...,
+        I_container, I_GEN_MIN, I_GEN_MAX, refinement, "gen_I_sq"; quad_kwargs...,
     )
     z_gen = bilin_fn!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
@@ -513,7 +519,7 @@ end
 
 """
 Compute per-node relative residuals |true − approx| / |true| for the bilinear
-product. For lossy generators the ground truth is V·I − a·I² − b·I − c.
+and quadratic products.
 """
 function compute_bilinear_residuals(result, net::MockNetworkProblem)
     V = result.V_container
@@ -521,7 +527,6 @@ function compute_bilinear_residuals(result, net::MockNetworkProblem)
     bilin_residuals = Float64[]
     quad_residuals = Float64[]
 
-    # Generator nodes: ground truth = V·I − a·I² − b·I − c
     for g in net.gen_nodes
         v = JuMP.value(V[g, 1])
         i = JuMP.value(I[g, 1])
@@ -533,7 +538,6 @@ function compute_bilinear_residuals(result, net::MockNetworkProblem)
         push!(quad_residuals, residual(quad, approx))
     end
 
-    # Demand nodes: ground truth = V·I (unchanged)
     for d in net.dem_nodes
         product = JuMP.value(V[d, 1]) * JuMP.value(I[d, 1])
         approx = JuMP.value(result.z_dem[d, 1])
