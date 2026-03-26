@@ -66,7 +66,7 @@ struct MockLineLossAuxVariable <: IOM.AuxVariableType end
 function IOM.calculate_aux_variable_value!(
     container::OptimizationContainer,
     key::AuxVarKey{MockLineLossAuxVariable, MockNetworkNode},
-    system::MockSystem
+    system::MockSystem,
 )
     cont = get_aux_variable(container, key)
     names = axes(cont, 1)
@@ -155,8 +155,7 @@ function generate_network(;
         segment_widths[g] = widths
     end
 
-    loss = Dict(g => 0.1 * rand(rng, 3) for g in gen_nodes)
-    # loss = Dict(g => zeros(3) for g in gen_nodes)
+    loss = Dict(g => 0.01 * rand(rng, 3) for g in gen_nodes)
 
     return MockNetworkProblem(
         N, K, gen_nodes, dem_nodes, all_nodes,
@@ -238,16 +237,18 @@ end
 
 # ─── IOM container setup ─────────────────────────────────────────────────────
 
-function make_container()
+function make_container(optimizer)
     system = MockSystem(100.0)
     settings = IOM.Settings(
         system;
         horizon = Dates.Hour(1),
         resolution = Dates.Hour(1),
         warm_start = false,
+        optimizer,
     )
     container = IOM.OptimizationContainer(system, settings, JuMP.Model(), IS.Deterministic)
     IOM.set_time_steps!(container, 1:1)
+    IOM.init_optimization_container!(container, NetworkModel(TestPowerModel), system)
     return container, system
 end
 
@@ -344,10 +345,10 @@ Build the MIP (or NLP) model for a `MockNetworkProblem`. Bilinear
 precomputation is dispatched on the method family.
 """
 function build_mip_model(
-    net::MockNetworkProblem, method_family::MethodFamily,
+    optimizer, net::MockNetworkProblem, method_family::MethodFamily,
     bilin_fn!, bilin_kwargs, quad_fn!, quad_kwargs, refinement::Int,
 )
-    container, system = make_container()
+    container, system = make_container(optimizer)
     tdf = TestDeviceFormulation()
     jump_model = IOM.get_jump_model(container)
     time_steps = 1:1
@@ -448,7 +449,7 @@ function build_mip_model(
             JuMP.@constraint(
                 jump_model,
                 Pg[g, 1] ==
-                z_gen[g, 1] - a * I_sq[g, 1] - b * I_container[g, 1] - c
+                z_gen[g, 1] + a * I_sq[g, 1] + b * I_container[g, 1] + c
             )
     end
 
@@ -571,7 +572,7 @@ end
 
 Run the full benchmark for the lossy network problem.
 
-An exact NLP reference is included as the first method row
+Two exact NLP references are included as the first method row
 (using Ipopt/Uno to solve exact bilinear/quadratic constraints).
 """
 function run_benchmark(;
@@ -607,10 +608,6 @@ function run_benchmark(;
         refs = is_exact ? [0] : refinements
 
         for ref in refs
-            build_t = @elapsed begin
-                result = build_mip_model(net, family, fn, kw, qfn, qkw, ref)
-            end
-
             opt = if family isa IpoptMethod
                 Ipopt.Optimizer
             elseif family isa UnoMethod
@@ -618,14 +615,13 @@ function run_benchmark(;
             else
                 LP_OPT
             end
-            JuMP.set_optimizer(result.jump_model, opt)
-            JuMP.set_silent(result.jump_model)
+            build_t =
+                @elapsed result = build_mip_model(opt, net, family, fn, kw, qfn, qkw, ref)
 
             if build_only
                 solve_t = 0.0
                 status = nothing
             else
-                # solve_t = @elapsed JuMP.optimize!(result.jump_model)
                 solve_t = @elapsed IOM.execute_optimizer!(result.container, result.system)
                 status = JuMP.termination_status(result.jump_model)
             end
@@ -634,8 +630,7 @@ function run_benchmark(;
             solved = if is_exact
                 status == JuMP.LOCALLY_SOLVED
             else
-                status in (JuMP.OPTIMAL, JuMP.TIME_LIMIT) &&
-                    JuMP.has_values(result.jump_model)
+                status == JuMP.OPTIMAL && JuMP.has_values(result.jump_model)
             end
 
             if solved
@@ -643,11 +638,7 @@ function run_benchmark(;
                 if is_exact
                     nlp_obj = obj
                 end
-                gap = if isnan(nlp_obj)
-                    NaN
-                else
-                    residual(nlp_obj, obj) * 100.0
-                end
+                gap = residual(nlp_obj, obj) * 100.0
                 geometric_mean, max_resid = compute_bilinear_residuals(result, net)
                 gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
                 ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
