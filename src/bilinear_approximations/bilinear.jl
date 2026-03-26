@@ -400,6 +400,20 @@ function _add_dnmdt_quadratic_bilinear_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     meta_x = meta * "_x"
     meta_y = meta * "_y"
+
+    quad_fn = if double
+        (x, lo, hi, meta) -> _add_dnmdt_quadratic_approx!(
+            container, C, names, time_steps,
+            x, lo, hi,
+            depth, meta; tighten,
+        )
+    else
+        (x, lo, hi, meta) -> _add_nmdt_quadratic_approx!(
+            container, C, names, time_steps,
+            x, lo, hi,
+            depth, meta; tighten,
+        )
+    end
     zx_expr = quad_fn(
         container, C, names, time_steps,
         x_var, x_min, x_max, depth, meta_x,

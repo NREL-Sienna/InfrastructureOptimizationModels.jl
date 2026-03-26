@@ -50,7 +50,7 @@ function _add_hybs_bilinear_approx_impl!(
     zy_expr,
     epigraph_depth::Int,
     meta::String;
-    add_mccormick::Bool = false,
+    add_mccormick::Bool = true,
 ) where {C <: IS.InfrastructureSystemsComponent}
     # Bounds for auxiliary variables
     p1_min = x_min + y_min
