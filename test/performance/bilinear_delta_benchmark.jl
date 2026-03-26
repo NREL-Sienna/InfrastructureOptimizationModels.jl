@@ -879,6 +879,14 @@ bilinear_methods = Dict(
             (),
         ),
         (
+            "Bin2+mSOS",
+            SeparableMethod(),
+            IOM._add_manual_sos2_bilinear_approx!,
+            (),
+            IOM._add_manual_sos2_quadratic_approx!,
+            (),
+        ),
+        (
             "Bin2+Saw",
             SeparableMethod(),
             IOM._add_sawtooth_bilinear_approx!,
@@ -892,6 +900,14 @@ bilinear_methods = Dict(
             IOM._add_hybs_sos2_bilinear_approx!,
             (),
             IOM._add_sos2_quadratic_approx!,
+            (),
+        ),
+        (
+            "HybS+mSOS",
+            SeparableMethod(),
+            IOM._add_hybs_manual_sos2_bilinear_approx!,
+            (),
+            IOM._add_manual_sos2_quadratic_approx!,
             (),
         ),
         (
