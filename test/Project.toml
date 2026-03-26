@@ -1,5 +1,6 @@
 [deps]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+ArgParse = "c7e460c6-2fb9-53a9-8c5b-16f535851c63"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 Coverage = "a2441757-f6aa-5fb2-8edb-039e3f45d037"
 CoverageTools = "c36e975a-824b-4404-a568-ef97ca766997"
@@ -27,6 +28,9 @@ TestSetExtensions = "98d24dd4-01ad-11ea-1b02-c9a08f80db04"
 TimeSeries = "9e3dc215-6440-5c97-bce1-76c03772f85e"
 TimerOutputs = "a759f4b9-e2f1-59dc-863e-4aeb61b1ea8f"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+UnoSolver = "1baa60ac-02f7-4b39-a7a8-2f4f58486b05"
+Xpress = "9e70acf3-d6c9-5be6-b5bd-4e2c73e3e054"
+Xpress_jll = "308bddfa-7f95-4fa6-a557-f2c7addc1869"
 
 [sources]
 InfrastructureSystems = {rev = "IS4", url = "https://github.com/NREL-Sienna/InfrastructureSystems.jl"}

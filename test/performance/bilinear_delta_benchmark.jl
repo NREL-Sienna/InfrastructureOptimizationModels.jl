@@ -10,21 +10,31 @@ Supports two network problem types via multiple dispatch:
   - `MockLossyNetworkProblem`:    P = V·I − a·I² − b·I − c
 
 Usage:
-    julia --project=test scripts/bilinear_delta_benchmark_github.jl [N] [K] [seed] [--lossy]
+    julia --project=test test/performance/bilinear_delta_benchmark.jl [options]
 
-    N       = number of nodes (default 10, must be even)
-    K       = number of PWL cost segments per generator (default 3)
-    seed    = random seed for network generation (default 42)
-    --lossy = also run the lossy generator benchmark
-    --build-only = don't solve
+Options:
+    -N, --nodes INT          number of nodes (default 10, must be even)
+    -K, --cost INT           number of PWL cost segments per generator (default 3)
+    -S, --seed INT           random seed for network generation (default 0)
+    -R, --refinements INT... refinement levels (default 4 6 8)
+    -B, --build-only         don't solve, only build the model
+    -L, --lossy              also run the lossy generator benchmark
 """
 
 using InfrastructureOptimizationModels
+using ArgParse
 using JuMP
-using HiGHS
 using Dates
 using Random
 using Printf
+
+using HiGHS
+using Ipopt
+using UnoSolver
+import Xpress_jll
+ENV["XPRESS_JL_LIBRARY"] = Xpress_jll.libxprs
+ENV["XPAUTH_PATH"] = "/Users/acostare/Downloads/xpauth.xpr"
+using Xpress
 
 const IOM = InfrastructureOptimizationModels
 const IS = IOM.IS
@@ -561,21 +571,6 @@ function build_mip_model(
     return (; container, jump_model, V_container, I_container, z_gen, z_dem, I_sq)
 end
 
-# Try to load Ipopt for NLP reference; skip if unavailable
-const HAS_IPOPT = try
-    @eval using Ipopt
-    true
-catch
-    false
-end
-
-const HAS_UNO = try
-    @eval using UnoSolver
-    true
-catch
-    false
-end
-
 function on_github()
     return get(ENV, "CI", "false") == "true" || haskey(ENV, "GITHUB_ACTIONS")
 end
@@ -685,6 +680,7 @@ function run_benchmark(
     N::Int = 10,
     K::Int = 3,
     seed::Int = 42,
+    refinements::Vector{Int} = [4, 6, 8],
     build_only::Bool = false,
 ) where {T <: MockAbstractNetworkProblem}
     net = generate_network(T; N, K, seed)
@@ -692,16 +688,11 @@ function run_benchmark(
     println()
 
     all_methods = Any[bilinear_methods...]
-    if HAS_UNO
-        pushfirst!(all_methods,
-            ("NLP (Uno)", UnoMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
-        )
-    end
-    if HAS_IPOPT
-        pushfirst!(all_methods,
-            ("NLP (Ipopt)", IpoptMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
-        )
-    end
+    all_methods = [
+        ("NLP (Ipopt)", IpoptMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
+        ("NLP (Uno)", UnoMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!),
+        bilinear_methods...,
+    ]
 
     println("="^110)
     println("Bilinear Approximation Benchmarks")
@@ -713,7 +704,6 @@ function run_benchmark(
     println("-"^110)
 
     nlp_obj = NaN
-    refinements = [2, 4, 6]
 
     for (label, family, fn, kw, qfn) in all_methods
         is_exact = family isa ExactMethod
@@ -729,7 +719,7 @@ function run_benchmark(
             elseif family isa UnoMethod
                 () -> UnoSolver.Optimizer(; preset = "filtersqp")
             else
-                HiGHS.Optimizer
+                Xpress.Optimizer
             end
             JuMP.set_optimizer(result.jump_model, opt)
             JuMP.set_silent(result.jump_model)
@@ -941,12 +931,46 @@ else
     )
 end
 
+function parse_commandline()
+    s = ArgParseSettings()
+    @add_arg_table! s begin
+        "--nodes", "-N"
+        arg_type = Int
+        default = 10
+        help = "number of nodes (must be even)"
+        "--cost", "-K"
+        arg_type = Int
+        default = 3
+        help = "number of PWL cost segments per generator"
+        "--seed", "-S"
+        arg_type = Int
+        default = 42
+        help = "random seed for network generation"
+        "--build-only", "-B"
+        action = :store_true
+        help = "don't solve, only build the model"
+        "--refinements", "-R"
+        arg_type = Int
+        nargs = '+'
+        default = [4, 6, 8]
+        help = "refinement levels (list of integers)"
+        "--lossy", "-L"
+        action = :store_true
+        help = "run with lossy generators"
+    end
+    return parse_args(s)
+end
+
 if abspath(PROGRAM_FILE) == @__FILE__
-    T = "--lossy" in ARGS ? MockLossyNetworkProblem : MockLosslessNetworkProblem
-    N = get(ARGS, 1, "10") |> x -> parse(Int, x)
-    K = get(ARGS, 2, "3") |> x -> parse(Int, x)
-    seed = get(ARGS, 3, "42") |> x -> parse(Int, x)
-    build_only = "--build-only" in ARGS
+    parsed = parse_commandline()
+    N = parsed["nodes"]
+    K = parsed["cost"]
+    seed = parsed["seed"]
+    build_only = parsed["build-only"]
+    refinements = parsed["refinements"]
+    T = parsed["lossy"] ? MockLossyNetworkProblem : MockLosslessNetworkProblem
+
+    # Run small network so second run is faster.
     redirect_stdout(devnull) do
         run_benchmark(
             MockLosslessNetworkProblem;
@@ -954,7 +978,8 @@ if abspath(PROGRAM_FILE) == @__FILE__
             K = 1,
             seed = 0,
             build_only = false,
+            refinements = [1],
         )
     end
-    run_benchmark(T; N, K, seed, build_only)
+    run_benchmark(T; N, K, seed, build_only, refinements)
 end
