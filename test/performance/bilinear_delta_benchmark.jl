@@ -507,6 +507,10 @@ end
     return abs(actual - measured) / max(abs(actual), eps)
 end
 
+@inline function geometric_mean(sequence)
+    return reduce(*, sequence)^(1 / length(sequence))
+end
+
 """
 Compute per-node relative residuals |true − approx| / |true| for the bilinear
 product. For lossy generators the ground truth is V·I − a·I² − b·I − c.
@@ -514,31 +518,34 @@ product. For lossy generators the ground truth is V·I − a·I² − b·I − c
 function compute_bilinear_residuals(result, net::MockNetworkProblem)
     V = result.V_container
     I = result.I_container
-    I_sq = result.I_sq
-    residuals = Float64[]
+    bilin_residuals = Float64[]
+    quad_residuals = Float64[]
 
     # Generator nodes: ground truth = V·I − a·I² − b·I − c
     for g in net.gen_nodes
         v = JuMP.value(V[g, 1])
         i = JuMP.value(I[g, 1])
-        true_power = v * i - net.loss[g][1] * i^2 - net.loss[g][2] * i - net.loss[g][3]
-        approx_power =
-            JuMP.value(result.z_gen[g, 1]) -
-            net.loss[g][1] * JuMP.value(I_sq[g, 1]) -
-            net.loss[g][2] * i -
-            net.loss[g][3]
-        push!(residuals, residual(true_power, approx_power))
+        product = v * i
+        approx = JuMP.value(result.z_gen[g, 1])
+        push!(bilin_residuals, residual(product, approx))
+        quad = i * i
+        approx = JuMP.value(result.I_sq[g, 1])
+        push!(quad_residuals, residual(quad, approx))
     end
 
     # Demand nodes: ground truth = V·I (unchanged)
     for d in net.dem_nodes
         product = JuMP.value(V[d, 1]) * JuMP.value(I[d, 1])
         approx = JuMP.value(result.z_dem[d, 1])
-        push!(residuals, residual(product, approx))
+        push!(bilin_residuals, residual(product, approx))
     end
 
-    geometric_mean = reduce(*, residuals)^(1 / length(residuals))
-    return geometric_mean, maximum(residuals)
+    return (
+        geometric_mean(bilin_residuals),
+        maximum(bilin_residuals),
+        geometric_mean(quad_residuals),
+        maximum(quad_residuals),
+    )
 end
 
 function model_size(jump_model)
@@ -592,14 +599,14 @@ function run_benchmark(;
         bilinear_methods[ENVIRONMENT]...,
     ]
 
-    println("="^110)
+    println("="^120)
     println("Bilinear Approximation Benchmarks")
     println("  Refinement = num_segments for SOS2 methods, depth for Sawtooth/DNMDT")
-    println("="^110)
-    @printf("%-17s %4s %6s %7s %6s %12s %9s %11s %10s %8s %8s\n",
-        "Method", "Ref", "Vars", "Constrs", "Bins", "Objective",
-        "Gap(%)", "Mean Resid", "Max Resid", "build_t", "solve_t")
-    println("-"^110)
+    println("="^120)
+    @printf("%-12s %4s %6s %7s %6s %12s %8s %9s %9s %9s %9s %8s %8s\n",
+        "Method", "R", "Vars", "Constrs", "Bins", "Objective",
+        "Gap(%)", "avg δbi", "max δbi", "avg δq", "max δq", "build_t", "solve_t")
+    println("-"^120)
 
     nlp_obj = NaN
 
@@ -639,24 +646,25 @@ function run_benchmark(;
                     nlp_obj = obj
                 end
                 gap = residual(nlp_obj, obj) * 100.0
-                geometric_mean, max_resid = compute_bilinear_residuals(result, net)
+                mn_bi, mx_bi, mn_q, mx_q = compute_bilinear_residuals(result, net)
                 gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
-                ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
-                @printf("%-17s %4s %6d %7d %6d %12.6f %8s %11.2e %10.2e %8.4f %8.4f\n",
+                ref_str = is_exact ? "   -" : @sprintf("%4d", ref)
+                @printf(
+                    "%-12s %2s %6d %7d %6d %12.6f %6s %9.2e %9.2e %9.2e %9.2e %8.4f %8.4f\n",
                     label, ref_str,
                     sz.variables, sz.constraints, sz.binaries,
-                    obj, gap_str, geometric_mean, max_resid, build_t, solve_t)
+                    obj, gap_str, mn_bi, mx_bi, mn_q, mx_q, build_t, solve_t)
             else
                 ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
-                @printf("%-17s %4s %6d %7d %6d %12s %8s %11s %10s %8.4f %8.4f\n",
+                @printf("%-12s %2s %6d %7d %6d %12s %6s %9s %9s %9s %9s %8.4f %8.4f\n",
                     label, ref_str,
                     sz.variables, sz.constraints, sz.binaries,
-                    string(status), "-", "-", "-", build_t, solve_t)
+                    string(status), "-", "-", "-", "-", "-", build_t, solve_t)
             end
         end
         println()
     end
-    println("="^110)
+    println("="^120)
 end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
