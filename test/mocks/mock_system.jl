@@ -34,6 +34,15 @@ function get_components(::Type{T}, sys::MockSystem) where {T}
     return get(sys.components, T, T[])
 end
 
+function get_component(::Type{T}, sys::MockSystem, name::String) where {T}
+    for component in get_components(T, sys)
+        if get_name(component) == name
+            return component
+        end
+    end
+    @error "Component with name '$(name)' not found."
+end
+
 function add_component!(sys::MockSystem, component)
     comp_type = typeof(component)
     if !haskey(sys.components, comp_type)

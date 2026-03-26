@@ -129,16 +129,17 @@ struct MockComponentType <: IS.InfrastructureSystemsComponent end
 # Structures for the network problem
 struct MockNetworkNode <: IS.InfrastructureSystemsComponent
     name::String
+    loss::Vector{Float64}
     i_min::Float64
     i_max::Float64
-    function MockNetworkNode(name::String, is_gen::Bool)
-        if is_gen
-            new(name, I_GEN_MIN, I_GEN_MAX)
-        else
-            new(name, I_DEM_MIN, I_DEM_MAX)
-        end
+    function MockNetworkNode(name::String, loss::Vector{Float64})
+        new(name, loss, I_GEN_MIN, I_GEN_MAX)
+    end
+    function MockNetworkNode(name::String)
+        new(name, [0.0], I_DEM_MIN, I_DEM_MAX)
     end
 end
+get_name(n::MockNetworkNode) = n.name
 
 struct MockVoltageVariable <: IOM.VariableType end
 struct MockCurrentVariable <: IOM.VariableType end

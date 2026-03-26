@@ -453,7 +453,7 @@ end
 Execute the optimizer on the container's JuMP model, compute aux/dual variables,
 and return the run status. Called `solve_impl!(container, system)` in PSI.
 """
-function execute_optimizer!(container::OptimizationContainer, system::PSY.System)
+function execute_optimizer!(container::OptimizationContainer, system::IS.InfrastructureSystemsContainer)
     optimizer_stats = get_optimizer_stats(container)
 
     jump_model = get_jump_model(container)
@@ -1294,7 +1294,7 @@ function deserialize_key(container::OptimizationContainer, name::AbstractString)
     return deserialize_key(container.metadata, name)
 end
 
-function calculate_aux_variables!(container::OptimizationContainer, system::PSY.System)
+function calculate_aux_variables!(container::OptimizationContainer, system::IS.InfrastructureSystemsContainer)
     aux_var_keys = keys(get_aux_variables(container))
     pf_aux_var_keys = filter(is_from_power_flow ∘ get_entry_type, aux_var_keys)
     non_pf_aux_var_keys = setdiff(aux_var_keys, pf_aux_var_keys)
@@ -1476,7 +1476,7 @@ end
 
 function calculate_dual_variables!(
     container::OptimizationContainer,
-    sys::PSY.System,
+    sys::IS.InfrastructureSystemsContainer,
     is_milp::Bool,
 )
     isempty(get_duals(container)) && return RunStatus.SUCCESSFULLY_FINALIZED
