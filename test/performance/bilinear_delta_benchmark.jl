@@ -27,7 +27,7 @@ using Printf
 
 ENVIRONMENT = if get(ENV, "CI", "") == "true" || haskey(ENV, "GITHUB_ACTIONS")
     :github
-elseif get(ENV, "HOSTNAME", "") == "kl1"
+elseif get(ENV, "HOSTNAME", "") == "kl1" || haskey(ENV, "SLURM_NODEID")
     :kestrel
 else
     :local
@@ -611,6 +611,7 @@ function run_benchmark(;
         "Method", "R", "Vars", "Constrs", "Bins", "Objective",
         "Gap(%)", "avg δbi", "max δbi", "avg δq", "max δq", "build_t", "solve_t")
     println("-"^120)
+    flush(stdout)
 
     nlp_obj = NaN
 
@@ -658,12 +659,14 @@ function run_benchmark(;
                     label, ref_str,
                     sz.variables, sz.constraints, sz.binaries,
                     obj, gap_str, mn_bi, mx_bi, mn_q, mx_q, build_t, solve_t)
+                flush(stdout)
             else
                 ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
                 @printf("%-12s %2s %6d %7d %6d %12s %6s %9s %9s %9s %9s %8.4f %8.4f\n",
                     label, ref_str,
                     sz.variables, sz.constraints, sz.binaries,
                     string(status), "-", "-", "-", "-", "-", build_t, solve_t)
+                flush(stdout)
             end
         end
         println()
@@ -862,22 +865,29 @@ function parse_commandline()
 end
 
 if abspath(PROGRAM_FILE) == @__FILE__
-    parsed = parse_commandline()
-    N = parsed["nodes"]
-    K = parsed["cost"]
-    seed = parsed["seed"]
-    build_only = parsed["build-only"]
-    refinements = parsed["refinements"]
+    try
+        parsed = parse_commandline()
+        N = parsed["nodes"]
+        K = parsed["cost"]
+        seed = parsed["seed"]
+        build_only = parsed["build-only"]
+        refinements = parsed["refinements"]
 
-    # Run small network so second run is faster.
-    redirect_stdout(devnull) do
-        run_benchmark(;
-            N = 2,
-            K = 1,
-            seed = 0,
-            build_only = false,
-            refinements = [1],
-        )
+        # Run small network so second run is faster.
+        redirect_stdout(devnull) do
+            run_benchmark(;
+                N = 2,
+                K = 1,
+                seed = 0,
+                build_only = false,
+                refinements = [1],
+            )
+        end
+        run_benchmark(; N, K, seed, build_only, refinements)
+    catch e
+        @error "Benchmark failed" exception = (e, catch_backtrace())
+    finally
+        flush(stdout)
+        flush(stderr)
     end
-    run_benchmark(; N, K, seed, build_only, refinements)
 end
