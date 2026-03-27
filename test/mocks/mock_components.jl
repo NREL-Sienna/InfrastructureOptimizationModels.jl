@@ -15,6 +15,7 @@ const IS = InfrastructureSystems
 
 # Mock formulation type for testing DeviceModel
 struct TestDeviceFormulation <: PSI.AbstractDeviceFormulation end
+struct TestPowerModel <: IS.Optimization.AbstractPowerModel end
 
 # Mock operation cost for testing proportional cost functions
 struct MockOperationCost
@@ -124,3 +125,67 @@ get_rate(b::MockBranch) = b.rating
 # This replaces PSY.ThermalStandard etc. in tests that don't need real PSY types
 # Subtypes IS.InfrastructureSystemsComponent so it works with VariableKey, ConstraintKey, etc.
 struct MockComponentType <: IS.InfrastructureSystemsComponent end
+
+# Structures for the network problem
+struct MockNetworkNode <: IS.InfrastructureSystemsComponent
+    name::String
+    loss::Vector{Float64}
+    i_min::Float64
+    i_max::Float64
+    function MockNetworkNode(name::String, loss::Vector{Float64})
+        new(name, loss, I_GEN_MIN, I_GEN_MAX)
+    end
+    function MockNetworkNode(name::String)
+        new(name, [0.0], I_DEM_MIN, I_DEM_MAX)
+    end
+end
+get_name(n::MockNetworkNode) = n.name
+
+struct MockVoltageVariable <: IOM.VariableType end
+struct MockCurrentVariable <: IOM.VariableType end
+
+struct MockPowerRangeConstraint <: IOM.ConstraintType end
+
+IOM.get_variable_binary(
+    ::ActivePowerVariable,
+    ::Type{MockNetworkNode},
+    ::TestDeviceFormulation,
+) = false
+IOM.get_variable_binary(
+    ::MockVoltageVariable,
+    ::Type{MockNetworkNode},
+    ::TestDeviceFormulation,
+) = false
+IOM.get_variable_binary(
+    ::MockCurrentVariable,
+    ::Type{MockNetworkNode},
+    ::TestDeviceFormulation,
+) = false
+
+IOM.get_variable_lower_bound(
+    ::MockVoltageVariable,
+    ::MockNetworkNode,
+    ::TestDeviceFormulation,
+) = V_MIN
+IOM.get_variable_upper_bound(
+    ::MockVoltageVariable,
+    ::MockNetworkNode,
+    ::TestDeviceFormulation,
+) = V_MAX
+
+IOM.get_variable_lower_bound(
+    ::MockCurrentVariable,
+    n::MockNetworkNode,
+    ::TestDeviceFormulation,
+) = n.i_min
+IOM.get_variable_upper_bound(
+    ::MockCurrentVariable,
+    n::MockNetworkNode,
+    ::TestDeviceFormulation,
+) = n.i_max
+
+IOM.get_min_max_limits(
+    ::MockNetworkNode,
+    ::Type{MockPowerRangeConstraint},
+    ::Type{TestDeviceFormulation},
+) = (min = 0.0, max = 1.5)

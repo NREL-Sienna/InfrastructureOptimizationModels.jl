@@ -4,6 +4,79 @@
 struct McCormickConstraint <: ConstraintType end
 
 """
+    _mc_setindex!(cons, index, n, constraint)
+
+Helper function for setting constraints by-index in a McCormick constraint container.
+
+Supports 2- and 3-length tuples.
+"""
+@inline function _mc_setindex!(cons, index::Tuple{A, B}, n::Int, constraint) where {A, B}
+    cons[index[1], n, index[2]] = constraint
+end
+
+@inline function _mc_setindex!(
+    cons,
+    index::Tuple{A, B, C},
+    n::Int,
+    constraint,
+) where {A, B, C}
+    cons[index[1], index[2], n, index[3]] = constraint
+end
+
+function _add_mccormick_envelope!(
+    jump_model::JuMP.Model,
+    cons,
+    index,
+    x::JuMP.AbstractJuMPScalar,
+    y::JuMP.AbstractJuMPScalar,
+    z::JuMP.AbstractJuMPScalar,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64;
+    lower_bounds::Bool = true,
+)
+    if lower_bounds
+        _mc_setindex!(
+            cons,
+            index,
+            1,
+            JuMP.@constraint(
+                jump_model,
+                z >= x_min * y + x * y_min - x_min * y_min,
+            )
+        )
+        _mc_setindex!(
+            cons,
+            index,
+            2,
+            JuMP.@constraint(
+                jump_model,
+                z >= x_max * y + x * y_max - x_max * y_max,
+            )
+        )
+    end
+    _mc_setindex!(
+        cons,
+        index,
+        3,
+        JuMP.@constraint(
+            jump_model,
+            z <= x_max * y + x * y_min - x_max * y_min,
+        )
+    )
+    _mc_setindex!(
+        cons,
+        index,
+        4,
+        JuMP.@constraint(
+            jump_model,
+            z <= x_min * y + x * y_max - x_min * y_max,
+        )
+    )
+end
+
+"""
     _add_mccormick_envelope!(container, C, names, time_steps, x_var, y_var, z_var, x_min, x_max, y_min, y_max, meta)
 
 Add McCormick envelope constraints for the bilinear product z ≈ x·y.
@@ -94,39 +167,6 @@ function _add_mccormick_envelope!(
         meta; lower_bounds,
     )
     return
-end
-
-function _add_mccormick_envelope!(
-    jump_model::JuMP.Model,
-    cons,
-    index,
-    x::JuMP.AbstractJuMPScalar,
-    y::JuMP.AbstractJuMPScalar,
-    z::JuMP.AbstractJuMPScalar,
-    x_min::Float64,
-    x_max::Float64,
-    y_min::Float64,
-    y_max::Float64;
-    lower_bounds::Bool = true,
-)
-    if lower_bounds
-        cons[index[1:(end - 1)]..., 1, index[end]] = JuMP.@constraint(
-            jump_model,
-            z >= x_min * y + x * y_min - x_min * y_min,
-        )
-        cons[index[1:(end - 1)]..., 2, index[end]] = JuMP.@constraint(
-            jump_model,
-            z >= x_max * y + x * y_max - x_max * y_max,
-        )
-    end
-    cons[index[1:(end - 1)]..., 3, index[end]] = JuMP.@constraint(
-        jump_model,
-        z <= x_max * y + x * y_min - x_max * y_min,
-    )
-    cons[index[1:(end - 1)]..., 4, index[end]] = JuMP.@constraint(
-        jump_model,
-        z <= x_min * y + x * y_max - x_min * y_max,
-    )
 end
 
 function _add_mccormick_envelope!(

@@ -124,7 +124,7 @@ function _discretize!(
                     base_name = "NMDTBinary_$(C)_{$(name), $(i), $(t)}",
                     binary = true
                 )
-            JuMP.add_to_expression!(disc, 2.0^(-i), beta)
+            add_proportional_to_jump_expression!(disc, beta, 2.0^(-i))
         end
         delta =
             delta_var[name, t] = JuMP.@variable(
@@ -133,7 +133,7 @@ function _discretize!(
                 lower_bound = 0.0,
                 upper_bound = 2.0^(-depth)
             )
-        JuMP.add_to_expression!(disc, delta)
+        add_proportional_to_jump_expression!(disc, delta, 1.0)
         disc_cons[name, t] = JuMP.@constraint(
             jump_model,
             xh_expr[name, t] == disc
@@ -223,7 +223,7 @@ function _binary_continuous_product!(
                 cont_min, cont_max, 0.0, 1.0;
                 lower_bounds = !tighten,
             )
-            JuMP.add_to_expression!(result, 2.0^(-i), u_i)
+            add_proportional_to_jump_expression!(result, u_i, 2.0^(-i))
         end
     end
 
@@ -405,14 +405,14 @@ function _assemble_product!(
         result = result_expr[name, t] = JuMP.AffExpr(0.0)
         zh = JuMP.AffExpr(0.0)
         for term in terms
-            JuMP.add_to_expression!(zh, term[name, t])
+            add_proportional_to_jump_expression!(zh, term[name, t], 1.0)
         end
-        JuMP.add_to_expression!(zh, dz_var[name, t])
+        add_proportional_to_jump_expression!(zh, dz_var[name, t], 1.0)
 
-        JuMP.add_to_expression!(result, lx * ly, zh)
-        JuMP.add_to_expression!(result, lx * y_min, xh_expr[name, t])
-        JuMP.add_to_expression!(result, ly * x_min, yh_expr[name, t])
-        JuMP.add_to_expression!(result, x_min * y_min)
+        add_proportional_to_jump_expression!(result, zh, lx * ly)
+        add_proportional_to_jump_expression!(result, xh_expr[name, t], lx * y_min)
+        add_proportional_to_jump_expression!(result, yh_expr[name, t], ly * x_min)
+        add_constant_to_jump_expression!(result, x_min * y_min)
     end
 
     return result_expr
@@ -532,8 +532,8 @@ function _add_dnmdt_approx!(
 
     for name in names, t in time_steps
         result = result_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(result, lambda, z1_expr[name, t])
-        JuMP.add_to_expression!(result, 1.0 - lambda, z2_expr[name, t])
+        add_proportional_to_jump_expression!(result, z1_expr[name, t], lambda)
+        add_proportional_to_jump_expression!(result, z2_expr[name, t], 1.0 - lambda)
     end
 
     return result_expr

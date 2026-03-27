@@ -122,14 +122,14 @@ function _add_sos2_quadratic_approx!(
         # x = Σ λ_i * x_i
         link = link_expr[name, t] = JuMP.AffExpr(0.0)
         for i in eachindex(x_bkpts)
-            JuMP.add_to_expression!(link, lambda[i], x_bkpts[i])
+            add_proportional_to_jump_expression!(link, lambda[i], x_bkpts[i])
         end
         link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
 
         # Σ λ_i = 1
         norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
         for l in lambda
-            JuMP.add_to_expression!(norm, l)
+            add_proportional_to_jump_expression!(norm, l, 1.0)
         end
         norm_cons[name, t] = JuMP.@constraint(jump_model, norm == 1.0)
 
@@ -140,7 +140,7 @@ function _add_sos2_quadratic_approx!(
         # Build x̂² = Σ λ_i * x_i² as an affine expression
         x_hat_sq = JuMP.AffExpr(0.0)
         for i in 1:n_points
-            JuMP.add_to_expression!(x_hat_sq, x_sq_bkpts[i], lambda[i])
+            add_proportional_to_jump_expression!(x_hat_sq, lambda[i], x_sq_bkpts[i])
         end
         result_expr[name, t] = x_hat_sq
     end

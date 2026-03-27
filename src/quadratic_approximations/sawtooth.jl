@@ -188,13 +188,17 @@ function _add_sawtooth_quadratic_approx!(
 
         # Build x² ≈ x_min² + (2 x_min Δ + Δ²) g_0 - Σ_{j=1}^L Δ² 2^{-2j} g_j
         x_sq_approx = JuMP.AffExpr(x_min * x_min)
-        JuMP.add_to_expression!(
+        add_proportional_to_jump_expression!(
             x_sq_approx,
-            2.0 * x_min * delta + delta * delta,
             g_var[name, 0, t],
+            2.0 * x_min * delta + delta * delta,
         )
         for j in alpha_levels
-            JuMP.add_to_expression!(x_sq_approx, -saw_coeffs[j], g_var[name, j, t])
+            add_proportional_to_jump_expression!(
+                x_sq_approx,
+                g_var[name, j, t],
+                -saw_coeffs[j],
+            )
         end
 
         if tighten

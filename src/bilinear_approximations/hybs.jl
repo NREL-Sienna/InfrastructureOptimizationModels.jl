@@ -7,18 +7,16 @@
 struct HybSBoundConstraint <: ConstraintType end
 
 """
-    _add_hybs_bilinear_approx!(container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta; add_mccormick)
+    _add_hybs_bilinear_approx_impl!(container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, zx_expr, zy_expr, epigraph_depth, meta; add_mccormick)
 
 Approximate x·y using the HybS (Hybrid Separable) relaxation from Beach et al. (2024).
 
-Combines Bin2 and Bin3 separable identities:
+Accepts pre-computed quadratic approximations of x² and y². Combines Bin2 and Bin3
+separable identities:
 - Bin2 lower bound: z ≥ ½(z_p1 − z_x − z_y) where z_p1 lower-bounds (x+y)²
 - Bin3 upper bound: z ≤ ½(z_x + z_y − z_p2) where z_p2 lower-bounds (x−y)²
 
-Only x² and y² use the full sawtooth S^L (with L binary variables each).
-The cross-terms (x+y)² and (x−y)² use only epigraph Q^{L1} (pure LP).
-
-Stores affine expressions approximating x·y in a `HybSProductExpression` expression container.
+The cross-terms (x+y)² and (x−y)² always use epigraph Q^{L1} (pure LP).
 
 # Arguments
 - `container::OptimizationContainer`: the optimization container
@@ -31,9 +29,11 @@ Stores affine expressions approximating x·y in a `HybSProductExpression` expres
 - `x_max::Float64`: upper bound of x
 - `y_min::Float64`: lower bound of y
 - `y_max::Float64`: upper bound of y
-- `depth::Int`: sawtooth depth L (number of binary variables per x²/y² approximation)
+- `zx_expr`: pre-computed quadratic approximation of x², indexed by (name, t)
+- `zy_expr`: pre-computed quadratic approximation of y², indexed by (name, t)
+- `epigraph_depth::Int`: depth for epigraph approximation of (x+y)² and (x−y)²
 - `meta::String`: identifier encoding the original variable type being approximated
-- `add_mccormick::Bool`: whether to add McCormick envelope constraints (default: true)
+- `add_mccormick::Bool`: whether to add McCormick envelope constraints (default: false)
 """
 function _add_hybs_bilinear_approx_impl!(
     container::OptimizationContainer,
@@ -46,10 +46,11 @@ function _add_hybs_bilinear_approx_impl!(
     x_max::Float64,
     y_min::Float64,
     y_max::Float64,
+    zx_expr,
+    zy_expr,
     epigraph_depth::Int,
-    quad_approx_fn,
     meta::String;
-    add_mccormick::Bool = false,
+    add_mccormick::Bool = true,
 ) where {C <: IS.InfrastructureSystemsComponent}
     # Bounds for auxiliary variables
     p1_min = x_min + y_min
@@ -61,9 +62,7 @@ function _add_hybs_bilinear_approx_impl!(
 
     jump_model = get_jump_model(container)
 
-    # Meta suffixes: key = (ApproxType, ComponentType, OriginalVarType_suffix)
-    meta_x = meta * "_x"
-    meta_y = meta * "_y"
+    # Meta suffixes for cross-term expressions
     meta_p1 = meta * "_plus"
     meta_p2 = meta * "_diff"
 
@@ -90,24 +89,14 @@ function _add_hybs_bilinear_approx_impl!(
 
         # p1 = x + y
         p1 = p1_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(p1, x)
-        JuMP.add_to_expression!(p1, y)
+        add_proportional_to_jump_expression!(p1, x, 1.0)
+        add_proportional_to_jump_expression!(p1, y, 1.0)
 
         # p2 = x − y
         p2 = p2_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(p2, x)
-        JuMP.add_to_expression!(p2, -1.0, y)
+        add_proportional_to_jump_expression!(p2, x, 1.0)
+        add_proportional_to_jump_expression!(p2, y, -1.0)
     end
-
-    # --- Sawtooth S^L for x² and y² (binary variables here) ---
-    zx_expr = quad_approx_fn(
-        container, C, names, time_steps,
-        x_var, x_min, x_max, meta_x,
-    )
-    zy_expr = quad_approx_fn(
-        container, C, names, time_steps,
-        y_var, y_min, y_max, meta_y,
-    )
 
     # --- Epigraph Q^{L1} lower bound for (x+y)² and (x−y)² (no binaries) ---
     zp1_expr = _add_epigraph_quadratic_approx!(
@@ -208,25 +197,50 @@ function _add_hybs_sos2_bilinear_approx!(
     add_quad_mccormick::Bool = false,
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
 ) where {C <: IS.InfrastructureSystemsComponent}
-    quad_fn =
-        (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sos2_quadratic_approx!(
-                cont,
-                CT,
-                nms,
-                ts,
-                vc,
-                lo,
-                hi,
-                depth,
-                m;
-                add_mccormick = add_quad_mccormick,
-            )
+    meta_x = meta * "_x"
+    meta_y = meta * "_y"
+    zx_expr = _add_sos2_quadratic_approx!(
+        container, C, names, time_steps,
+        x_var, x_min, x_max, depth, meta_x;
+        add_mccormick = add_quad_mccormick,
+    )
+    zy_expr = _add_sos2_quadratic_approx!(
+        container, C, names, time_steps,
+        y_var, y_min, y_max, depth, meta_y;
+        add_mccormick = add_quad_mccormick,
+    )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
         x_min, x_max, y_min, y_max,
-        epigraph_depth, quad_fn, meta;
+        zx_expr, zy_expr, epigraph_depth, meta;
+        add_mccormick,
+    )
+end
+
+function _add_hybs_sos2_bilinear_approx!(
+    container::OptimizationContainer,
+    ::Type{C},
+    names::Vector{String},
+    time_steps::UnitRange{Int},
+    x_var,
+    y_var,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
+    zx_precomputed,
+    zy_precomputed,
+    depth::Int,
+    meta::String;
+    add_mccormick::Bool = false,
+    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
+) where {C <: IS.InfrastructureSystemsComponent}
+    return _add_hybs_bilinear_approx_impl!(
+        container, C, names, time_steps,
+        x_var, y_var,
+        x_min, x_max, y_min, y_max,
+        zx_precomputed, zy_precomputed, epigraph_depth, meta;
         add_mccormick,
     )
 end
@@ -248,25 +262,50 @@ function _add_hybs_manual_sos2_bilinear_approx!(
     add_quad_mccormick::Bool = false,
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
 ) where {C <: IS.InfrastructureSystemsComponent}
-    quad_fn =
-        (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_manual_sos2_quadratic_approx!(
-                cont,
-                CT,
-                nms,
-                ts,
-                vc,
-                lo,
-                hi,
-                depth,
-                m;
-                add_mccormick = add_quad_mccormick,
-            )
+    meta_x = meta * "_x"
+    meta_y = meta * "_y"
+    zx_expr = _add_manual_sos2_quadratic_approx!(
+        container, C, names, time_steps,
+        x_var, x_min, x_max, depth, meta_x;
+        add_mccormick = add_quad_mccormick,
+    )
+    zy_expr = _add_manual_sos2_quadratic_approx!(
+        container, C, names, time_steps,
+        y_var, y_min, y_max, depth, meta_y;
+        add_mccormick = add_quad_mccormick,
+    )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
         x_min, x_max, y_min, y_max,
-        epigraph_depth, quad_fn, meta;
+        zx_expr, zy_expr, epigraph_depth, meta;
+        add_mccormick,
+    )
+end
+
+function _add_hybs_manual_sos2_bilinear_approx!(
+    container::OptimizationContainer,
+    ::Type{C},
+    names::Vector{String},
+    time_steps::UnitRange{Int},
+    x_var,
+    y_var,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
+    zx_precomputed,
+    zy_precomputed,
+    depth::Int,
+    meta::String;
+    add_mccormick::Bool = false,
+    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
+) where {C <: IS.InfrastructureSystemsComponent}
+    return _add_hybs_bilinear_approx_impl!(
+        container, C, names, time_steps,
+        x_var, y_var,
+        x_min, x_max, y_min, y_max,
+        zx_precomputed, zy_precomputed, epigraph_depth, meta;
         add_mccormick,
     )
 end
@@ -289,26 +328,50 @@ function _add_hybs_sawtooth_bilinear_approx!(
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
     tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    quad_fn =
-        (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sawtooth_quadratic_approx!(
-                cont,
-                CT,
-                nms,
-                ts,
-                vc,
-                lo,
-                hi,
-                depth,
-                m;
-                tighten,
-                add_mccormick = add_quad_mccormick,
-            )
+    meta_x = meta * "_x"
+    meta_y = meta * "_y"
+    zx_expr = _add_sawtooth_quadratic_approx!(
+        container, C, names, time_steps,
+        x_var, x_min, x_max, depth, meta_x;
+        tighten, add_mccormick = add_quad_mccormick,
+    )
+    zy_expr = _add_sawtooth_quadratic_approx!(
+        container, C, names, time_steps,
+        y_var, y_min, y_max, depth, meta_y;
+        tighten, add_mccormick = add_quad_mccormick,
+    )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
         x_min, x_max, y_min, y_max,
-        epigraph_depth, quad_fn, meta;
+        zx_expr, zy_expr, epigraph_depth, meta;
+        add_mccormick,
+    )
+end
+
+function _add_hybs_sawtooth_bilinear_approx!(
+    container::OptimizationContainer,
+    ::Type{C},
+    names::Vector{String},
+    time_steps::UnitRange{Int},
+    x_var,
+    y_var,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
+    zx_precomputed,
+    zy_precomputed,
+    depth::Int,
+    meta::String;
+    add_mccormick::Bool = false,
+    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
+) where {C <: IS.InfrastructureSystemsComponent}
+    return _add_hybs_bilinear_approx_impl!(
+        container, C, names, time_steps,
+        x_var, y_var,
+        x_min, x_max, y_min, y_max,
+        zx_precomputed, zy_precomputed, epigraph_depth, meta;
         add_mccormick,
     )
 end
