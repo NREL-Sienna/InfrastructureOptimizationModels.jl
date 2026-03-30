@@ -15,6 +15,8 @@ struct SOS2NormExpression <: ExpressionType end
 
 struct SolverSOS2Constraint <: ConstraintType end
 
+struct QuadraticResultVariable <: VariableType end
+
 """
     _add_sos2_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, num_segments, meta)
 
@@ -103,6 +105,14 @@ function _add_sos2_quadratic_approx!(
         time_steps;
         meta,
     )
+    result_var = add_variable_container!(
+        container,
+        QuadraticResultVariable(),
+        C,
+        names,
+        time_steps;
+        meta
+    )
 
     for name in names, t in time_steps
         x = x_var[name, t]
@@ -142,7 +152,14 @@ function _add_sos2_quadratic_approx!(
         for i in 1:n_points
             add_proportional_to_jump_expression!(x_hat_sq, lambda[i], x_sq_bkpts[i])
         end
-        result_expr[name, t] = x_hat_sq
+        # result_expr[name, t] = x_hat_sq
+        z = result_var[name, t] = JuMP.@variable(
+            jump_model,
+            base_name = "QuadraticResultVariable_$(C)_{$(name), $(t)}",
+            lower_bound = 0.0,
+            upper_bound = max(x_min * x_min, x_max * x_max)
+        )
+        JuMP.@constraint(jump_model, z == x_hat_sq)
     end
 
     if add_mccormick
@@ -154,5 +171,6 @@ function _add_sos2_quadratic_approx!(
         )
     end
 
-    return result_expr
+    # return result_expr
+    return result_var
 end
