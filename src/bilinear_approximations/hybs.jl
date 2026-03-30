@@ -47,7 +47,7 @@ function _add_hybs_bilinear_approx_impl!(
     y_min::Float64,
     y_max::Float64,
     epigraph_depth::Int,
-    quad_approx_fn,
+    quad_config::QuadraticApproxConfig,
     meta::String;
     add_mccormick::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
@@ -99,13 +99,13 @@ function _add_hybs_bilinear_approx_impl!(
         JuMP.add_to_expression!(p2, -1.0, y)
     end
 
-    # --- Sawtooth S^L for x² and y² (binary variables here) ---
-    zx_expr = quad_approx_fn(
-        container, C, names, time_steps,
+    # --- Quadratic approximation for x² and y² (binary variables here) ---
+    zx_expr = _apply_quad_approx!(
+        quad_config, container, C, names, time_steps,
         x_var, x_min, x_max, meta_x,
     )
-    zy_expr = quad_approx_fn(
-        container, C, names, time_steps,
+    zy_expr = _apply_quad_approx!(
+        quad_config, container, C, names, time_steps,
         y_var, y_min, y_max, meta_y,
     )
 
@@ -208,25 +208,11 @@ function _add_hybs_sos2_bilinear_approx!(
     add_quad_mccormick::Bool = false,
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
 ) where {C <: IS.InfrastructureSystemsComponent}
-    quad_fn =
-        (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sos2_quadratic_approx!(
-                cont,
-                CT,
-                nms,
-                ts,
-                vc,
-                lo,
-                hi,
-                depth,
-                m;
-                add_mccormick = add_quad_mccormick,
-            )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
         x_min, x_max, y_min, y_max,
-        epigraph_depth, quad_fn, meta;
+        epigraph_depth, SOS2QuadConfig{SolverSOS2}(depth, add_quad_mccormick), meta;
         add_mccormick,
     )
 end
@@ -248,25 +234,11 @@ function _add_hybs_manual_sos2_bilinear_approx!(
     add_quad_mccormick::Bool = false,
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
 ) where {C <: IS.InfrastructureSystemsComponent}
-    quad_fn =
-        (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_manual_sos2_quadratic_approx!(
-                cont,
-                CT,
-                nms,
-                ts,
-                vc,
-                lo,
-                hi,
-                depth,
-                m;
-                add_mccormick = add_quad_mccormick,
-            )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
         x_min, x_max, y_min, y_max,
-        epigraph_depth, quad_fn, meta;
+        epigraph_depth, SOS2QuadConfig{ManualSOS2}(depth, add_quad_mccormick), meta;
         add_mccormick,
     )
 end
@@ -289,26 +261,11 @@ function _add_hybs_sawtooth_bilinear_approx!(
     epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
     tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    quad_fn =
-        (cont, CT, nms, ts, vc, lo, hi, m) ->
-            _add_sawtooth_quadratic_approx!(
-                cont,
-                CT,
-                nms,
-                ts,
-                vc,
-                lo,
-                hi,
-                depth,
-                m;
-                tighten,
-                add_mccormick = add_quad_mccormick,
-            )
     return _add_hybs_bilinear_approx_impl!(
         container, C, names, time_steps,
         x_var, y_var,
         x_min, x_max, y_min, y_max,
-        epigraph_depth, quad_fn, meta;
+        epigraph_depth, SawtoothQuadConfig(depth, tighten, add_quad_mccormick), meta;
         add_mccormick,
     )
 end
