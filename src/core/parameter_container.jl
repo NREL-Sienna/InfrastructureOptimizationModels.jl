@@ -262,3 +262,15 @@ function set_parameter!(
     _set_parameter!(param_array, jump_model, parameter, ixs)
     return
 end
+
+# Overload for when a JuMP parameter VariableRef is passed directly (recurrent-solve
+# path where a parallel branch type reuses the VariableRef created by the first type).
+function set_parameter!(
+    container::ParameterContainer,
+    ::JuMP.Model,
+    parameter::JuMP.VariableRef,
+    ixs...,
+)
+    assign_maybe_broadcast!(get_parameter_array(container), parameter, ixs)
+    return
+end

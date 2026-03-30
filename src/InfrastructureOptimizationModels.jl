@@ -328,6 +328,11 @@ export get_branch_argument_variable_axis
 # Network reduction helpers
 export get_branch_argument_constraint_axis, get_reduced_branch_tracker
 export search_for_reduced_branch_variable!
+export search_for_reduced_branch_parameter!
+export search_for_reduced_branch_argument!
+export get_branch_argument_parameter_axes
+export get_parameter_dict
+export get_device_with_time_series
 # Container/variable helpers
 export add_variable_container!, add_constraint_dual!
 export add_to_objective_invariant_expression!, lazy_container_addition!
