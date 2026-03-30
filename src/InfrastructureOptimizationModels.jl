@@ -597,6 +597,7 @@ include("quadratic_approximations/solver_sos2.jl")
 include("quadratic_approximations/manual_sos2.jl")
 include("quadratic_approximations/sawtooth.jl")
 include("quadratic_approximations/epigraph.jl")
+include("quadratic_approximations/pwmcc_cuts.jl")
 include("nmdt.jl")
 include("quadratic_approximations/nmdt.jl")
 
