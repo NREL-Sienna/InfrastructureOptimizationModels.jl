@@ -251,6 +251,7 @@ function make_container(optimizer)
         resolution = Dates.Hour(1),
         warm_start = false,
         optimizer,
+        optimizer_solve_log_print = true
     )
     container = IOM.OptimizationContainer(system, settings, JuMP.Model(), IS.Deterministic)
     IOM.set_time_steps!(container, 1:1)
@@ -576,6 +577,15 @@ function print_network_info(net::MockNetworkProblem)
     end
 end
 
+"""Return the path for the solver log file, creating the logs directory if needed."""
+function solver_log_path()
+    log_dir = joinpath(@__DIR__, "logs")
+    mkpath(log_dir)
+    job_id = get(ENV, "SLURM_JOB_ID", "")
+    tag = isempty(job_id) ? Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS") : job_id
+    return joinpath(log_dir, "solver_$(tag).log")
+end
+
 # ─── Main benchmark ──────────────────────────────────────────────────────────
 
 """
@@ -597,6 +607,13 @@ function run_benchmark(;
     print_network_info(net)
     println()
 
+    log_path = solver_log_path()
+    println("Solver logs: $log_path")
+    println()
+
+    logfile = open(log_path, "a")
+    atexit(() -> (flush(stdout); isopen(logfile) && (flush(logfile); close(logfile))))
+
     all_methods = [
         ("NLP (Ipopt)", IpoptMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!, ()),
         ("NLP (Uno)", UnoMethod(), _add_exact_bilinear!, (), _add_exact_quadratic!, ()),
@@ -615,63 +632,74 @@ function run_benchmark(;
 
     nlp_obj = NaN
 
-    for (label, family, fn, kw, qfn, qkw) in all_methods
-        is_exact = family isa ExactMethod
-        refs = is_exact ? [0] : refinements
+    try
+        for (label, family, fn, kw, qfn, qkw) in all_methods
+            is_exact = family isa ExactMethod
+            refs = is_exact ? [0] : refinements
 
-        for ref in refs
-            opt = if family isa IpoptMethod
-                Ipopt.Optimizer
-            elseif family isa UnoMethod
-                () -> UnoSolver.Optimizer(; preset = "filtersqp")
-            else
-                LP_OPT
-            end
-            build_t =
-                @elapsed result = build_mip_model(opt, net, family, fn, kw, qfn, qkw, ref)
-
-            if build_only
-                solve_t = 0.0
-                status = nothing
-            else
-                solve_t = @elapsed IOM.execute_optimizer!(result.container, result.system)
-                status = JuMP.termination_status(result.jump_model)
-            end
-            sz = model_size(result.jump_model)
-
-            solved = if is_exact
-                status == JuMP.LOCALLY_SOLVED
-            else
-                status == JuMP.OPTIMAL && JuMP.has_values(result.jump_model)
-            end
-
-            if solved
-                obj = JuMP.objective_value(result.jump_model)
-                if is_exact
-                    nlp_obj = obj
+            for ref in refs
+                opt = if family isa IpoptMethod
+                    Ipopt.Optimizer
+                elseif family isa UnoMethod
+                    () -> UnoSolver.Optimizer(; preset = "filtersqp")
+                else
+                    LP_OPT
                 end
-                gap = residual(nlp_obj, obj) * 100.0
-                mn_bi, mx_bi, mn_q, mx_q = compute_bilinear_residuals(result, net)
-                gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
-                ref_str = is_exact ? "   -" : @sprintf("%4d", ref)
-                @printf(
-                    "%-12s %2s %6d %7d %6d %12.6f %6s %9.2e %9.2e %9.2e %9.2e %8.4f %8.4f\n",
-                    label, ref_str,
-                    sz.variables, sz.constraints, sz.binaries,
-                    obj, gap_str, mn_bi, mx_bi, mn_q, mx_q, build_t, solve_t)
-                flush(stdout)
-            else
-                ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
-                @printf("%-12s %2s %6d %7d %6d %12s %6s %9s %9s %9s %9s %8.4f %8.4f\n",
-                    label, ref_str,
-                    sz.variables, sz.constraints, sz.binaries,
-                    string(status), "-", "-", "-", "-", "-", build_t, solve_t)
+                build_t =
+                    @elapsed result = build_mip_model(opt, net, family, fn, kw, qfn, qkw, ref)
+
+                if build_only
+                    solve_t = 0.0
+                    status = nothing
+                else
+                    println(logfile, "\n", "="^80)
+                    println(logfile, "$label  R=$ref  $(Dates.now())")
+                    println(logfile, "="^80)
+                    flush(logfile)
+                    solve_t = @elapsed redirect_stdout(logfile) do
+                        IOM.execute_optimizer!(result.container, result.system)
+                    end
+                    flush(logfile)
+                    status = JuMP.termination_status(result.jump_model)
+                end
+                sz = model_size(result.jump_model)
+
+                solved = if is_exact
+                    status == JuMP.LOCALLY_SOLVED
+                else
+                    status == JuMP.OPTIMAL && JuMP.has_values(result.jump_model)
+                end
+
+                if solved
+                    obj = JuMP.objective_value(result.jump_model)
+                    if is_exact
+                        nlp_obj = obj
+                    end
+                    gap = residual(nlp_obj, obj) * 100.0
+                    mn_bi, mx_bi, mn_q, mx_q = compute_bilinear_residuals(result, net)
+                    gap_str = isnan(gap) ? "    -" : @sprintf("%8.4f", gap)
+                    ref_str = is_exact ? "   -" : @sprintf("%4d", ref)
+                    @printf(
+                        "%-12s %2s %6d %7d %6d %12.6f %6s %9.2e %9.2e %9.2e %9.2e %8.4f %8.4f\n",
+                        label, ref_str,
+                        sz.variables, sz.constraints, sz.binaries,
+                        obj, gap_str, mn_bi, mx_bi, mn_q, mx_q, build_t, solve_t)
+                else
+                    ref_str = is_exact ? "  -" : @sprintf("%4d", ref)
+                    @printf("%-12s %2s %6d %7d %6d %12s %6s %9s %9s %9s %9s %8.4f %8.4f\n",
+                        label, ref_str,
+                        sz.variables, sz.constraints, sz.binaries,
+                        string(status), "-", "-", "-", "-", "-", build_t, solve_t)
+                end
                 flush(stdout)
             end
+            println()
         end
-        println()
+        println("="^120)
+    finally
+        isopen(logfile) && (flush(logfile); close(logfile))
+        flush(stdout)
     end
-    println("="^120)
 end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
