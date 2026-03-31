@@ -260,8 +260,8 @@ function _tighten_lower_bounds!(
     jump_model = get_jump_model(container)
 
     epigraph_depth = max(2, ceil(Int, 1.5 * x_disc.depth))
-    epi_expr = _add_epigraph_quadratic_approx!(
-        container, C, names, time_steps,
+    epi_expr = _add_quadratic_approx!(
+        EpigraphQuadConfig(), container, C, names, time_steps,
         x_disc.norm_expr, 0.0, 1.0,
         epigraph_depth, meta * "_epi",
     )
@@ -461,7 +461,7 @@ function _assemble_product!(
 end
 
 """
-    _add_dnmdt_approx!(container, C, names, time_steps, bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr, x_disc, y_disc, meta; lambda, result_type)
+    _assemble_dnmdt!(container, C, names, time_steps, bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr, x_disc, y_disc, meta; lambda, result_type)
 
 Core assembler for the DNMDT bilinear approximation of x·y from pre-computed cross products.
 
@@ -488,7 +488,7 @@ container of type `result_type`.
 - `lambda::Float64`: convex combination weight for the two NMDT estimates (default: `DNMDT_LAMBDA` = 0.5)
 - `result_type`: expression type to store results in (default: `NMDTResultExpression`)
 """
-function _add_dnmdt_approx!(
+function _assemble_dnmdt!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},

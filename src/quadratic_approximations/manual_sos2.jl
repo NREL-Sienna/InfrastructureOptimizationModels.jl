@@ -9,8 +9,14 @@ struct ManualSOS2SegmentSelectionExpression <: ExpressionType end
 "Links active segment to lambda variables."
 struct ManualSOS2AdjacencyConstraint <: ConstraintType end
 
+"Config for manual binary-variable SOS2 quadratic approximation."
+struct ManualSOS2QuadConfig <: QuadraticApproxConfig
+    add_mccormick::Bool
+end
+ManualSOS2QuadConfig() = ManualSOS2QuadConfig(false)
+
 """
-    _add_manual_sos2_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, num_segments, meta)
+    _add_quadratic_approx!(config::ManualSOS2QuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
 
 Approximate x² using a piecewise linear function with manually-implemented SOS2 constraints.
 
@@ -20,6 +26,7 @@ and stores affine expressions approximating x² in a `QuadraticExpression`
 expression container.
 
 # Arguments
+- `config::ManualSOS2QuadConfig`: configuration (includes `add_mccormick` flag)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -27,10 +34,11 @@ expression container.
 - `x_var`: container of variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
-- `num_segments::Int`: number of PWL segments
+- `depth::Int`: number of PWL segments
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
 """
-function _add_manual_sos2_quadratic_approx!(
+function _add_quadratic_approx!(
+    config::ManualSOS2QuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -38,13 +46,12 @@ function _add_manual_sos2_quadratic_approx!(
     x_var,
     x_min::Float64,
     x_max::Float64,
-    num_segments::Int,
-    meta::String;
-    add_mccormick::Bool = false,
+    depth::Int,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
-        _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments)
-    n_points = num_segments + 1
+        _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments = depth)
+    n_points = depth + 1
     n_bins = n_points - 1
     jump_model = get_jump_model(container)
 
@@ -185,7 +192,7 @@ function _add_manual_sos2_quadratic_approx!(
         result_expr[name, t] = x_hat_sq
     end
 
-    if add_mccormick
+    if config.add_mccormick
         _add_mccormick_envelope!(
             container, C, names, time_steps,
             x_var, result_expr,

@@ -1,6 +1,14 @@
 "Expression container for the normalized variable xh = (x − x_min) / (x_max − x_min) ∈ [0,1]."
 struct NormedVariableExpression <: ExpressionType end
 
+"Expression container for quadratic (x²) approximation results."
+struct QuadraticExpression <: ExpressionType end
+
+# --- Quadratic approximation config hierarchy ---
+
+"Abstract supertype for quadratic approximation method configurations."
+abstract type QuadraticApproxConfig end
+
 """
     _normed_variable!(container, C, names, time_steps, x_var, x_min, x_max, meta)
 

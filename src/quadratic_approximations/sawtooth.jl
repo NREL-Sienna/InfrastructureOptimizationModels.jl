@@ -16,8 +16,15 @@ struct SawtoothLPConstraint <: ConstraintType end
 "Bounds tightened variable."
 struct SawtoothTightenedConstraint <: ConstraintType end
 
+"Config for sawtooth MIP quadratic approximation."
+struct SawtoothQuadConfig <: QuadraticApproxConfig
+    tighten::Bool
+    add_mccormick::Bool
+end
+SawtoothQuadConfig() = SawtoothQuadConfig(false, false)
+
 """
-    _add_sawtooth_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
+    _add_quadratic_approx!(config::SawtoothQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
 
 Approximate x² using the sawtooth MIP formulation.
 
@@ -30,6 +37,7 @@ For depth L, the approximation interpolates x² at 2^L + 1 uniformly spaced brea
 with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
 
 # Arguments
+- `config::SawtoothQuadConfig`: configuration (tighten, add_mccormick)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -40,7 +48,8 @@ with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
 - `depth::Int`: sawtooth depth L (number of binary variables per component per time step)
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
 """
-function _add_sawtooth_quadratic_approx!(
+function _add_quadratic_approx!(
+    config::SawtoothQuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -49,13 +58,11 @@ function _add_sawtooth_quadratic_approx!(
     x_min::Float64,
     x_max::Float64,
     depth::Int,
-    meta::String;
-    tighten::Bool = false,
-    epigraph_depth::Int = max(2, ceil(Int, 1.5 * depth)),
-    add_mccormick::Bool = false,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op depth >= 1
+    epigraph_depth = max(2, ceil(Int, 1.5 * depth))
     jump_model = get_jump_model(container)
     delta = x_max - x_min
 
@@ -107,9 +114,9 @@ function _add_sawtooth_quadratic_approx!(
         meta,
     )
 
-    if tighten
-        lp_expr = _add_epigraph_quadratic_approx!(
-            container, C, names, time_steps,
+    if config.tighten
+        lp_expr = _add_quadratic_approx!(
+            EpigraphQuadConfig(), container, C, names, time_steps,
             x_var, x_min, x_max,
             epigraph_depth, meta * "_lb",
         )
@@ -201,7 +208,7 @@ function _add_sawtooth_quadratic_approx!(
             )
         end
 
-        if tighten
+        if config.tighten
             z =
                 z_var[name, t] = JuMP.@variable(
                     jump_model,
@@ -217,7 +224,7 @@ function _add_sawtooth_quadratic_approx!(
         end
     end
 
-    if add_mccormick
+    if config.add_mccormick
         _add_mccormick_envelope!(
             container, C, names, time_steps,
             x_var, result_expr,

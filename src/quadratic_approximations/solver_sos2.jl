@@ -1,9 +1,6 @@
 # SOS2-based piecewise linear approximation of x² for use in constraints.
 # Uses solver-native MOI.SOS2 constraints for adjacency enforcement.
 
-"Expression container for quadratic (x²) approximation results."
-struct QuadraticExpression <: ExpressionType end
-
 "lambda_var (λ) convex combination weight variables for SOS2 quadratic approximation."
 struct QuadraticVariable <: SparseVariableType end
 "Links x to the weighted sum of breakpoints in SOS2 quadratic approximation."
@@ -15,8 +12,14 @@ struct SOS2NormExpression <: ExpressionType end
 
 struct SolverSOS2Constraint <: ConstraintType end
 
+"Config for solver-native SOS2 quadratic approximation (MOI.SOS2 adjacency)."
+struct SolverSOS2QuadConfig <: QuadraticApproxConfig
+    add_mccormick::Bool
+end
+SolverSOS2QuadConfig() = SolverSOS2QuadConfig(false)
+
 """
-    _add_sos2_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, num_segments, meta)
+    _add_quadratic_approx!(config::SolverSOS2QuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
 
 Approximate x² using a piecewise linear function with solver-native SOS2 constraints.
 
@@ -25,6 +28,7 @@ adds linking, normalization, and MOI.SOS2 constraints, and stores affine express
 approximating x² in a `QuadraticExpression` expression container.
 
 # Arguments
+- `config::SolverSOS2QuadConfig`: configuration (includes `add_mccormick` flag)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -32,10 +36,11 @@ approximating x² in a `QuadraticExpression` expression container.
 - `x_var`: container of variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
-- `num_segments::Int`: number of PWL segments
+- `depth::Int`: number of PWL segments
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
 """
-function _add_sos2_quadratic_approx!(
+function _add_quadratic_approx!(
+    config::SolverSOS2QuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -43,13 +48,12 @@ function _add_sos2_quadratic_approx!(
     x_var,
     x_min::Float64,
     x_max::Float64,
-    num_segments::Int,
-    meta::String;
-    add_mccormick::Bool = false,
+    depth::Int,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
-        _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments)
-    n_points = num_segments + 1
+        _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments = depth)
+    n_points = depth + 1
     jump_model = get_jump_model(container)
 
     # Create all containers upfront
@@ -145,7 +149,7 @@ function _add_sos2_quadratic_approx!(
         result_expr[name, t] = x_hat_sq
     end
 
-    if add_mccormick
+    if config.add_mccormick
         _add_mccormick_envelope!(
             container, C, names, time_steps,
             x_var, result_expr,

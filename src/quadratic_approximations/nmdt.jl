@@ -7,8 +7,20 @@
 # NMDT Reference: Teles, Castro, Matos (2013), Multiparametric disaggregation
 # technique for global optimization of polynomial programming problems.
 
+"Config for double-NMDT quadratic approximation."
+struct DNMDTQuadConfig <: QuadraticApproxConfig
+    tighten::Bool
+end
+DNMDTQuadConfig() = DNMDTQuadConfig(true)
+
+"Config for single-NMDT quadratic approximation."
+struct NMDTQuadConfig <: QuadraticApproxConfig
+    tighten::Bool
+end
+NMDTQuadConfig() = NMDTQuadConfig(true)
+
 """
-    _add_dnmdt_approx!(container, C, names, time_steps, x_disc, meta; tighten)
+    _add_quadratic_approx!(config::DNMDTQuadConfig, container, C, names, time_steps, x_disc, meta)
 
 Approximate x² using the Double NMDT (DNMDT) method from a pre-built discretization.
 
@@ -17,23 +29,24 @@ DNMDT assembler, storing results in a `QuadraticExpression` container. Optionall
 tightens lower bounds with an epigraph relaxation via `_tighten_lower_bounds!`.
 
 # Arguments
+- `config::DNMDTQuadConfig`: configuration (contains `tighten` flag)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
 - `time_steps::UnitRange{Int}`: time periods
 - `x_disc::NMDTDiscretization`: pre-built discretization for x
 - `meta::String`: identifier encoding the original variable type being approximated
-- `tighten::Bool`: if true, add epigraph lower-bound tightening (default: false)
 """
-function _add_dnmdt_approx!(
+function _add_quadratic_approx!(
+    config::DNMDTQuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
-    meta::String;
-    tighten::Bool = false,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    tighten = config.tighten
     bx_xh_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, x_disc.norm_expr, 0.0, 1.0,
@@ -45,7 +58,7 @@ function _add_dnmdt_approx!(
         meta * "_bx_dx"; tighten,
     )
 
-    result_expr = _add_dnmdt_approx!(
+    result_expr = _assemble_dnmdt!(
         container, C, names, time_steps,
         bx_xh_expr, bx_dx_expr, bx_xh_expr, bx_dx_expr,
         x_disc, x_disc, meta; tighten,
@@ -63,7 +76,7 @@ function _add_dnmdt_approx!(
 end
 
 """
-    _add_dnmdt_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta; tighten)
+    _add_quadratic_approx!(config::DNMDTQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
 
 Approximate x² using the Double NMDT (DNMDT) method from raw variable inputs.
 
@@ -71,6 +84,7 @@ Discretizes x via `_discretize!` then delegates to the `NMDTDiscretization` over
 Stores results in a `QuadraticExpression` container.
 
 # Arguments
+- `config::DNMDTQuadConfig`: configuration (contains `tighten` flag)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -80,9 +94,9 @@ Stores results in a `QuadraticExpression` container.
 - `x_max::Float64`: upper bound of x domain
 - `depth::Int`: number of binary discretization levels L
 - `meta::String`: identifier encoding the original variable type being approximated
-- `tighten::Bool`: if true, add epigraph lower-bound tightening (default: false)
 """
-function _add_dnmdt_approx!(
+function _add_quadratic_approx!(
+    config::DNMDTQuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -91,22 +105,21 @@ function _add_dnmdt_approx!(
     x_min::Float64,
     x_max::Float64,
     depth::Int,
-    meta::String;
-    tighten::Bool = false,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_disc = _discretize!(
         container, C, names, time_steps,
         x_var, x_min, x_max, depth, meta,
     )
 
-    return _add_dnmdt_approx!(
-        container, C, names, time_steps,
-        x_disc, meta; tighten,
+    return _add_quadratic_approx!(
+        config, container, C, names, time_steps,
+        x_disc, meta,
     )
 end
 
 """
-    _add_nmdt_approx!(container, C, names, time_steps, x_disc, meta; tighten)
+    _add_quadratic_approx!(config::NMDTQuadConfig, container, C, names, time_steps, x_disc, meta)
 
 Approximate x² using the NMDT method from a pre-built discretization.
 
@@ -115,23 +128,24 @@ assembles x² via `_assemble_product!`. Stores results in a `QuadraticExpression
 container. Optionally tightens lower bounds with an epigraph relaxation.
 
 # Arguments
+- `config::NMDTQuadConfig`: configuration (contains `tighten` flag)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
 - `time_steps::UnitRange{Int}`: time periods
 - `x_disc::NMDTDiscretization`: pre-built discretization for x
 - `meta::String`: identifier encoding the original variable type being approximated
-- `tighten::Bool`: if true, add epigraph lower-bound tightening (default: false)
 """
-function _add_nmdt_approx!(
+function _add_quadratic_approx!(
+    config::NMDTQuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
-    meta::String;
-    tighten::Bool = false,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    tighten = config.tighten
     bx_y_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, x_disc.norm_expr, 0.0, 1.0,
@@ -161,7 +175,7 @@ function _add_nmdt_approx!(
 end
 
 """
-    _add_nmdt_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta; tighten)
+    _add_quadratic_approx!(config::NMDTQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
 
 Approximate x² using the NMDT method from raw variable inputs.
 
@@ -169,6 +183,7 @@ Discretizes x via `_discretize!` then delegates to the `NMDTDiscretization` over
 Stores results in a `QuadraticExpression` container.
 
 # Arguments
+- `config::NMDTQuadConfig`: configuration (contains `tighten` flag)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -178,9 +193,9 @@ Stores results in a `QuadraticExpression` container.
 - `x_max::Float64`: upper bound of x domain
 - `depth::Int`: number of binary discretization levels L
 - `meta::String`: identifier encoding the original variable type being approximated
-- `tighten::Bool`: if true, add epigraph lower-bound tightening (default: false)
 """
-function _add_nmdt_approx!(
+function _add_quadratic_approx!(
+    config::NMDTQuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -189,21 +204,15 @@ function _add_nmdt_approx!(
     x_min::Float64,
     x_max::Float64,
     depth::Int,
-    meta::String;
-    tighten::Bool = false,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_disc = _discretize!(
         container, C, names, time_steps,
         x_var, x_min, x_max, depth, meta,
     )
 
-    return _add_nmdt_approx!(
-        container, C, names, time_steps,
-        x_disc, meta; tighten,
+    return _add_quadratic_approx!(
+        config, container, C, names, time_steps,
+        x_disc, meta,
     )
 end
-
-# Aliases used by the quadratic and bilinear approximation dispatch layers.
-# Both quadratic (x²) and bilinear (x·y with x=y) cases share the same implementation.
-_add_nmdt_quadratic_approx! = _add_nmdt_approx!
-_add_dnmdt_quadratic_approx! = _add_dnmdt_approx!

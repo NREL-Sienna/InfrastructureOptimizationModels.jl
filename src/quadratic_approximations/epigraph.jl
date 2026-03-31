@@ -12,8 +12,11 @@ struct EpigraphVariable <: VariableType end
 struct EpigraphTangentConstraint <: ConstraintType end
 struct EpigraphTangentExpression <: ExpressionType end
 
+"Config for epigraph (Q^{L1}) LP-only lower-bound quadratic approximation."
+struct EpigraphQuadConfig <: QuadraticApproxConfig end
+
 """
-    _add_epigraph_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
+    _add_quadratic_approx!(::EpigraphQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
 
 Create a variable z that lower-bounds x² using tangent-line cuts (Q^{L1} relaxation).
 
@@ -27,6 +30,7 @@ The maximum underestimation gap between the tangent envelope and x² is
 Δ²·2^{−2·depth−2} where Δ = x_max − x_min.
 
 # Arguments
+- `::EpigraphQuadConfig`: dispatch config (no fields; depth is a positional parameter)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -37,7 +41,8 @@ The maximum underestimation gap between the tangent envelope and x² is
 - `depth::Int`: epigraph depth L1 (uses 2^depth + 1 tangent breakpoints)
 - `meta::String`: variable type identifier for the approximated variable
 """
-function _add_epigraph_quadratic_approx!(
+function _add_quadratic_approx!(
+    ::EpigraphQuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},

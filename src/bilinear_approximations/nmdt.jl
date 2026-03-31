@@ -5,8 +5,16 @@
 # Reference: Teles, Castro, Matos (2013), Multiparametric disaggregation technique for global
 # optimization of polynomial programming problems.
 
+"Config for double-NMDT bilinear approximation (discretizes both x and y)."
+struct DNMDTBilinearConfig <: BilinearApproxConfig end
+
+"Config for single-NMDT bilinear approximation (discretizes x only)."
+struct NMDTBilinearConfig <: BilinearApproxConfig end
+
+# --- DNMDT bilinear approximation ---
+
 """
-    _add_dnmdt_approx!(container, C, names, time_steps, x_disc, y_disc, meta)
+    _add_bilinear_approx!(config::DNMDTBilinearConfig, container, C, names, time_steps, x_disc, y_disc, meta)
 
 Approximate x·y using the DNMDT method from pre-built discretizations.
 
@@ -15,6 +23,7 @@ then delegates to the core DNMDT assembler. Stores results in a `BilinearProduct
 container.
 
 # Arguments
+- `config::DNMDTBilinearConfig`: configuration for the DNMDT bilinear approximation
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -23,7 +32,8 @@ container.
 - `y_disc::NMDTDiscretization`: pre-built discretization for y
 - `meta::String`: identifier encoding the original variable type being approximated
 """
-function _add_dnmdt_approx!(
+function _add_bilinear_approx!(
+    config::DNMDTBilinearConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -53,7 +63,7 @@ function _add_dnmdt_approx!(
         meta * "_bx_dy",
     )
 
-    return _add_dnmdt_approx!(
+    return _assemble_dnmdt!(
         container, C, names, time_steps,
         bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr,
         x_disc, y_disc, meta;
@@ -62,14 +72,15 @@ function _add_dnmdt_approx!(
 end
 
 """
-    _add_dnmdt_approx!(container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
+    _add_bilinear_approx!(config::DNMDTBilinearConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
 
 Approximate x·y using the DNMDT method from raw variable inputs.
 
 Discretizes both x and y independently via `_discretize!` then delegates to the
-two-discretization overload. Stores results in a `BilinearProductExpression` container.
+pre-discretized overload.
 
 # Arguments
+- `config::DNMDTBilinearConfig`: configuration for the DNMDT bilinear approximation
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -83,7 +94,8 @@ two-discretization overload. Stores results in a `BilinearProductExpression` con
 - `depth::Int`: number of binary discretization levels L for both x and y
 - `meta::String`: identifier encoding the original variable type being approximated
 """
-function _add_dnmdt_approx!(
+function _add_bilinear_approx!(
+    config::DNMDTBilinearConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -98,22 +110,43 @@ function _add_dnmdt_approx!(
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_disc = _discretize!(
-        container, C, names, time_steps,
-        x_var, x_min, x_max, depth, meta * "_x",
+        container,
+        C,
+        names,
+        time_steps,
+        x_var,
+        x_min,
+        x_max,
+        depth,
+        meta * "_x",
     )
     y_disc = _discretize!(
-        container, C, names, time_steps,
-        y_var, y_min, y_max, depth, meta * "_y",
+        container,
+        C,
+        names,
+        time_steps,
+        y_var,
+        y_min,
+        y_max,
+        depth,
+        meta * "_y",
     )
-
-    return _add_dnmdt_approx!(
-        container, C, names, time_steps,
-        x_disc, y_disc, meta,
+    return _add_bilinear_approx!(
+        config,
+        container,
+        C,
+        names,
+        time_steps,
+        x_disc,
+        y_disc,
+        meta,
     )
 end
 
+# --- NMDT bilinear approximation ---
+
 """
-    _add_nmdt_approx!(container, C, names, time_steps, x_disc, yh_expr, meta)
+    _add_bilinear_approx!(config::NMDTBilinearConfig, container, C, names, time_steps, x_disc, yh_expr, y_min, y_max, meta)
 
 Approximate x·y using the NMDT method from a pre-built x discretization and normalized y.
 
@@ -122,15 +155,19 @@ Computes binary-continuous product β_x·yh and residual product δ_x·yh, then 
 x·y via `_assemble_product!`. Stores results in a `BilinearProductExpression` container.
 
 # Arguments
+- `config::NMDTBilinearConfig`: configuration for the NMDT bilinear approximation
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
 - `time_steps::UnitRange{Int}`: time periods
 - `x_disc::NMDTDiscretization`: pre-built discretization for x
 - `yh_expr`: expression container for the normalized variable yh = (y − y_min)/(y_max − y_min)
+- `y_min::Float64`: lower bound of y
+- `y_max::Float64`: upper bound of y
 - `meta::String`: identifier encoding the original variable type being approximated
 """
-function _add_nmdt_approx!(
+function _add_bilinear_approx!(
+    config::NMDTBilinearConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -160,15 +197,15 @@ function _add_nmdt_approx!(
 end
 
 """
-    _add_nmdt_approx!(container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
+    _add_bilinear_approx!(config::NMDTBilinearConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
 
 Approximate x·y using the NMDT method from raw variable inputs.
 
 Discretizes x via `_discretize!` and normalizes y via `_normed_variable!`, then
-delegates to the `(x_disc, yh_expr)` overload. Stores results in a `BilinearProductExpression`
-container.
+delegates to the pre-discretized overload.
 
 # Arguments
+- `config::NMDTBilinearConfig`: configuration for the NMDT bilinear approximation
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -182,7 +219,8 @@ container.
 - `depth::Int`: number of binary discretization levels L for x
 - `meta::String`: identifier encoding the original variable type being approximated
 """
-function _add_nmdt_approx!(
+function _add_bilinear_approx!(
+    config::NMDTBilinearConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -197,19 +235,28 @@ function _add_nmdt_approx!(
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_disc = _discretize!(
-        container, C, names, time_steps,
-        x_var, x_min, x_max, depth, meta * "_x",
+        container,
+        C,
+        names,
+        time_steps,
+        x_var,
+        x_min,
+        x_max,
+        depth,
+        meta * "_x",
     )
-    yh_expr = _normed_variable!(
-        container, C, names, time_steps,
-        y_var, y_min, y_max, meta * "_y",
-    )
-
-    return _add_nmdt_approx!(
-        container, C, names, time_steps,
-        x_disc, yh_expr, y_min, y_max, meta,
+    yh_expr =
+        _normed_variable!(container, C, names, time_steps, y_var, y_min, y_max, meta * "_y")
+    return _add_bilinear_approx!(
+        config,
+        container,
+        C,
+        names,
+        time_steps,
+        x_disc,
+        yh_expr,
+        y_min,
+        y_max,
+        meta,
     )
 end
-
-_add_nmdt_bilinear_approx! = _add_nmdt_approx!
-_add_dnmdt_bilinear_approx! = _add_dnmdt_approx!

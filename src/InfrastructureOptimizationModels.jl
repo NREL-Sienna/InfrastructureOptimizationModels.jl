@@ -591,6 +591,7 @@ include("objective_function/value_curve_cost.jl")    # ValueCurve → delta PWL
 
 # Quadratic approximations (PWL via SOS2)
 include("quadratic_approximations/common.jl")
+include("quadratic_approximations/no_approx.jl")
 include("quadratic_approximations/pwl_utils.jl")
 include("quadratic_approximations/incremental.jl")
 include("quadratic_approximations/solver_sos2.jl")
@@ -603,7 +604,8 @@ include("quadratic_approximations/pwmcc_cuts.jl")
 
 # Bilinear approximations (x·y via Bin2/HybS decomposition)
 include("bilinear_approximations/mccormick.jl")
-include("bilinear_approximations/bilinear.jl")
+include("bilinear_approximations/bin2.jl")
+include("bilinear_approximations/no_approx.jl")
 include("bilinear_approximations/hybs.jl")
 include("bilinear_approximations/nmdt.jl")
 
