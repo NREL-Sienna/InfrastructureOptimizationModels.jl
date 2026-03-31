@@ -599,6 +599,7 @@ include("quadratic_approximations/sawtooth.jl")
 include("quadratic_approximations/epigraph.jl")
 include("quadratic_approximations/nmdt_common.jl")
 include("quadratic_approximations/nmdt.jl")
+include("quadratic_approximations/pwmcc_cuts.jl")
 
 # Bilinear approximations (x·y via Bin2/HybS decomposition)
 include("bilinear_approximations/mccormick.jl")

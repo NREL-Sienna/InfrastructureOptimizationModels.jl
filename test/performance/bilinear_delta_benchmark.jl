@@ -709,7 +709,7 @@ bilinear_methods = Dict(
         (
             "Bin2+sSOS",
             SeparableMethod(),
-            IOM._add_sos2_bilinear_approx!,
+            IOM._add_sos2_pwmcc_bilinear_approx!,
             (),
             IOM._add_sos2_quadratic_approx!,
             (),
@@ -809,7 +809,7 @@ bilinear_methods = Dict(
         (
             "Bin2+sSOS",
             SeparableMethod(),
-            IOM._add_sos2_bilinear_approx!,
+            IOM._add_sos2_pwmcc_bilinear_approx!,
             (),
             IOM._add_sos2_quadratic_approx!,
             (),
