@@ -167,6 +167,8 @@ export get_duals, get_reference_buses, get_subnetworks, get_bus_area_map
 export get_power_flow_evaluation, has_subnetworks, get_subsystem
 export set_subsystem!, add_dual!
 export requires_all_branch_models, supports_branch_filtering, ignores_branch_filtering
+export validate_network_model
+export validate_available_devices
 export BranchReductionOptimizationTracker
 export get_variable_dict, get_constraint_dict, get_constraint_map_by_type
 export get_number_of_steps, set_number_of_steps!
@@ -177,6 +179,7 @@ export get_number_of_steps, set_number_of_steps!
 export DeviceModel
 export ServiceModel
 export FixedOutput
+export get_device_cache
 
 # Parameter Container Infrastructure
 export ParameterContainer
@@ -193,7 +196,6 @@ export validate_time_series!
 export init_optimization_container!
 ## Op Model Exports
 export get_initial_conditions
-export serialize_problem
 export serialize_outputs
 export serialize_optimization_model
 
@@ -476,7 +478,7 @@ export DefaultEmulationProblem
 export Settings
 export get_warm_start
 export get_horizon, get_initial_time, get_optimizer, get_ext
-export get_system_to_file, get_initialize_model, get_initialization_file
+export get_check_components, get_initialize_model, get_initialization_file
 export get_deserialize_initial_conditions, get_export_pwl_vars
 export get_check_numerical_bounds, get_allow_fails
 export get_optimizer_solve_log_print, get_calculate_conflict
@@ -484,7 +486,7 @@ export get_detailed_optimizer_stats, get_direct_mode_optimizer
 export get_store_variable_names, get_export_optimization_model
 export use_time_series_cache
 export set_horizon!, set_initial_time!, set_warm_start!
-export copy_for_serialization, restore_from_copy, log_values
+export log_values
 export InitialConditionsData
 
 # Constants
@@ -548,6 +550,7 @@ include("core/outputs_by_time.jl")
 # Order Required
 include("operation/problem_template.jl")
 include("core/optimization_container.jl")
+include("core/dual_processing.jl")
 include("core/model_store_params.jl")
 
 # Standard variable and expression types (after OptimizationContainer is defined)
@@ -617,7 +620,6 @@ include("operation/initial_conditions_update_in_memory_store.jl")
 include("operation/decision_model.jl")
 include("operation/emulation_model.jl")
 include("operation/problem_outputs.jl")
-include("operation/operation_model_serialization.jl")
 include("operation/time_series_interface.jl")
 include("operation/optimization_debugging.jl")
 include("operation/model_numerical_analysis_utils.jl")
