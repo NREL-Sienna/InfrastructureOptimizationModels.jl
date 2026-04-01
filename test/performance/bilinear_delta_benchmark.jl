@@ -697,21 +697,22 @@ function print_result_row(r)
     flush(stdout)
 end
 
-"""Serialize a result NamedTuple to a JSON-writable Dict."""
+"""Serialize a result NamedTuple to a JSON-writable Dict (NaN/Inf → nothing)."""
 function result_to_dict(r)
+    nan_safe(x) = (x isa AbstractFloat && !isfinite(x)) ? nothing : x
     return Dict{String, Any}(
         "label" => r.label,
         "refinement" => r.refinement,
         "is_exact" => r.is_exact,
         "solved" => r.solved,
         "status" => string(r.status),
-        "obj" => r.obj,
-        "nlp_obj" => r.nlp_obj,
-        "gap" => r.gap,
-        "mn_bi" => r.mn_bi,
-        "mx_bi" => r.mx_bi,
-        "mn_q" => r.mn_q,
-        "mx_q" => r.mx_q,
+        "obj" => nan_safe(r.obj),
+        "nlp_obj" => nan_safe(r.nlp_obj),
+        "gap" => nan_safe(r.gap),
+        "mn_bi" => nan_safe(r.mn_bi),
+        "mx_bi" => nan_safe(r.mx_bi),
+        "mn_q" => nan_safe(r.mn_q),
+        "mx_q" => nan_safe(r.mx_q),
         "variables" => r.variables,
         "constraints" => r.constraints,
         "binaries" => r.binaries,
@@ -720,26 +721,27 @@ function result_to_dict(r)
     )
 end
 
-"""Deserialize a Dict from JSON back to a NamedTuple matching run_single_case output."""
+"""Deserialize a Dict from JSON back to a NamedTuple (nothing → NaN)."""
 function dict_to_result(d)
+    as_float(x) = x === nothing ? NaN : Float64(x)
     return (;
         label = d["label"],
-        refinement = d["refinement"],
+        refinement = Int(d["refinement"]),
         is_exact = d["is_exact"],
         solved = d["solved"],
         status = d["status"],
-        obj = d["obj"],
-        nlp_obj = d["nlp_obj"],
-        gap = d["gap"],
-        mn_bi = d["mn_bi"],
-        mx_bi = d["mx_bi"],
-        mn_q = d["mn_q"],
-        mx_q = d["mx_q"],
-        variables = d["variables"],
-        constraints = d["constraints"],
-        binaries = d["binaries"],
-        build_t = d["build_t"],
-        solve_t = d["solve_t"],
+        obj = as_float(d["obj"]),
+        nlp_obj = as_float(d["nlp_obj"]),
+        gap = as_float(d["gap"]),
+        mn_bi = as_float(d["mn_bi"]),
+        mx_bi = as_float(d["mx_bi"]),
+        mn_q = as_float(d["mn_q"]),
+        mx_q = as_float(d["mx_q"]),
+        variables = Int(d["variables"]),
+        constraints = Int(d["constraints"]),
+        binaries = Int(d["binaries"]),
+        build_t = Float64(d["build_t"]),
+        solve_t = Float64(d["solve_t"]),
     )
 end
 
