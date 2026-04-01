@@ -814,7 +814,10 @@ function run_benchmark(;
                 opt = if is_exact && contains(label, "Ipopt")
                     Ipopt.Optimizer
                 elseif is_exact && contains(label, "Uno")
-                    () -> UnoSolver.Optimizer(; preset = "filtersqp")
+                    optimizer_with_attributes(
+                        UnoSolver.Optimizer,
+                        "preset" => "ipopt"
+                    )
                 else
                     LP_OPT
                 end
