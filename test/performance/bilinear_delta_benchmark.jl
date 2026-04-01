@@ -573,7 +573,7 @@ end
 function solver_log_path()
     log_dir = joinpath(@__DIR__, "logs")
     mkpath(log_dir)
-    tag = isempty(job_id) ? Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS") : SLURM_JOB_ID
+    tag = isempty(SLURM_JOB_ID) ? Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS") : SLURM_JOB_ID
     return joinpath(log_dir, "solver_$(tag).log")
 end
 
@@ -1014,27 +1014,39 @@ function run_worker(parsed)
     mip_methods_list = collect(bilinear_methods[ENVIRONMENT])
     label, bilin_config, quad_config = mip_methods_list[mi]
 
-    r = run_single_case(;
-        optimizer = LP_OPT,
-        net,
-        bilinear_config = bilin_config,
-        quad_config,
-        refinement = ref,
-        label,
-        is_exact = false,
-        nlp_obj,
-        logfile = outfile * ".log",
-        build_only = false,
-        time_limit = MIP_TIME_LIMIT_SEC,
-        threads = KESTREL_XPRESS_THREADS,
-    )
+    log_dir = joinpath(@__DIR__, "logs")
+    mkpath(log_dir)
+    tag = isempty(SLURM_JOB_ID) ? Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS") : SLURM_JOB_ID
+    safe_label = replace(label, " " => "_")
+    worker_log_path = joinpath(log_dir, "solver_$(tag)_$(safe_label)_R$(ref).log")
+    logfile = open(worker_log_path, "a")
 
-    mkpath(dirname(outfile))
-    open(outfile, "w") do io
-        JSON3.write(io, result_to_dict(r))
+    try
+        r = run_single_case(;
+            optimizer = LP_OPT,
+            net,
+            bilinear_config = bilin_config,
+            quad_config,
+            refinement = ref,
+            label,
+            is_exact = false,
+            nlp_obj,
+            logfile,
+            build_only = false,
+            time_limit = MIP_TIME_LIMIT_SEC,
+            threads = KESTREL_XPRESS_THREADS,
+        )
+
+        mkpath(dirname(outfile))
+        open(outfile, "w") do io
+            JSON3.write(io, result_to_dict(r))
+        end
+
+        @info "Worker done: $label R=$ref status=$(r.status) obj=$(r.obj) log=$worker_log_path"
+    finally
+        flush(logfile)
+        close(logfile)
     end
-
-    @info "Worker done: $label R=$ref status=$(r.status) obj=$(r.obj)"
 end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
