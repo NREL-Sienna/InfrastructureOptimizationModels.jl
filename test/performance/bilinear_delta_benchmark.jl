@@ -506,13 +506,13 @@ end
     return abs(actual - measured) / max(abs(actual), eps)
 end
 
-@inline function geometric_mean(sequence)
-    return reduce(*, sequence)^(1 / length(sequence))
+@inline function rmse(sequence)
+    return sqrt(sum(x -> x^2, sequence) / length(sequence))
 end
 
 """
 Compute per-node relative residuals |true − approx| / |true| for the bilinear
-and quadratic products.
+and quadratic products. Returns (rmse_bi, max_bi, rmse_q, max_q).
 """
 function compute_bilinear_residuals(result, net::MockNetworkProblem)
     V = result.V_container
@@ -538,9 +538,9 @@ function compute_bilinear_residuals(result, net::MockNetworkProblem)
     end
 
     return (
-        geometric_mean(bilin_residuals),
+        rmse(bilin_residuals),
         maximum(bilin_residuals),
-        geometric_mean(quad_residuals),
+        rmse(quad_residuals),
         maximum(quad_residuals),
     )
 end
@@ -635,6 +635,8 @@ function run_single_case(;
 
     obj = NaN
     gap = NaN
+    mip_gap = NaN
+    lower_bound = NaN
     mn_bi = NaN
     mx_bi = NaN
     mn_q = NaN
@@ -644,6 +646,16 @@ function run_single_case(;
         obj = JuMP.objective_value(result.jump_model)
         gap = residual(nlp_obj, obj) * 100.0
         mn_bi, mx_bi, mn_q, mx_q = compute_bilinear_residuals(result, net)
+        if !is_exact
+            try
+                mip_gap = JuMP.relative_gap(result.jump_model) * 100.0
+            catch
+            end
+            try
+                lower_bound = JuMP.objective_bound(result.jump_model)
+            catch
+            end
+        end
     end
 
     return (;
@@ -655,6 +667,8 @@ function run_single_case(;
         obj,
         nlp_obj,
         gap,
+        mip_gap,
+        lower_bound,
         mn_bi, mx_bi, mn_q, mx_q,
         variables = sz.variables,
         constraints = sz.constraints,
@@ -667,14 +681,15 @@ end
 # ─── Result formatting ────────────────────────────────────────────────────────
 
 function print_table_header()
-    println("="^120)
+    println("="^145)
     println("Bilinear Approximation Benchmarks")
     println("  Refinement = depth for all methods")
-    println("="^120)
-    @printf("%-12s %4s %6s %7s %6s %12s %8s %9s %9s %9s %9s %8s %8s\n",
+    println("="^145)
+    @printf("%-12s %4s %6s %7s %6s %12s %8s %9s %12s %9s %9s %9s %9s %8s %8s\n",
         "Method", "R", "Vars", "Constrs", "Bins", "Objective",
-        "Gap(%)", "avg δbi", "max δbi", "avg δq", "max δq", "build_t", "solve_t")
-    println("-"^120)
+        "Gap(%)", "MIPGap(%)", "LowerBnd",
+        "rmse δbi", "max δbi", "rmse δq", "max δq", "build_t", "solve_t")
+    println("-"^145)
     flush(stdout)
 end
 
@@ -682,17 +697,20 @@ function print_result_row(r)
     if r.solved
         gap_str = isnan(r.gap) ? "    -" : @sprintf("%8.4f", r.gap)
         ref_str = r.is_exact ? "   -" : @sprintf("%4d", r.refinement)
+        mip_gap_str = (r.is_exact || isnan(r.mip_gap)) ? "        -" : @sprintf("%9.4f", r.mip_gap)
+        lb_str = (r.is_exact || isnan(r.lower_bound)) ? "           -" : @sprintf("%12.6f", r.lower_bound)
         @printf(
-            "%-12s %2s %6d %7d %6d %12.6f %6s %9.2e %9.2e %9.2e %9.2e %8.4f %8.4f\n",
+            "%-12s %2s %6d %7d %6d %12.6f %6s %9s %12s %9.2e %9.2e %9.2e %9.2e %8.4f %8.4f\n",
             r.label, ref_str,
             r.variables, r.constraints, r.binaries,
-            r.obj, gap_str, r.mn_bi, r.mx_bi, r.mn_q, r.mx_q, r.build_t, r.solve_t)
+            r.obj, gap_str, mip_gap_str, lb_str,
+            r.mn_bi, r.mx_bi, r.mn_q, r.mx_q, r.build_t, r.solve_t)
     else
         ref_str = r.is_exact ? "  -" : @sprintf("%4d", r.refinement)
-        @printf("%-12s %2s %6d %7d %6d %12s %6s %9s %9s %9s %9s %8.4f %8.4f\n",
+        @printf("%-12s %2s %6d %7d %6d %12s %6s %9s %12s %9s %9s %9s %9s %8.4f %8.4f\n",
             r.label, ref_str,
             r.variables, r.constraints, r.binaries,
-            string(r.status), "-", "-", "-", "-", "-", r.build_t, r.solve_t)
+            string(r.status), "-", "-", "-", "-", "-", "-", "-", r.build_t, r.solve_t)
     end
     flush(stdout)
 end
@@ -709,6 +727,8 @@ function result_to_dict(r)
         "obj" => nan_safe(r.obj),
         "nlp_obj" => nan_safe(r.nlp_obj),
         "gap" => nan_safe(r.gap),
+        "mip_gap" => nan_safe(r.mip_gap),
+        "lower_bound" => nan_safe(r.lower_bound),
         "mn_bi" => nan_safe(r.mn_bi),
         "mx_bi" => nan_safe(r.mx_bi),
         "mn_q" => nan_safe(r.mn_q),
@@ -733,6 +753,8 @@ function dict_to_result(d)
         obj = as_float(d["obj"]),
         nlp_obj = as_float(d["nlp_obj"]),
         gap = as_float(d["gap"]),
+        mip_gap = as_float(d["mip_gap"]),
+        lower_bound = as_float(d["lower_bound"]),
         mn_bi = as_float(d["mn_bi"]),
         mx_bi = as_float(d["mx_bi"]),
         mn_q = as_float(d["mn_q"]),
@@ -974,6 +996,7 @@ function run_benchmark_parallel(;
                 solved = false,
                 status = "WORKER_FAILED",
                 obj = NaN, nlp_obj, gap = NaN,
+                mip_gap = NaN, lower_bound = NaN,
                 mn_bi = NaN, mx_bi = NaN, mn_q = NaN, mx_q = NaN,
                 variables = 0, constraints = 0, binaries = 0,
                 build_t = 0.0, solve_t = 0.0,
