@@ -60,6 +60,7 @@ const IS = IOM.IS
 const MIP_TIME_LIMIT_SEC = 3600.0
 const KESTREL_XPRESS_THREADS = 20
 const KESTREL_MAX_WORKERS = 5
+const SLURM_JOB_ID = get(ENV, "SLURM_JOB_ID", "")
 
 include("../mocks/mock_system.jl")
 include("../mocks/mock_components.jl")
@@ -572,8 +573,7 @@ end
 function solver_log_path()
     log_dir = joinpath(@__DIR__, "logs")
     mkpath(log_dir)
-    job_id = get(ENV, "SLURM_JOB_ID", "")
-    tag = isempty(job_id) ? Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS") : job_id
+    tag = isempty(job_id) ? Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS") : SLURM_JOB_ID
     return joinpath(log_dir, "solver_$(tag).log")
 end
 
@@ -919,7 +919,7 @@ function run_benchmark_parallel(;
 
     for (mi, ref) in jobs
         label = mip_methods[mi][1]
-        outfile = joinpath(res_dir, "$(replace(label, " " => "_"))_R$(ref).json")
+        outfile = joinpath(res_dir, "$(SLURM_JOB_ID)_$(replace(label, " " => "_"))_R$(ref).json")
         cmd = Cmd(`julia --project=$project_arg $script_path
             --worker
             --method-index $mi
@@ -959,7 +959,7 @@ function run_benchmark_parallel(;
     mip_results = []
     for (mi, ref) in jobs
         label = mip_methods[mi][1]
-        outfile = joinpath(res_dir, "$(replace(label, " " => "_"))_R$(ref).json")
+        outfile = joinpath(res_dir, "$(SLURM_JOB_ID)_$(replace(label, " " => "_"))_R$(ref).json")
         if isfile(outfile)
             d = open(outfile) do io
                 JSON3.read(io, Dict{String, Any})
@@ -1023,7 +1023,7 @@ function run_worker(parsed)
         label,
         is_exact = false,
         nlp_obj,
-        logfile = devnull,
+        logfile = outfile * ".log",
         build_only = false,
         time_limit = MIP_TIME_LIMIT_SEC,
         threads = KESTREL_XPRESS_THREADS,
@@ -1177,15 +1177,15 @@ if abspath(PROGRAM_FILE) == @__FILE__
             refinements = parsed["refinements"]
 
             # Run small network so second run is faster.
-            redirect_stdout(devnull) do
-                run_benchmark(;
-                    N = 2,
-                    K = 1,
-                    seed = 0,
-                    build_only = false,
-                    refinements = [1],
-                )
-            end
+            # redirect_stdout(devnull) do
+            #     run_benchmark(;
+            #         N = 2,
+            #         K = 1,
+            #         seed = 0,
+            #         build_only = false,
+            #         refinements = [1],
+            #     )
+            # end
 
             if ENVIRONMENT == :kestrel && !build_only
                 run_benchmark_parallel(; N, K, seed, refinements)
