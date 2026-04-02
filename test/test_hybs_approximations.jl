@@ -204,6 +204,33 @@ end
         @test n_bin == 2 * depth
     end
 
+    @testset "Reformulated McCormick constraints present" begin
+        setup = _setup_bilinear_test(["dev1"], 1:1)
+
+        IOM._add_bilinear_approx!(
+            IOM.HybSConfig(IOM.SawtoothQuadConfig(false, false), true),
+            setup.container,
+            MockThermalGen,
+            ["dev1"],
+            1:1,
+            setup.x_var_container,
+            setup.y_var_container,
+            0.0,
+            4.0,
+            0.0,
+            4.0,
+            2,
+            HYBS_META,
+        )
+
+        @test IOM.has_container_key(
+            setup.container,
+            IOM.ReformulatedMcCormickConstraint,
+            MockThermalGen,
+            HYBS_META,
+        )
+    end
+
     @testset "Constraint structure without McCormick" begin
         setup = _setup_bilinear_test(["dev1"], 1:1)
 
@@ -225,7 +252,7 @@ end
 
         @test !IOM.has_container_key(
             setup.container,
-            IOM.McCormickConstraint,
+            IOM.ReformulatedMcCormickConstraint,
             MockThermalGen,
             HYBS_META,
         )

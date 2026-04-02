@@ -573,7 +573,11 @@ end
 function solver_log_path()
     log_dir = joinpath(@__DIR__, "logs")
     mkpath(log_dir)
-    tag = isempty(SLURM_JOB_ID) ? Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS") : SLURM_JOB_ID
+    tag = if isempty(SLURM_JOB_ID)
+        Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS")
+    else
+        SLURM_JOB_ID
+    end
     return joinpath(log_dir, "solver_$(tag).log")
 end
 
@@ -599,7 +603,8 @@ function run_single_case(;
     time_limit::Float64 = NaN,
     threads::Int = 0,
 )
-    build_t = @elapsed result = build_mip_model(optimizer, net, bilinear_config, quad_config, refinement)
+    build_t = @elapsed result =
+        build_mip_model(optimizer, net, bilinear_config, quad_config, refinement)
 
     if build_only
         solve_t = 0.0
@@ -697,8 +702,13 @@ function print_result_row(r)
     if r.solved
         gap_str = isnan(r.gap) ? "    -" : @sprintf("%8.4f", r.gap)
         ref_str = r.is_exact ? "   -" : @sprintf("%4d", r.refinement)
-        mip_gap_str = (r.is_exact || isnan(r.mip_gap)) ? "        -" : @sprintf("%9.4f", r.mip_gap)
-        lb_str = (r.is_exact || isnan(r.lower_bound)) ? "           -" : @sprintf("%12.6f", r.lower_bound)
+        mip_gap_str =
+            (r.is_exact || isnan(r.mip_gap)) ? "        -" : @sprintf("%9.4f", r.mip_gap)
+        lb_str = if (r.is_exact || isnan(r.lower_bound))
+            "           -"
+        else
+            @sprintf("%12.6f", r.lower_bound)
+        end
         @printf(
             "%-12s %2s %6d %7d %6d %12.6f %6s %9s %12s %9.2e %9.2e %9.2e %9.2e %8.4f %8.4f\n",
             r.label, ref_str,
@@ -931,7 +941,9 @@ function run_benchmark_parallel(;
         end
     end
 
-    println("Launching $(length(jobs)) MIP workers (max $KESTREL_MAX_WORKERS concurrent)...")
+    println(
+        "Launching $(length(jobs)) MIP workers (max $KESTREL_MAX_WORKERS concurrent)...",
+    )
     flush(stdout)
 
     script_path = @__FILE__
@@ -944,7 +956,8 @@ function run_benchmark_parallel(;
 
     for (mi, ref) in jobs
         label = mip_methods[mi][1]
-        outfile = joinpath(res_dir, "$(SLURM_JOB_ID)_$(replace(label, " " => "_"))_R$(ref).json")
+        outfile =
+            joinpath(res_dir, "$(SLURM_JOB_ID)_$(replace(label, " " => "_"))_R$(ref).json")
         cmd = Cmd(`julia --project=$project_arg $script_path
             --worker
             --method-index $mi
@@ -984,7 +997,8 @@ function run_benchmark_parallel(;
     mip_results = []
     for (mi, ref) in jobs
         label = mip_methods[mi][1]
-        outfile = joinpath(res_dir, "$(SLURM_JOB_ID)_$(replace(label, " " => "_"))_R$(ref).json")
+        outfile =
+            joinpath(res_dir, "$(SLURM_JOB_ID)_$(replace(label, " " => "_"))_R$(ref).json")
         if isfile(outfile)
             d = open(outfile) do io
                 JSON3.read(io, Dict{String, Any})
@@ -992,18 +1006,21 @@ function run_benchmark_parallel(;
             push!(mip_results, dict_to_result(d))
         else
             @warn "Missing results for $label R=$ref"
-            push!(mip_results, (;
-                label,
-                refinement = ref,
-                is_exact = false,
-                solved = false,
-                status = "WORKER_FAILED",
-                obj = NaN, nlp_obj, gap = NaN,
-                mip_gap = NaN, lower_bound = NaN,
-                mn_bi = NaN, mx_bi = NaN, mn_q = NaN, mx_q = NaN,
-                variables = 0, constraints = 0, binaries = 0,
-                build_t = 0.0, solve_t = 0.0,
-            ))
+            push!(
+                mip_results,
+                (;
+                    label,
+                    refinement = ref,
+                    is_exact = false,
+                    solved = false,
+                    status = "WORKER_FAILED",
+                    obj = NaN, nlp_obj, gap = NaN,
+                    mip_gap = NaN, lower_bound = NaN,
+                    mn_bi = NaN, mx_bi = NaN, mn_q = NaN, mx_q = NaN,
+                    variables = 0, constraints = 0, binaries = 0,
+                    build_t = 0.0, solve_t = 0.0,
+                ),
+            )
         end
     end
 
@@ -1042,7 +1059,11 @@ function run_worker(parsed)
 
     log_dir = joinpath(@__DIR__, "logs")
     mkpath(log_dir)
-    tag = isempty(SLURM_JOB_ID) ? Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS") : SLURM_JOB_ID
+    tag = if isempty(SLURM_JOB_ID)
+        Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS")
+    else
+        SLURM_JOB_ID
+    end
     safe_label = replace(label, " " => "_")
     worker_log_path = joinpath(log_dir, "solver_$(tag)_$(safe_label)_R$(ref).log")
     logfile = open(worker_log_path, "a")
