@@ -30,6 +30,99 @@ const BILINEAR_META = "BilinearTest"
             @test expr_container["dev1", 1] isa JuMP.AffExpr
         end
 
+        @testset "Reformulated McCormick constraints present" begin
+            setup = _setup_bilinear_test(["dev1"], 1:1)
+
+            IOM._add_bilinear_approx!(
+                IOM.Bin2Config(IOM.SolverSOS2QuadConfig(false), 0, true),
+                setup.container,
+                MockThermalGen,
+                ["dev1"],
+                1:1,
+                setup.x_var_container,
+                setup.y_var_container,
+                0.0, 4.0,
+                0.0, 4.0,
+                4,
+                BILINEAR_META,
+            )
+
+            @test IOM.has_container_key(
+                setup.container,
+                IOM.ReformulatedMcCormickConstraint,
+                MockThermalGen,
+                BILINEAR_META,
+            )
+        end
+
+        @testset "No reformulated McCormick when disabled" begin
+            setup = _setup_bilinear_test(["dev1"], 1:1)
+
+            IOM._add_bilinear_approx!(
+                IOM.Bin2Config(IOM.SolverSOS2QuadConfig(false), 0, false),
+                setup.container,
+                MockThermalGen,
+                ["dev1"],
+                1:1,
+                setup.x_var_container,
+                setup.y_var_container,
+                0.0, 4.0,
+                0.0, 4.0,
+                4,
+                BILINEAR_META,
+            )
+
+            @test !IOM.has_container_key(
+                setup.container,
+                IOM.ReformulatedMcCormickConstraint,
+                MockThermalGen,
+                BILINEAR_META,
+            )
+        end
+
+        @testset "Reformulated McCormick tightens LP relaxation" begin
+            # At interior point x=2.5, y=1.5, true product = 3.75
+            # Compare max z with and without reformulated McCormick
+            true_product = 2.5 * 1.5
+            gaps = Float64[]
+            for add_mc in [false, true]
+                setup = _setup_bilinear_test(["dev1"], 1:1)
+                JuMP.fix(setup.x_var_container["dev1", 1], 2.5; force = true)
+                JuMP.fix(setup.y_var_container["dev1", 1], 1.5; force = true)
+
+                IOM._add_bilinear_approx!(
+                    IOM.Bin2Config(IOM.SolverSOS2QuadConfig(false), 0, add_mc),
+                    setup.container,
+                    MockThermalGen,
+                    ["dev1"],
+                    1:1,
+                    setup.x_var_container,
+                    setup.y_var_container,
+                    0.0, 4.0,
+                    0.0, 4.0,
+                    4,
+                    BILINEAR_META,
+                )
+                expr_container = IOM.get_expression(
+                    setup.container,
+                    IOM.BilinearProductExpression(),
+                    MockThermalGen,
+                    BILINEAR_META,
+                )
+                z_expr = expr_container["dev1", 1]
+
+                JuMP.@objective(setup.jump_model, Max, z_expr)
+                JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
+                JuMP.set_silent(setup.jump_model)
+                JuMP.optimize!(setup.jump_model)
+
+                @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
+                push!(gaps, abs(JuMP.objective_value(setup.jump_model) - true_product))
+            end
+            # With McCormick (gaps[2]) should be <= without (gaps[1])
+            @test gaps[2] <= gaps[1] + 1e-10
+        end
+
         @testset "Fixed-variable correctness" begin
             # Fix x=3, y ∈ [0,4]: min xy should give z≈0 at y=0
             setup = _setup_bilinear_test(["dev1"], 1:1)

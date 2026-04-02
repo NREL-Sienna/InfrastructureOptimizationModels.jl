@@ -6,10 +6,14 @@
 # optimization of polynomial programming problems.
 
 "Config for double-NMDT bilinear approximation (discretizes both x and y)."
-struct DNMDTBilinearConfig <: BilinearApproxConfig end
+struct DNMDTBilinearConfig <: BilinearApproxConfig
+    depth::Int
+end
 
 "Config for single-NMDT bilinear approximation (discretizes x only)."
-struct NMDTBilinearConfig <: BilinearApproxConfig end
+struct NMDTBilinearConfig <: BilinearApproxConfig
+    depth::Int
+end
 
 # --- DNMDT bilinear approximation ---
 
@@ -40,34 +44,38 @@ function _add_bilinear_approx!(
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
     y_disc::NMDTDiscretization,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     bx_yh_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, y_disc.norm_expr, 0.0, 1.0,
-        meta * "_bx_yh",
+        config.depth, meta * "_bx_yh",
     )
     by_dx_expr = _binary_continuous_product!(
         container, C, names, time_steps,
-        y_disc, x_disc.delta_var, 0.0, 2.0^(-x_disc.depth),
-        meta * "_by_dx",
+        y_disc, x_disc.delta_var, 0.0, 2.0^(-config.depth),
+        config.depth, meta * "_by_dx",
     )
     by_xh_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         y_disc, x_disc.norm_expr, 0.0, 1.0,
-        meta * "_by_xh",
+        config.depth, meta * "_by_xh",
     )
     bx_dy_expr = _binary_continuous_product!(
         container, C, names, time_steps,
-        x_disc, y_disc.delta_var, 0.0, 2.0^(-y_disc.depth),
-        meta * "_bx_dy",
+        x_disc, y_disc.delta_var, 0.0, 2.0^(-config.depth),
+        config.depth, meta * "_bx_dy",
     )
 
     return _assemble_dnmdt!(
         container, C, names, time_steps,
         bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr,
-        x_disc, y_disc, meta;
-        result_type = BilinearProductExpression,
+        x_disc, y_disc, x_min, x_max, y_min, y_max, 
+        config.depth, meta; result_type = BilinearProductExpression,
     )
 end
 
@@ -106,7 +114,6 @@ function _add_bilinear_approx!(
     x_max::Float64,
     y_min::Float64,
     y_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_disc = _discretize!(
@@ -117,7 +124,7 @@ function _add_bilinear_approx!(
         x_var,
         x_min,
         x_max,
-        depth,
+        config.depth,
         meta * "_x",
     )
     y_disc = _discretize!(
@@ -128,7 +135,7 @@ function _add_bilinear_approx!(
         y_var,
         y_min,
         y_max,
-        depth,
+        config.depth,
         meta * "_y",
     )
     return _add_bilinear_approx!(
@@ -139,6 +146,10 @@ function _add_bilinear_approx!(
         time_steps,
         x_disc,
         y_disc,
+        x_min,
+        x_max,
+        y_min,
+        y_max,
         meta,
     )
 end
@@ -181,18 +192,18 @@ function _add_bilinear_approx!(
     bx_y_expr = _binary_continuous_product!(
         container, C, names, time_steps,
         x_disc, yh_expr, 0.0, 1.0,
-        meta,
+        config.depth, meta,
     )
     dz = _residual_product!(
         container, C, names, time_steps,
-        x_disc, yh_expr, 1.0, meta;
+        x_disc, yh_expr, 1.0, config.depth, meta;
     )
 
     return _assemble_product!(
         container, C, names, time_steps,
         [bx_y_expr], dz,
-        x_disc, yh_expr, y_min, y_max, meta;
-        result_type = BilinearProductExpression,
+        x_disc, yh_expr, x_min, x_max, y_min, y_max,
+        meta; result_type = BilinearProductExpression,
     )
 end
 
@@ -216,7 +227,6 @@ delegates to the pre-discretized overload.
 - `x_max::Float64`: upper bound of x
 - `y_min::Float64`: lower bound of y
 - `y_max::Float64`: upper bound of y
-- `depth::Int`: number of binary discretization levels L for x
 - `meta::String`: identifier encoding the original variable type being approximated
 """
 function _add_bilinear_approx!(
@@ -231,7 +241,6 @@ function _add_bilinear_approx!(
     x_max::Float64,
     y_min::Float64,
     y_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_disc = _discretize!(
@@ -242,7 +251,7 @@ function _add_bilinear_approx!(
         x_var,
         x_min,
         x_max,
-        depth,
+        config.depth,
         meta * "_x",
     )
     yh_expr =

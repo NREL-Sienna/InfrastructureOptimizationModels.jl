@@ -18,13 +18,13 @@ struct SawtoothTightenedConstraint <: ConstraintType end
 
 "Config for sawtooth MIP quadratic approximation."
 struct SawtoothQuadConfig <: QuadraticApproxConfig
+    depth::Int
     tighten::Bool
-    add_mccormick::Bool
 end
-SawtoothQuadConfig() = SawtoothQuadConfig(false, false)
+SawtoothQuadConfig(depth::Int) = SawtoothQuadConfig(depth, false)
 
 """
-    _add_quadratic_approx!(config::SawtoothQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
+    _add_quadratic_approx!(config::SawtoothQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, meta)
 
 Approximate x² using the sawtooth MIP formulation.
 
@@ -37,7 +37,7 @@ For depth L, the approximation interpolates x² at 2^L + 1 uniformly spaced brea
 with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
 
 # Arguments
-- `config::SawtoothQuadConfig`: configuration (tighten, add_mccormick)
+- `config::SawtoothQuadConfig`: configuration
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -45,7 +45,6 @@ with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
 - `x_var`: container of variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
-- `depth::Int`: sawtooth depth L (number of binary variables per component per time step)
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
 """
 function _add_quadratic_approx!(
@@ -57,18 +56,17 @@ function _add_quadratic_approx!(
     x_var,
     x_min::Float64,
     x_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
-    IS.@assert_op depth >= 1
-    epigraph_depth = max(2, ceil(Int, 1.5 * depth))
+    IS.@assert_op config.depth >= 1
+    epigraph_depth = max(2, ceil(Int, 1.5 * config.depth))
     jump_model = get_jump_model(container)
     delta = x_max - x_min
 
     # Create containers with known dimensions
-    g_levels = 0:depth
-    alpha_levels = 1:depth
+    g_levels = 0:(config.depth)
+    alpha_levels = 1:(config.depth)
     g_var = add_variable_container!(
         container,
         SawtoothAuxVariable(),
@@ -222,15 +220,6 @@ function _add_quadratic_approx!(
         else
             result_expr[name, t] = x_sq_approx
         end
-    end
-
-    if config.add_mccormick
-        _add_mccormick_envelope!(
-            container, C, names, time_steps,
-            x_var, result_expr,
-            x_min, x_max,
-            meta,
-        )
     end
 
     return result_expr

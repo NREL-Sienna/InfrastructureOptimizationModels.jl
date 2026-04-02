@@ -5,10 +5,9 @@
 struct NoBilinearApproxConfig <: BilinearApproxConfig end
 
 """
-    _add_bilinear_approx!(::NoBilinearApproxConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
+    _add_bilinear_approx!(::NoBilinearApproxConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, meta)
 
 No-op bilinear approximation: returns exact x·y as a QuadExpr.
-The `depth` parameter is ignored.
 """
 function _add_bilinear_approx!(
     ::NoBilinearApproxConfig,
@@ -22,7 +21,6 @@ function _add_bilinear_approx!(
     x_max::Float64,
     y_min::Float64,
     y_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     result_expr = add_expression_container!(

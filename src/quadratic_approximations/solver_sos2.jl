@@ -14,12 +14,13 @@ struct SolverSOS2Constraint <: ConstraintType end
 
 "Config for solver-native SOS2 quadratic approximation (MOI.SOS2 adjacency)."
 struct SolverSOS2QuadConfig <: QuadraticApproxConfig
-    add_mccormick::Bool
+    depth::Int
+    pwmcc_segments::Int
 end
-SolverSOS2QuadConfig() = SolverSOS2QuadConfig(false)
+SolverSOS2QuadConfig(depth::Int) = SolverSOS2QuadConfig(depth, 4)
 
 """
-    _add_quadratic_approx!(config::SolverSOS2QuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
+    _add_quadratic_approx!(config::SolverSOS2QuadConfig, container, C, names, time_steps, x_var, x_min, x_max, meta)
 
 Approximate x² using a piecewise linear function with solver-native SOS2 constraints.
 
@@ -36,7 +37,6 @@ approximating x² in a `QuadraticExpression` expression container.
 - `x_var`: container of variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
-- `depth::Int`: number of PWL segments
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
 """
 function _add_quadratic_approx!(
@@ -48,12 +48,16 @@ function _add_quadratic_approx!(
     x_var,
     x_min::Float64,
     x_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
-        _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments = depth)
-    n_points = depth + 1
+        _get_breakpoints_for_pwl_function(
+            x_min,
+            x_max,
+            _square;
+            num_segments = config.depth,
+        )
+    n_points = config.depth + 1
     jump_model = get_jump_model(container)
 
     # Create all containers upfront
@@ -149,12 +153,10 @@ function _add_quadratic_approx!(
         result_expr[name, t] = x_hat_sq
     end
 
-    if config.add_mccormick
-        _add_mccormick_envelope!(
+    if config.pwmcc_segments > 0
+        _add_pwmcc_concave_cuts!(
             container, C, names, time_steps,
-            x_var, result_expr,
-            x_min, x_max,
-            meta,
+            x_var, result_expr, x_min, x_max, config.pwmcc_segments, meta * "_pwmcc",
         )
     end
 

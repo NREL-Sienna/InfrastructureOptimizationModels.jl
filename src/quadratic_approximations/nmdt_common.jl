@@ -28,17 +28,11 @@ Fields:
 - `norm_expr`: affine expression for xh = (x − x_min)/(x_max − x_min) ∈ [0,1]
 - `beta_var`: binary variables β_i ∈ {0,1} indexed by (name, i, t)
 - `delta_var`: residual variables δ ∈ [0, 2^{−depth}] indexed by (name, t)
-- `min`: original lower bound x_min
-- `max`: original upper bound x_max
-- `depth`: number of binary discretization levels L
 """
 struct NMDTDiscretization
     norm_expr::Any
     beta_var::Any
     delta_var::Any
-    min::Float64
-    max::Float64
-    depth::Int
 end
 
 """
@@ -140,7 +134,7 @@ function _discretize!(
         )
     end
 
-    return NMDTDiscretization(xh_expr, beta_var, delta_var, x_min, x_max, depth)
+    return NMDTDiscretization(xh_expr, beta_var, delta_var)
 end
 
 """
@@ -173,10 +167,10 @@ function _binary_continuous_product!(
     cont_var,
     cont_min::Float64,
     cont_max::Float64,
+    depth::Int,
     meta::String;
     tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    depth = bin_disc.depth
     jump_model = get_jump_model(container)
 
     u_var = add_variable_container!(
@@ -235,7 +229,7 @@ end
 
 Add epigraph lower-bound constraints to tighten an NMDT quadratic approximation.
 
-Computes an epigraph Q^{L1} lower bound on xh² using depth `ceil(1.5 * x_disc.depth)`
+Computes an epigraph Q^{L1} lower bound on xh²
 and adds a `NMDTTightenConstraint` enforcing `result_expr[name,t] ≥ epi_expr[name,t]`
 for each (name, t). This improves the lower bound quality of NMDT without adding binaries.
 
@@ -255,15 +249,15 @@ function _tighten_lower_bounds!(
     time_steps::UnitRange{Int},
     result_expr,
     x_disc,
+    epigraph_depth::Int,
     meta::String;
 ) where {C <: IS.InfrastructureSystemsComponent}
     jump_model = get_jump_model(container)
 
-    epigraph_depth = max(2, ceil(Int, 1.5 * x_disc.depth))
     epi_expr = _add_quadratic_approx!(
-        EpigraphQuadConfig(), container, C, names, time_steps,
-        x_disc.norm_expr, 0.0, 1.0,
-        epigraph_depth, meta * "_epi",
+        EpigraphQuadConfig(epigraph_depth),
+        container, C, names, time_steps,
+        x_disc.norm_expr, 0.0, 1.0, meta * "_epi",
     )
     epi_cons = add_constraints_container!(
         container,
@@ -309,10 +303,11 @@ function _residual_product!(
     x_disc,
     y_var,
     y_max::Float64,
+    depth::Int,
     meta::String;
     tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    x_max = 2.0^(-x_disc.depth)
+    x_max = 2.0^(-depth)
     jump_model = get_jump_model(container)
 
     z_var = add_variable_container!(
@@ -427,13 +422,17 @@ function _assemble_product!(
     dz_var,
     x_disc::NMDTDiscretization,
     y_disc::NMDTDiscretization,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
     meta::String;
     result_type = NMDTResultExpression,
 ) where {C <: IS.InfrastructureSystemsComponent}
     return _assemble_product!(
         container, C, names, time_steps, terms, dz_var,
         x_disc.norm_expr, y_disc.norm_expr,
-        x_disc.min, x_disc.max, y_disc.min, y_disc.max,
+        x_min, x_max, y_min, y_max,
         meta; result_type,
     )
 end
@@ -447,6 +446,8 @@ function _assemble_product!(
     dz_var,
     x_disc::NMDTDiscretization,
     yh_expr,
+    x_min::Float64,
+    x_max::Float64,
     y_min::Float64,
     y_max::Float64,
     meta::String;
@@ -455,7 +456,7 @@ function _assemble_product!(
     return _assemble_product!(
         container, C, names, time_steps, terms, dz_var,
         x_disc.norm_expr, yh_expr,
-        x_disc.min, x_disc.max, y_min, y_max,
+        x_min, x_max, y_min, y_max,
         meta; result_type,
     )
 end
@@ -499,6 +500,11 @@ function _assemble_dnmdt!(
     bx_dy_expr,
     x_disc::NMDTDiscretization,
     y_disc::NMDTDiscretization,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
+    depth::Int,
     meta::String;
     lambda::Float64 = DNMDT_LAMBDA,
     result_type::Type = NMDTResultExpression,
@@ -515,19 +521,20 @@ function _assemble_dnmdt!(
 
     dz = _residual_product!(
         container, C, names, time_steps,
-        x_disc, y_disc.delta_var, 2.0^(-y_disc.depth),
-        meta; tighten,
+        x_disc, y_disc.delta_var, 2.0^(depth),
+        depth, meta; tighten,
     )
     z1_expr = _assemble_product!(
         container, C, names, time_steps,
         [bx_yh_expr, by_dx_expr], dz,
-        x_disc, y_disc,
+        x_disc, y_disc, x_min, x_max, y_min, y_max,
         meta * "_nmdt1",
     )
     z2_expr = _assemble_product!(
         container, C, names, time_steps,
         [by_xh_expr, bx_dy_expr], dz,
-        y_disc, x_disc, meta * "_nmdt2",
+        y_disc, x_disc, x_min, x_max, y_min, y_max,
+        meta * "_nmdt2",
     )
 
     for name in names, t in time_steps
