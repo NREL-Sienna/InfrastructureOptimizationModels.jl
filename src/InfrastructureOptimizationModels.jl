@@ -609,6 +609,8 @@ include("bilinear_approximations/bin2.jl")
 include("bilinear_approximations/no_approx.jl")
 include("bilinear_approximations/hybs.jl")
 include("bilinear_approximations/nmdt.jl")
+include("bilinear_approximations/zzi_encoding.jl")
+include("bilinear_approximations/zzi.jl")
 
 # add_param_container! wrappers — must come after piecewise_linear.jl
 # (which defines VariableValueParameter and FixValueParameter)
