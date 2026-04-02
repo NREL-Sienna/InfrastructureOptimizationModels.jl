@@ -26,12 +26,9 @@ Set `add_mccormick = true` to add reformulated McCormick cuts through the separa
 """
 struct Bin2Config <: BilinearApproxConfig
     quad_config::QuadraticApproxConfig
-    pwmcc_segments::Int
     add_mccormick::Bool
 end
-Bin2Config(quad_config::QuadraticApproxConfig) = Bin2Config(quad_config, 4, true)
-Bin2Config(quad_config::QuadraticApproxConfig, pwmcc_segments::Int) =
-    Bin2Config(quad_config, pwmcc_segments, true)
+Bin2Config(quad_config::QuadraticApproxConfig) = Bin2Config(quad_config, true)
 
 # --- Unified bilinear approximation dispatch ---
 
@@ -52,21 +49,20 @@ function _add_bilinear_approx!(
     x_max::Float64,
     y_min::Float64,
     y_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     xsq = _add_quadratic_approx!(
         config.quad_config, container, C, names, time_steps,
-        x_var, x_min, x_max, depth, meta * "_x",
+        x_var, x_min, x_max, meta * "_x",
     )
     ysq = _add_quadratic_approx!(
         config.quad_config, container, C, names, time_steps,
-        y_var, y_min, y_max, depth, meta * "_y",
+        y_var, y_min, y_max, meta * "_y",
     )
     return _add_bilinear_approx!(
         config, container, C, names, time_steps,
-        x_var, y_var, x_min, x_max, y_min, y_max,
-        xsq, ysq, depth, meta,
+        xsq, ysq, x_var, y_var,
+        x_min, x_max, y_min, y_max, meta,
     )
 end
 
@@ -82,15 +78,14 @@ function _add_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
+    xsq,
+    ysq,
     x_var,
     y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
     y_max::Float64,
-    xsq,
-    ysq,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     # --- Bin2 identity: z = ½((x+y)² − x² − y²) ---
@@ -120,7 +115,7 @@ function _add_bilinear_approx!(
     # Approximate p² = (x+y)² using the provided quadratic config
     psq = _add_quadratic_approx!(
         config.quad_config, container, C, names, time_steps,
-        p_expr, p_min, p_max, depth, meta_plus,
+        p_expr, p_min, p_max, meta_plus,
     )
 
     result_expr = add_expression_container!(
@@ -138,18 +133,6 @@ function _add_bilinear_approx!(
         add_proportional_to_jump_expression!(result, psq[name, t], 0.5)
         add_proportional_to_jump_expression!(result, xsq[name, t], -0.5)
         add_proportional_to_jump_expression!(result, ysq[name, t], -0.5)
-    end
-
-    # --- PWMCC concave cuts (optional) ---
-    if config.pwmcc_segments > 0
-        _add_pwmcc_concave_cuts!(
-            container, C, names, time_steps,
-            x_var, xsq, x_min, x_max, config.pwmcc_segments, meta * "_x_pwmcc",
-        )
-        _add_pwmcc_concave_cuts!(
-            container, C, names, time_steps,
-            y_var, ysq, y_min, y_max, config.pwmcc_segments, meta * "_y_pwmcc",
-        )
     end
 
     # --- Reformulated McCormick cuts (optional) ---

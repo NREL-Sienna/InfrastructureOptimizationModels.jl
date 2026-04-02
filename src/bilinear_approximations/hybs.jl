@@ -13,9 +13,11 @@ and LP-only epigraph for (x+y)², (x−y)². Epigraph depth is computed as max(d
 """
 struct HybSConfig <: BilinearApproxConfig
     quad_config::QuadraticApproxConfig
+    epigraph_depth::Int
     add_mccormick::Bool
 end
-HybSConfig(quad_config::QuadraticApproxConfig) = HybSConfig(quad_config, true)
+HybSConfig(quad_config::QuadraticApproxConfig, epigraph_depth::Int) =
+    HybSConfig(quad_config, epigraph_depth, true)
 
 # --- Unified HybS dispatch methods ---
 
@@ -36,21 +38,20 @@ function _add_bilinear_approx!(
     x_max::Float64,
     y_min::Float64,
     y_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     xsq = _add_quadratic_approx!(
         config.quad_config, container, C, names, time_steps,
-        x_var, x_min, x_max, depth, meta * "_x",
+        x_var, x_min, x_max, meta * "_x",
     )
     ysq = _add_quadratic_approx!(
         config.quad_config, container, C, names, time_steps,
-        y_var, y_min, y_max, depth, meta * "_y",
+        y_var, y_min, y_max, meta * "_y",
     )
     return _add_bilinear_approx!(
         config, container, C, names, time_steps,
-        x_var, y_var, x_min, x_max, y_min, y_max,
-        xsq, ysq, depth, meta,
+        xsq, ysq, x_var, y_var,
+        x_min, x_max, y_min, y_max, meta,
     )
 end
 
@@ -71,19 +72,16 @@ function _add_bilinear_approx!(
     ::Type{C},
     names::Vector{String},
     time_steps::UnitRange{Int},
+    xsq,
+    ysq,
     x_var,
     y_var,
     x_min::Float64,
     x_max::Float64,
     y_min::Float64,
     y_max::Float64,
-    xsq,
-    ysq,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    epigraph_depth = max(depth, 1)
-
     # Bounds for auxiliary variables
     p1_min = x_min + y_min
     p1_max = x_max + y_max
@@ -131,15 +129,16 @@ function _add_bilinear_approx!(
     end
 
     # --- Epigraph Q^{L1} lower bound for (x+y)² and (x−y)² (no binaries) ---
+    epi_cfg = EpigraphQuadConfig(config.epigraph_depth)
     zp1_expr = _add_quadratic_approx!(
-        EpigraphQuadConfig(),
+        epi_cfg,
         container, C, names, time_steps,
-        p1_expr, p1_min, p1_max, epigraph_depth, meta_p1,
+        p1_expr, p1_min, p1_max, meta_p1,
     )
     zp2_expr = _add_quadratic_approx!(
-        EpigraphQuadConfig(),
+        epi_cfg,
         container, C, names, time_steps,
-        p2_expr, p2_min, p2_max, epigraph_depth, meta_p2,
+        p2_expr, p2_min, p2_max, meta_p2,
     )
 
     # --- Create z variable and two-sided HybS bounds ---

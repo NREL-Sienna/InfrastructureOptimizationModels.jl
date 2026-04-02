@@ -5,10 +5,9 @@
 struct NoQuadApproxConfig <: QuadraticApproxConfig end
 
 """
-    _add_quadratic_approx!(::NoQuadApproxConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
+    _add_quadratic_approx!(::NoQuadApproxConfig, container, C, names, time_steps, x_var, x_min, x_max, meta)
 
 No-op quadratic approximation: returns exact x² as a QuadExpr.
-The `depth` parameter is ignored.
 """
 function _add_quadratic_approx!(
     ::NoQuadApproxConfig,
@@ -19,7 +18,6 @@ function _add_quadratic_approx!(
     x_var,
     x_min::Float64,
     x_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     result_expr = add_expression_container!(

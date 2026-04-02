@@ -13,10 +13,12 @@ struct EpigraphTangentConstraint <: ConstraintType end
 struct EpigraphTangentExpression <: ExpressionType end
 
 "Config for epigraph (Q^{L1}) LP-only lower-bound quadratic approximation."
-struct EpigraphQuadConfig <: QuadraticApproxConfig end
+struct EpigraphQuadConfig <: QuadraticApproxConfig
+    depth::Int
+end
 
 """
-    _add_quadratic_approx!(::EpigraphQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
+    _add_quadratic_approx!(::EpigraphQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, meta)
 
 Create a variable z that lower-bounds x² using tangent-line cuts (Q^{L1} relaxation).
 
@@ -38,11 +40,10 @@ The maximum underestimation gap between the tangent envelope and x² is
 - `x_var`: container of variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
-- `depth::Int`: epigraph depth L1 (uses 2^depth + 1 tangent breakpoints)
 - `meta::String`: variable type identifier for the approximated variable
 """
 function _add_quadratic_approx!(
-    ::EpigraphQuadConfig,
+    config::EpigraphQuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -50,14 +51,13 @@ function _add_quadratic_approx!(
     x_var,
     x_min::Float64,
     x_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
-    IS.@assert_op depth >= 1
+    IS.@assert_op config.depth >= 1
     jump_model = get_jump_model(container)
     delta = x_max - x_min
-    g_levels = 0:depth
+    g_levels = 0:(config.depth)
 
     z_var = add_variable_container!(
         container,
@@ -106,7 +106,7 @@ function _add_quadratic_approx!(
         EpigraphTangentConstraint(),
         C,
         names,
-        1:(depth + 2),
+        1:(config.depth + 2),
         time_steps;
         sparse = true,
         meta,
@@ -144,7 +144,7 @@ function _add_quadratic_approx!(
         )
 
         # T^L constraints for j = 1,...,L
-        for j in 1:depth
+        for j in 1:(config.depth)
             g_prev = g_var[name, j - 1, t]
             g_curr = g_var[name, j, t]
 
@@ -165,7 +165,7 @@ function _add_quadratic_approx!(
             )
 
         fL = fL_expr[name, t] = JuMP.AffExpr(0.0)
-        for j in 1:depth
+        for j in 1:(config.depth)
             add_proportional_to_jump_expression!(
                 fL,
                 g_var[name, j, t],
@@ -178,7 +178,7 @@ function _add_quadratic_approx!(
             )
         end
         tangent_cons[name, 1, t] = JuMP.@constraint(jump_model, z >= 0)
-        tangent_cons[name, depth + 1, t] = JuMP.@constraint(
+        tangent_cons[name, config.depth + 1, t] = JuMP.@constraint(
             jump_model,
             z >= 2.0 * x_min - 1.0 + 2.0 * delta * g0
         )

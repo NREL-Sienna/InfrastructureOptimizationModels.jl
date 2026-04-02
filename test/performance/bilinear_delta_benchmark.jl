@@ -225,7 +225,7 @@ I² is reused in the loss constraint.
 """
 function build_gen_bilinear(
     container, net::MockNetworkProblem, V_container, I_container, time_steps,
-    bilinear_config::Union{IOM.Bin2Config, IOM.HybSConfig}, quad_config, refinement,
+    bilinear_config::Union{IOM.Bin2Config, IOM.HybSConfig}, quad_config,
 )
     V_sq = IOM._add_quadratic_approx!(
         quad_config,
@@ -236,7 +236,6 @@ function build_gen_bilinear(
         V_container,
         V_MIN,
         V_MAX,
-        refinement,
         "gen_V_sq",
     )
     I_sq = IOM._add_quadratic_approx!(
@@ -248,7 +247,6 @@ function build_gen_bilinear(
         I_container,
         I_GEN_MIN,
         I_GEN_MAX,
-        refinement,
         "gen_I_sq",
     )
     z_gen = IOM._add_bilinear_approx!(
@@ -257,15 +255,14 @@ function build_gen_bilinear(
         MockNetworkNode,
         net.gen_nodes,
         time_steps,
+        V_sq,
+        I_sq,
         V_container,
         I_container,
         V_MIN,
         V_MAX,
         I_GEN_MIN,
         I_GEN_MAX,
-        V_sq,
-        I_sq,
-        refinement,
         "gen",
     )
     return z_gen, I_sq
@@ -277,23 +274,23 @@ call DNMDT bilinear with pre-built discretizations. I² is reused in the loss co
 """
 function build_gen_bilinear(
     container, net::MockNetworkProblem, V_container, I_container, time_steps,
-    bilinear_config::IOM.DNMDTBilinearConfig, quad_config::IOM.DNMDTQuadConfig, refinement,
+    bilinear_config::IOM.DNMDTBilinearConfig, quad_config::IOM.DNMDTQuadConfig,
 )
     V_disc = IOM._discretize!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
-        V_container, V_MIN, V_MAX, refinement, "gen_V",
+        V_container, V_MIN, V_MAX, quad_config.depth, "gen_V",
     )
     I_disc = IOM._discretize!(
         container, MockNetworkNode, net.gen_nodes, time_steps,
-        I_container, I_GEN_MIN, I_GEN_MAX, refinement, "gen_I",
+        I_container, I_GEN_MIN, I_GEN_MAX, quad_config.depth, "gen_I",
     )
     I_sq = IOM._add_quadratic_approx!(
         quad_config, container, MockNetworkNode, net.gen_nodes, time_steps,
-        I_disc, "gen_I_sq",
+        I_disc, I_GEN_MIN, I_GEN_MAX, "gen_I_sq",
     )
     z_gen = IOM._add_bilinear_approx!(
         bilinear_config, container, MockNetworkNode, net.gen_nodes, time_steps,
-        V_disc, I_disc, "gen",
+        V_disc, I_disc, V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX, "gen",
     )
     return z_gen, I_sq
 end
@@ -304,7 +301,6 @@ Exact (NLP): exact bilinear V·I and exact quadratic I².
 function build_gen_bilinear(
     container, net::MockNetworkProblem, V_container, I_container, time_steps,
     bilinear_config::IOM.NoBilinearApproxConfig, quad_config::IOM.NoQuadApproxConfig,
-    refinement,
 )
     z_gen = IOM._add_bilinear_approx!(
         bilinear_config,
@@ -318,7 +314,6 @@ function build_gen_bilinear(
         V_MAX,
         I_GEN_MIN,
         I_GEN_MAX,
-        refinement,
         "gen",
     )
     I_sq = IOM._add_quadratic_approx!(
@@ -330,7 +325,6 @@ function build_gen_bilinear(
         I_container,
         I_GEN_MIN,
         I_GEN_MAX,
-        refinement,
         "gen_I_sq",
     )
     return z_gen, I_sq
@@ -382,15 +376,14 @@ function build_mip_model(
     # --- Bilinear gen: dispatched on config type ---
     z_gen, I_sq = build_gen_bilinear(
         container, net, V_container, I_container, time_steps,
-        bilinear_config, quad_config, refinement,
+        bilinear_config, quad_config,
     )
 
     # --- Bilinear dem: always uses the config-based dispatch ---
     z_dem = IOM._add_bilinear_approx!(
         bilinear_config, container, MockNetworkNode, net.dem_nodes, time_steps,
         V_container, I_container,
-        V_MIN, V_MAX, I_DEM_MIN, I_DEM_MAX,
-        refinement, "dem",
+        V_MIN, V_MAX, I_DEM_MIN, I_DEM_MAX, "dem",
     )
 
     pwl_link_constraints = IOM.add_constraints_container!(
@@ -806,9 +799,9 @@ function run_benchmark(;
     threads = ENVIRONMENT == :kestrel ? KESTREL_XPRESS_THREADS : 0
 
     all_methods = [
-        ("NLP (Ipopt)", IOM.NoBilinearApproxConfig(), IOM.NoQuadApproxConfig()),
-        ("NLP (Uno)", IOM.NoBilinearApproxConfig(), IOM.NoQuadApproxConfig()),
-        bilinear_methods[ENVIRONMENT]...,
+        ("NLP (Ipopt)", exact),
+        ("NLP (Uno)", exact),
+        bilinear_methods...,
     ]
 
     print_table_header()
@@ -816,11 +809,12 @@ function run_benchmark(;
     nlp_obj = NaN
 
     try
-        for (label, bilin_config, quad_config) in all_methods
-            is_exact = bilin_config isa IOM.NoBilinearApproxConfig
+        for (label, method) in all_methods
+            is_exact = method === exact
             refs = is_exact ? [0] : refinements
 
             for ref in refs
+                bilin_config, quad_config = method(ref)
                 opt = if is_exact && contains(label, "Ipopt")
                     Ipopt.Optimizer
                 elseif is_exact && contains(label, "Uno")
@@ -896,7 +890,7 @@ function run_benchmark_parallel(;
     logfile = open(log_path, "a")
     atexit(() -> (flush(stdout); isopen(logfile) && (flush(logfile); close(logfile))))
 
-    mip_methods = collect(bilinear_methods[ENVIRONMENT])
+    mip_methods = bilinear_methods
 
     print_table_header()
 
@@ -1054,8 +1048,9 @@ function run_worker(parsed)
 
     net = generate_network(; N, K, seed)
 
-    mip_methods_list = collect(bilinear_methods[ENVIRONMENT])
-    label, bilin_config, quad_config = mip_methods_list[mi]
+    mip_methods_list = bilinear_methods
+    label, method = mip_methods_list[mi]
+    bilin_config, quad_config = method(ref)
 
     log_dir = joinpath(@__DIR__, "logs")
     mkpath(log_dir)
@@ -1098,82 +1093,36 @@ end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
-bilinear_methods = Dict(
-    :local => (
-        (
-            "Bin2+sSOS",
-            IOM.Bin2Config(IOM.SolverSOS2QuadConfig()),
-            IOM.SolverSOS2QuadConfig(),
-        ),
-        (
-            "Bin2+mSOS",
-            IOM.Bin2Config(IOM.ManualSOS2QuadConfig()),
-            IOM.ManualSOS2QuadConfig(),
-        ),
-        ("Bin2+Saw", IOM.Bin2Config(IOM.SawtoothQuadConfig()), IOM.SawtoothQuadConfig()),
-        (
-            "HybS+sSOS",
-            IOM.HybSConfig(IOM.SolverSOS2QuadConfig()),
-            IOM.SolverSOS2QuadConfig(),
-        ),
-        (
-            "HybS+mSOS",
-            IOM.HybSConfig(IOM.ManualSOS2QuadConfig()),
-            IOM.ManualSOS2QuadConfig(),
-        ),
-        ("HybS+Saw", IOM.HybSConfig(IOM.SawtoothQuadConfig()), IOM.SawtoothQuadConfig()),
-        ("DNMDT", IOM.DNMDTBilinearConfig(), IOM.DNMDTQuadConfig()),
-    ),
-    :github => (
-        (
-            "Bin2+sSOS",
-            IOM.Bin2Config(IOM.SolverSOS2QuadConfig()),
-            IOM.SolverSOS2QuadConfig(),
-        ),
-        (
-            "Bin2+mSOS",
-            IOM.Bin2Config(IOM.ManualSOS2QuadConfig()),
-            IOM.ManualSOS2QuadConfig(),
-        ),
-        ("Bin2+Saw", IOM.Bin2Config(IOM.SawtoothQuadConfig()), IOM.SawtoothQuadConfig()),
-        (
-            "HybS+sSOS",
-            IOM.HybSConfig(IOM.SolverSOS2QuadConfig()),
-            IOM.SolverSOS2QuadConfig(),
-        ),
-        (
-            "HybS+mSOS",
-            IOM.HybSConfig(IOM.ManualSOS2QuadConfig()),
-            IOM.ManualSOS2QuadConfig(),
-        ),
-        ("HybS+Saw", IOM.HybSConfig(IOM.SawtoothQuadConfig()), IOM.SawtoothQuadConfig()),
-        ("DNMDT", IOM.DNMDTBilinearConfig(), IOM.DNMDTQuadConfig()),
-    ),
-    :kestrel => (
-        (
-            "Bin2+sSOS",
-            IOM.Bin2Config(IOM.SolverSOS2QuadConfig()),
-            IOM.SolverSOS2QuadConfig(),
-        ),
-        (
-            "Bin2+mSOS",
-            IOM.Bin2Config(IOM.ManualSOS2QuadConfig()),
-            IOM.ManualSOS2QuadConfig(),
-        ),
-        ("Bin2+Saw", IOM.Bin2Config(IOM.SawtoothQuadConfig()), IOM.SawtoothQuadConfig()),
-        (
-            "HybS+sSOS",
-            IOM.HybSConfig(IOM.SolverSOS2QuadConfig()),
-            IOM.SolverSOS2QuadConfig(),
-        ),
-        (
-            "HybS+mSOS",
-            IOM.HybSConfig(IOM.ManualSOS2QuadConfig()),
-            IOM.ManualSOS2QuadConfig(),
-        ),
-        ("HybS+Saw", IOM.HybSConfig(IOM.SawtoothQuadConfig()), IOM.SawtoothQuadConfig()),
-        ("DNMDT", IOM.DNMDTBilinearConfig(), IOM.DNMDTQuadConfig()),
-    ),
+function Bin2_(R, quad_config)
+    q = quad_config(R)
+    IOM.Bin2Config(q), q
+end
+Bin2_sSOS(R) = Bin2_(R, IOM.SolverSOS2QuadConfig)
+Bin2_mSOS(R) = Bin2_(R, IOM.ManualSOS2QuadConfig)
+Bin2_Saw(R) = Bin2_(R, IOM.SawtoothQuadConfig)
+
+function HybS_(R, quad_config)
+    q = quad_config(R)
+    IOM.HybSConfig(q, 3 * R), q
+end
+HybS_sSOS(R) = HybS_(R, IOM.SolverSOS2QuadConfig)
+HybS_mSOS(R) = HybS_(R, IOM.ManualSOS2QuadConfig)
+HybS_Saw(R) = HybS_(R, IOM.SawtoothQuadConfig)
+
+function DNMDT_DNMDT(R)
+    IOM.DNMDTBilinearConfig(R), IOM.DNMDTQuadConfig(R, 3 * R)
+end
+
+exact(_) = (IOM.NoBilinearApproxConfig(), IOM.NoQuadApproxConfig())
+
+bilinear_methods = (
+    ("Bin2+sSOS", Bin2_sSOS),
+    ("Bin2+mSOS", Bin2_mSOS),
+    ("Bin2+Saw", Bin2_Saw),
+    ("HybS+sSOS", HybS_sSOS),
+    ("HybS+mSOS", HybS_mSOS),
+    ("HybS+Saw", HybS_Saw),
+    ("DNMDT", DNMDT_DNMDT),
 )
 
 function parse_commandline()
