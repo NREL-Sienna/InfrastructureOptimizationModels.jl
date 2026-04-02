@@ -331,60 +331,92 @@ function _add_triangle_selection!(
             )
         end
 
-        # Diagonal bicliques (indices 1–3): conflict edges from :U subrectangles
+        # Diagonal bicliques (indices 1–3): conflict edges from :U subrectangles.
+        # For :U cell (si, sj), the conflict pair is (si+1, sj) vs (si, sj+1).
+        # Both vertices have the same (i+j) = si+sj+1, so they share the same tau.
+        # To guarantee A^tau ∩ B^tau = ∅, we use i parity: even i → A, odd i → B.
+        # Vertices are collected into sets to avoid duplicate coefficients when a
+        # vertex participates in multiple conflict edges within the same biclique.
         for tau in 0:2
-            idx = tau + 1  # constraint index: 1, 2, 3
-            A_sum = JuMP.AffExpr(0.0)
-            B_sum = JuMP.AffExpr(0.0)
+            idx = tau + 1
+            A_set = Set{Tuple{Int, Int}}()
+            B_set = Set{Tuple{Int, Int}}()
 
             for si in 1:d1, sj in 1:d2
                 if triang[si, sj] == :U
-                    # Conflict pair for :U cell (si, sj):
-                    # vertex (i1, j1) = (si+1, sj) vs (i2, j2) = (si, sj+1)
                     i1, j1 = si + 1, sj
                     i2, j2 = si, sj + 1
                     if (i1 + j1) % 3 == tau
-                        lam_A = lambda[(name, i1, j1, t)]
-                        lam_B = lambda[(name, i2, j2, t)]
-                        add_proportional_to_jump_expression!(A_sum, lam_A, 1.0)
-                        add_proportional_to_jump_expression!(B_sum, lam_B, 1.0)
+                        if i1 % 2 == 0
+                            push!(A_set, (i1, j1))
+                            push!(B_set, (i2, j2))
+                        else
+                            push!(A_set, (i2, j2))
+                            push!(B_set, (i1, j1))
+                        end
                     end
                 end
             end
 
-            # A_sum <= w[idx]
+            A_sum = JuMP.AffExpr(0.0)
+            for (i, j) in A_set
+                add_proportional_to_jump_expression!(
+                    A_sum, lambda[(name, i, j, t)], 1.0,
+                )
+            end
+            B_sum = JuMP.AffExpr(0.0)
+            for (i, j) in B_set
+                add_proportional_to_jump_expression!(
+                    B_sum, lambda[(name, i, j, t)], 1.0,
+                )
+            end
+
             tri_cons[name, 2 * tau + 1, t] =
                 JuMP.@constraint(jump_model, A_sum <= w[idx])
-            # B_sum <= 1 - w[idx]
             tri_cons[name, 2 * tau + 2, t] =
                 JuMP.@constraint(jump_model, B_sum <= 1 - w[idx])
         end
 
-        # Anti-diagonal bicliques (indices 4–6): conflict edges from :K subrectangles
+        # Anti-diagonal bicliques (indices 4–6): conflict edges from :K subrectangles.
+        # For :K cell (si, sj), the conflict pair is (si, sj) vs (si+1, sj+1).
+        # Both vertices have the same (i-j) = si-sj, so they share the same tau.
+        # To guarantee A^tau ∩ B^tau = ∅, we use j parity: even j → A, odd j → B.
         for tau in 0:2
-            idx = tau + 4  # constraint index: 4, 5, 6 → constraint rows 7–12
-            A_sum = JuMP.AffExpr(0.0)
-            B_sum = JuMP.AffExpr(0.0)
+            idx = tau + 4
+            A_set = Set{Tuple{Int, Int}}()
+            B_set = Set{Tuple{Int, Int}}()
 
             for si in 1:d1, sj in 1:d2
                 if triang[si, sj] == :K
-                    # Conflict pair for :K cell (si, sj):
-                    # vertex (i1, j1) = (si, sj) vs (i2, j2) = (si+1, sj+1)
                     i1, j1 = si, sj
                     i2, j2 = si + 1, sj + 1
-                    if (i1 + j1) % 3 == tau
-                        lam_A = lambda[(name, i1, j1, t)]
-                        lam_B = lambda[(name, i2, j2, t)]
-                        add_proportional_to_jump_expression!(A_sum, lam_A, 1.0)
-                        add_proportional_to_jump_expression!(B_sum, lam_B, 1.0)
+                    if mod(i1 - j1, 3) == tau
+                        if j1 % 2 == 0
+                            push!(A_set, (i1, j1))
+                            push!(B_set, (i2, j2))
+                        else
+                            push!(A_set, (i2, j2))
+                            push!(B_set, (i1, j1))
+                        end
                     end
                 end
             end
 
-            # A_sum <= w[idx]
+            A_sum = JuMP.AffExpr(0.0)
+            for (i, j) in A_set
+                add_proportional_to_jump_expression!(
+                    A_sum, lambda[(name, i, j, t)], 1.0,
+                )
+            end
+            B_sum = JuMP.AffExpr(0.0)
+            for (i, j) in B_set
+                add_proportional_to_jump_expression!(
+                    B_sum, lambda[(name, i, j, t)], 1.0,
+                )
+            end
+
             tri_cons[name, 2 * tau + 7, t] =
                 JuMP.@constraint(jump_model, A_sum <= w[idx])
-            # B_sum <= 1 - w[idx]
             tri_cons[name, 2 * tau + 8, t] =
                 JuMP.@constraint(jump_model, B_sum <= 1 - w[idx])
         end

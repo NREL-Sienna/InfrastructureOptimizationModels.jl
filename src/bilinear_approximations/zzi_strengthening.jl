@@ -114,13 +114,15 @@ function _add_bilinear_approx!(
     jump_model = get_jump_model(container)
 
     # 5. Create lambda variable containers (use meta_zzi to avoid conflicts)
+    # Linearized grid index (i-1)*(d2+1)+j for the 3D sparse container
     lambda_container = add_variable_container!(container, ZZILambdaVariable(), C; meta = meta_zzi)
 
     lambda_dict = Dict{Tuple{String, Int, Int, Int}, JuMP.VariableRef}()
 
     for name in names, t in time_steps
         for i in 1:(d1 + 1), j in 1:(d2 + 1)
-            lam = lambda_container[(name, i, j, t)] = JuMP.@variable(
+            linear_idx = (i - 1) * (d2 + 1) + j
+            lam = lambda_container[(name, linear_idx, t)] = JuMP.@variable(
                 jump_model,
                 base_name = "ZZIrLambda_$(C)_{$(name), $(i), $(j), $(t)}",
                 lower_bound = 0.0,

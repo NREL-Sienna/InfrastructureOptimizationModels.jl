@@ -108,15 +108,17 @@ function _add_bilinear_approx!(
     jump_model = get_jump_model(container)
 
     # --- Create lambda variable containers ---
-    # SparseVariableType container for the optimization container registry
+    # SparseVariableType container uses linearized grid index (i-1)*(d2+1)+j
+    # to fit the 3D (name, idx, t) sparse array format.
     lambda_container = add_variable_container!(container, ZZILambdaVariable(), C; meta)
 
-    # Dict for passing lambda refs to SOS2/triangle functions
+    # Dict uses (name, i, j, t) tuples for downstream SOS2/triangle functions
     lambda_dict = Dict{Tuple{String, Int, Int, Int}, JuMP.VariableRef}()
 
     for name in names, t in time_steps
         for i in 1:(d1 + 1), j in 1:(d2 + 1)
-            lam = lambda_container[(name, i, j, t)] = JuMP.@variable(
+            linear_idx = (i - 1) * (d2 + 1) + j
+            lam = lambda_container[(name, linear_idx, t)] = JuMP.@variable(
                 jump_model,
                 base_name = "ZZILambda_$(C)_{$(name), $(i), $(j), $(t)}",
                 lower_bound = 0.0,
@@ -320,8 +322,9 @@ function _add_zzi_sawtooth_strengthening!(
     p2_min = x_min - y_max
     p2_max = x_max - y_min
 
-    # MIP sawtooth approximations for x² and y²
-    st_config = SawtoothQuadConfig(false, false)
+    # MIP sawtooth approximations for x² and y² (tightened with epigraph lower bound
+    # to ensure LP relaxation consistency with the ZZI-determined z variable)
+    st_config = SawtoothQuadConfig(true, false)
     xsq = _add_quadratic_approx!(
         st_config, container, C, names, time_steps,
         x_var, x_min, x_max, sawtooth_depth, meta * "_x",
