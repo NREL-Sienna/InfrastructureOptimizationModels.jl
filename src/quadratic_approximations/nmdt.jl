@@ -46,8 +46,8 @@ function _add_quadratic_approx!(
     names::Vector{String},
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
-    x_max::Float64,
     x_min::Float64,
+    x_max::Float64,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     tighten = config.epigraph_depth > 0
@@ -117,7 +117,7 @@ function _add_quadratic_approx!(
 
     return _add_quadratic_approx!(
         config, container, C, names, time_steps,
-        x_disc, meta,
+        x_disc, x_min, x_max, meta,
     )
 end
 
@@ -146,6 +146,8 @@ function _add_quadratic_approx!(
     names::Vector{String},
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
+    x_min::Float64,
+    x_max::Float64,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     tighten = config.epigraph_depth > 0
@@ -214,6 +216,6 @@ function _add_quadratic_approx!(
 
     return _add_quadratic_approx!(
         config, container, C, names, time_steps,
-        x_disc, meta,
+        x_disc, x_min, x_max, meta,
     )
 end

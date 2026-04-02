@@ -521,7 +521,7 @@ function _assemble_dnmdt!(
 
     dz = _residual_product!(
         container, C, names, time_steps,
-        x_disc, y_disc.delta_var, 2.0^(depth),
+        x_disc, y_disc.delta_var, 2.0^(-depth),
         depth, meta; tighten,
     )
     z1_expr = _assemble_product!(
@@ -533,7 +533,7 @@ function _assemble_dnmdt!(
     z2_expr = _assemble_product!(
         container, C, names, time_steps,
         [by_xh_expr, bx_dy_expr], dz,
-        y_disc, x_disc, x_min, x_max, y_min, y_max,
+        y_disc, x_disc, y_min, y_max, x_min, x_max,
         meta * "_nmdt2",
     )
 

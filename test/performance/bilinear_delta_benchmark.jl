@@ -57,7 +57,7 @@ using UnoSolver
 const IOM = InfrastructureOptimizationModels
 const IS = IOM.IS
 
-const MIP_TIME_LIMIT_SEC = 3600.0
+const MIP_TIME_LIMIT_SEC = 600.0
 const KESTREL_XPRESS_THREADS = 20
 const KESTREL_MAX_WORKERS = 5
 const SLURM_JOB_ID = get(ENV, "SLURM_JOB_ID", "")
@@ -1019,7 +1019,7 @@ function run_benchmark_parallel(;
     end
 
     # Print MIP results grouped by method
-    for (mi, (label, _, _)) in enumerate(mip_methods)
+    for (mi, (label, _)) in enumerate(mip_methods)
         for r in mip_results
             if r.label == label
                 print_result_row(r)
@@ -1093,6 +1093,8 @@ end
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
+epi_C = 1.5
+
 function Bin2_(R, quad_config)
     q = quad_config(R)
     IOM.Bin2Config(q), q
@@ -1100,18 +1102,23 @@ end
 Bin2_sSOS(R) = Bin2_(R, IOM.SolverSOS2QuadConfig)
 Bin2_mSOS(R) = Bin2_(R, IOM.ManualSOS2QuadConfig)
 Bin2_Saw(R) = Bin2_(R, IOM.SawtoothQuadConfig)
+# Bin2_ZZB(R)
 
 function HybS_(R, quad_config)
     q = quad_config(R)
-    IOM.HybSConfig(q, 3 * R), q
+    IOM.HybSConfig(q, ceil(Int, epi_C * R), true, false), q
 end
 HybS_sSOS(R) = HybS_(R, IOM.SolverSOS2QuadConfig)
 HybS_mSOS(R) = HybS_(R, IOM.ManualSOS2QuadConfig)
 HybS_Saw(R) = HybS_(R, IOM.SawtoothQuadConfig)
+# HybS_ZZB(R)
 
 function DNMDT_DNMDT(R)
-    IOM.DNMDTBilinearConfig(R), IOM.DNMDTQuadConfig(R, 3 * R)
+    IOM.DNMDTBilinearConfig(R), IOM.DNMDTQuadConfig(R, ceil(Int, epi_C * R))
 end
+
+# ZZI_sSOS(R)
+# ZZI_Saw(R)
 
 exact(_) = (IOM.NoBilinearApproxConfig(), IOM.NoQuadApproxConfig())
 
@@ -1146,7 +1153,7 @@ function parse_commandline()
         "--refinements", "-R"
         arg_type = Int
         nargs = '+'
-        default = [4, 6, 8]
+        default = [4, 8, 12]
         help = "refinement levels (list of integers)"
         "--worker"
         action = :store_true

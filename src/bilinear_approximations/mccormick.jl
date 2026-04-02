@@ -190,9 +190,6 @@ function _add_mccormick_envelope!(
     )
 end
 
-"Reformulated McCormick constraints expressed through separable decomposition variables."
-struct ReformulatedMcCormickConstraint <: ConstraintType end
-
 # Shared lower McCormick bounds on (z_p1 − z_x − z_y), used by both Bin2 and HybS.
 function _add_reformulated_lower_mccormick!(
     jump_model::JuMP.Model,

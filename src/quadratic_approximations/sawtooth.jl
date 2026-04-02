@@ -141,7 +141,7 @@ function _add_quadratic_approx!(
     saw_coeffs = [delta * delta * (2.0^(-2 * j)) for j in alpha_levels]
 
     # Compute valid bounds for z ≈ x² from variable bounds
-    z_min = min(x_min * x_min, x_max * x_max)
+    z_min = (x_min <= 0.0 <= x_max) ? 0.0 : min(x_min * x_min, x_max * x_max)
     z_max = max(x_min * x_min, x_max * x_max)
 
     for name in names, t in time_steps

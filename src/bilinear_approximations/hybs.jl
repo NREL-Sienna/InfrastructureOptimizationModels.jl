@@ -20,14 +20,8 @@ struct HybSConfig <: BilinearApproxConfig
     add_mccormick::Bool
     add_reformulated_mccormick::Bool
 end
-function HybSConfig(quad_config::QuadraticApproxConfig)
-    return HybSConfig(quad_config, true, false)
-end
-function HybSConfig(quad_config::QuadraticApproxConfig, add_mccormick::Bool)
-    return HybSConfig(quad_config, add_mccormick, false)
-end
-HybSConfig(quad_config::QuadraticApproxConfig, epigraph_depth::Int) =
-    HybSConfig(quad_config, epigraph_depth, true)
+# HybSConfig(quad_config::QuadraticApproxConfig, epigraph_depth::Int) =
+#     HybSConfig(quad_config, epigraph_depth, true)
 
 # --- Unified HybS dispatch methods ---
 
@@ -213,6 +207,14 @@ function _add_bilinear_approx!(
 
     # --- Reformulated McCormick cuts through separable variables ---
     if config.add_mccormick
+        _add_mccormick_envelope!(
+            container, C, names, time_steps,
+            x_var, y_var, z_var,
+            x_min, x_max, y_min, y_max, meta
+        )
+    end
+
+    if config.add_reformulated_mccormick
         _add_reformulated_mccormick!(
             container, C, names, time_steps,
             x_var, y_var, zp1_expr, zp2_expr, xsq, ysq,
@@ -221,14 +223,6 @@ function _add_bilinear_approx!(
     end
 
     # --- Reformulated McCormick cuts on separable variables ---
-    if config.add_reformulated_mccormick
-        _add_reformulated_mccormick!(
-            container, C, names, time_steps,
-            x_var, y_var, z_var,
-            xsq, ysq, zp1_expr, zp2_expr,
-            x_min, x_max, y_min, y_max, meta,
-        )
-    end
 
     return result_expr
 end
