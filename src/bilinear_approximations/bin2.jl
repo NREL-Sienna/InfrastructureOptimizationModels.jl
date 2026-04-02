@@ -22,12 +22,16 @@ abstract type BilinearApproxConfig end
 Config for Bin2 bilinear approximation using z = ½((x+y)² − x² − y²).
 The inner `quad_config` selects the quadratic method used for x², y², and (x+y)².
 Set `pwmcc_segments > 0` to add piecewise McCormick cuts on concave terms.
+Set `add_mccormick = true` to add reformulated McCormick cuts through the separable variables.
 """
 struct Bin2Config <: BilinearApproxConfig
     quad_config::QuadraticApproxConfig
     pwmcc_segments::Int
+    add_mccormick::Bool
 end
-Bin2Config(quad_confg::QuadraticApproxConfig) = Bin2Config(quad_confg, 4)
+Bin2Config(quad_config::QuadraticApproxConfig) = Bin2Config(quad_config, 4, true)
+Bin2Config(quad_config::QuadraticApproxConfig, pwmcc_segments::Int) =
+    Bin2Config(quad_config, pwmcc_segments, true)
 
 # --- Unified bilinear approximation dispatch ---
 
@@ -145,6 +149,15 @@ function _add_bilinear_approx!(
         _add_pwmcc_concave_cuts!(
             container, C, names, time_steps,
             y_var, ysq, y_min, y_max, config.pwmcc_segments, meta * "_y_pwmcc",
+        )
+    end
+
+    # --- Reformulated McCormick cuts (optional) ---
+    if config.add_mccormick
+        _add_reformulated_mccormick!(
+            container, C, names, time_steps,
+            x_var, y_var, psq, xsq, ysq,
+            x_min, x_max, y_min, y_max, meta,
         )
     end
 
