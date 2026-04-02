@@ -3,6 +3,9 @@
 
 struct McCormickConstraint <: ConstraintType end
 
+"Reformulated McCormick constraints on HybS separable variables."
+struct ReformulatedMcCormickConstraint <: ConstraintType end
+
 """
     _mc_setindex!(cons, index, n, constraint)
 

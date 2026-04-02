@@ -10,11 +10,21 @@ struct HybSBoundConstraint <: ConstraintType end
 Config for HybS (Hybrid Separable) bilinear approximation.
 Combines Bin2 lower bound and Bin3 upper bound with shared quadratic for x², y²
 and LP-only epigraph for (x+y)², (x−y)². Epigraph depth is computed as max(depth, 1).
+
+Set `add_reformulated_mccormick=true` to add 4 additional cuts on the separable
+squared-variable expressions (z_x, z_y, z_p1, z_p2) for tighter bilinear bounds.
 """
 struct HybSConfig <: BilinearApproxConfig
     quad_config::QuadraticApproxConfig
     epigraph_depth::Int
     add_mccormick::Bool
+    add_reformulated_mccormick::Bool
+end
+function HybSConfig(quad_config::QuadraticApproxConfig)
+    return HybSConfig(quad_config, true, false)
+end
+function HybSConfig(quad_config::QuadraticApproxConfig, add_mccormick::Bool)
+    return HybSConfig(quad_config, add_mccormick, false)
 end
 HybSConfig(quad_config::QuadraticApproxConfig, epigraph_depth::Int) =
     HybSConfig(quad_config, epigraph_depth, true)
@@ -206,6 +216,16 @@ function _add_bilinear_approx!(
         _add_reformulated_mccormick!(
             container, C, names, time_steps,
             x_var, y_var, zp1_expr, zp2_expr, xsq, ysq,
+            x_min, x_max, y_min, y_max, meta,
+        )
+    end
+
+    # --- Reformulated McCormick cuts on separable variables ---
+    if config.add_reformulated_mccormick
+        _add_reformulated_mccormick!(
+            container, C, names, time_steps,
+            x_var, y_var, z_var,
+            xsq, ysq, zp1_expr, zp2_expr,
             x_min, x_max, y_min, y_max, meta,
         )
     end
