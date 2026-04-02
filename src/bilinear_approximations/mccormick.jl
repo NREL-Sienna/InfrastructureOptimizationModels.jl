@@ -3,6 +3,9 @@
 
 struct McCormickConstraint <: ConstraintType end
 
+"Reformulated McCormick constraints on HybS separable variables."
+struct ReformulatedMcCormickConstraint <: ConstraintType end
+
 """
     _mc_setindex!(cons, index, n, constraint)
 
@@ -185,4 +188,122 @@ function _add_mccormick_envelope!(
         x_min, x_max, x_min, x_max;
         lower_bounds,
     )
+end
+
+"""
+    _add_reformulated_mccormick!(container, C, names, time_steps, x_var, y_var, z_var, xsq, ysq, zp1_expr, zp2_expr, x_min, x_max, y_min, y_max, meta)
+
+Add reformulated McCormick cuts on HybS separable squared-variable expressions.
+
+For each (name, t), adds 4 linear inequalities that tighten the bilinear relaxation
+by acting on the squared-variable expressions (z_x ≈ x², z_y ≈ y², z_p1 ≈ (x+y)²,
+z_p2 ≈ (x-y)²):
+```
+z_p1 − z_x − z_y ≥ 2(x_lb·y + x·y_lb − x_lb·y_lb)
+z_p1 − z_x − z_y ≥ 2(x_ub·y + x·y_ub − x_ub·y_ub)
+z_x + z_y − z_p2 ≤ 2(x_ub·y + x·y_lb − x_ub·y_lb)
+z_x + z_y − z_p2 ≤ 2(x_lb·y + x·y_ub − x_lb·y_ub)
+```
+
+# Arguments
+- `container::OptimizationContainer`: the optimization container
+- `::Type{C}`: component type
+- `names::Vector{String}`: component names
+- `time_steps::UnitRange{Int}`: time periods
+- `x_var`: container of x variables indexed by (name, t)
+- `y_var`: container of y variables indexed by (name, t)
+- `z_var`: container of z variables indexed by (name, t)
+- `xsq`: expression container for z_x ≈ x², indexed by (name, t)
+- `ysq`: expression container for z_y ≈ y², indexed by (name, t)
+- `zp1_expr`: expression container for z_p1 ≈ (x+y)², indexed by (name, t)
+- `zp2_expr`: expression container for z_p2 ≈ (x-y)², indexed by (name, t)
+- `x_min::Float64`: lower bound of x
+- `x_max::Float64`: upper bound of x
+- `y_min::Float64`: lower bound of y
+- `y_max::Float64`: upper bound of y
+- `meta::String`: identifier for container keys
+
+# Returns
+- Nothing. Constraints are added in-place.
+"""
+function _add_reformulated_mccormick!(
+    container::OptimizationContainer,
+    ::Type{C},
+    names::Vector{String},
+    time_steps::UnitRange{Int},
+    x_var,
+    y_var,
+    z_var,
+    xsq,
+    ysq,
+    zp1_expr,
+    zp2_expr,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
+    meta::String,
+) where {C <: IS.InfrastructureSystemsComponent}
+    IS.@assert_op x_max > x_min
+    IS.@assert_op y_max > y_min
+    jump_model = get_jump_model(container)
+
+    rmc_cons = add_constraints_container!(
+        container,
+        ReformulatedMcCormickConstraint(),
+        C,
+        names,
+        1:4,
+        time_steps;
+        sparse = true,
+        meta,
+    )
+
+    for name in names, t in time_steps
+        x = x_var[name, t]
+        y = y_var[name, t]
+        z_x = xsq[name, t]
+        z_y = ysq[name, t]
+        z_p1 = zp1_expr[name, t]
+        z_p2 = zp2_expr[name, t]
+
+        _mc_setindex!(
+            rmc_cons,
+            (name, t),
+            1,
+            JuMP.@constraint(
+                jump_model,
+                z_p1 - z_x - z_y >= 2 * (x_min * y + x * y_min - x_min * y_min),
+            )
+        )
+        _mc_setindex!(
+            rmc_cons,
+            (name, t),
+            2,
+            JuMP.@constraint(
+                jump_model,
+                z_p1 - z_x - z_y >= 2 * (x_max * y + x * y_max - x_max * y_max),
+            )
+        )
+        _mc_setindex!(
+            rmc_cons,
+            (name, t),
+            3,
+            JuMP.@constraint(
+                jump_model,
+                z_x + z_y - z_p2 <= 2 * (x_max * y + x * y_min - x_max * y_min),
+            )
+        )
+        _mc_setindex!(
+            rmc_cons,
+            (name, t),
+            4,
+            JuMP.@constraint(
+                jump_model,
+                z_x + z_y - z_p2 <= 2 * (x_min * y + x * y_max - x_min * y_max),
+            )
+        )
+    end
+
+    return
 end
