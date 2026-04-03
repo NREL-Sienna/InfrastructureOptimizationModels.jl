@@ -1102,23 +1102,20 @@ end
 Bin2_sSOS(R) = Bin2_(R, IOM.SolverSOS2QuadConfig)
 Bin2_mSOS(R) = Bin2_(R, IOM.ManualSOS2QuadConfig)
 Bin2_Saw(R) = Bin2_(R, IOM.SawtoothQuadConfig)
-# Bin2_ZZB(R)
+Bin2_ZZB(R) = Bin2_(R, IOM.ZZBQuadConfig)
 
 function HybS_(R, quad_config)
     q = quad_config(R)
-    IOM.HybSConfig(q, ceil(Int, epi_C * R), true, false), q
+    IOM.HybSConfig(q, ceil(Int, epi_C * R)), q
 end
 HybS_sSOS(R) = HybS_(R, IOM.SolverSOS2QuadConfig)
 HybS_mSOS(R) = HybS_(R, IOM.ManualSOS2QuadConfig)
 HybS_Saw(R) = HybS_(R, IOM.SawtoothQuadConfig)
-# HybS_ZZB(R)
+HybS_ZZB(R) = HybS_(R, IOM.ZZBQuadConfig)
 
 function DNMDT_DNMDT(R)
     IOM.DNMDTBilinearConfig(R), IOM.DNMDTQuadConfig(R, ceil(Int, epi_C * R))
 end
-
-# ZZI_sSOS(R)
-# ZZI_Saw(R)
 
 exact(_) = (IOM.NoBilinearApproxConfig(), IOM.NoQuadApproxConfig())
 
@@ -1126,9 +1123,11 @@ bilinear_methods = (
     ("Bin2+sSOS", Bin2_sSOS),
     ("Bin2+mSOS", Bin2_mSOS),
     ("Bin2+Saw", Bin2_Saw),
+    ("Bin2+ZZB", Bin2_ZZB),
     ("HybS+sSOS", HybS_sSOS),
     ("HybS+mSOS", HybS_mSOS),
     ("HybS+Saw", HybS_Saw),
+    ("HybS+ZZB", HybS_ZZB),
     ("DNMDT", DNMDT_DNMDT),
 )
 
@@ -1153,7 +1152,7 @@ function parse_commandline()
         "--refinements", "-R"
         arg_type = Int
         nargs = '+'
-        default = [4, 8, 12]
+        default = [4, 6, 8]
         help = "refinement levels (list of integers)"
         "--worker"
         action = :store_true

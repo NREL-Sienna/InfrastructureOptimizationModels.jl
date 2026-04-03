@@ -46,7 +46,7 @@ ZZIBilinearConfig(d1::Int, d2::Int, add_mccormick::Bool) =
 # --- Main dispatch ---
 
 """
-    _add_bilinear_approx!(config::ZZIBilinearConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
+    _add_bilinear_approx!(config::ZZIBilinearConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, meta)
 
 Approximate x·y using the ZZI bivariate piecewise linear formulation.
 
@@ -66,7 +66,6 @@ applies ZZI integer-variable SOS2 encoding plus triangle selection on the grid.
 - `x_max::Float64`: upper bound of x
 - `y_min::Float64`: lower bound of y
 - `y_max::Float64`: upper bound of y
-- `depth::Int`: unused (grid sizes come from config); present for interface compatibility
 - `meta::String`: identifier for container keys
 """
 function _add_bilinear_approx!(
@@ -324,14 +323,14 @@ function _add_zzi_sawtooth_strengthening!(
 
     # MIP sawtooth approximations for x² and y² (tightened with epigraph lower bound
     # to ensure LP relaxation consistency with the ZZI-determined z variable)
-    st_config = SawtoothQuadConfig(true, false)
+    st_config = SawtoothQuadConfig(sawtooth_depth)
     xsq = _add_quadratic_approx!(
         st_config, container, C, names, time_steps,
-        x_var, x_min, x_max, sawtooth_depth, meta * "_x",
+        x_var, x_min, x_max, meta * "_x",
     )
     ysq = _add_quadratic_approx!(
         st_config, container, C, names, time_steps,
-        y_var, y_min, y_max, sawtooth_depth, meta * "_y",
+        y_var, y_min, y_max, meta * "_y",
     )
 
     # Build p1 = x + y and p2 = x − y expression containers
@@ -365,15 +364,15 @@ function _add_zzi_sawtooth_strengthening!(
     end
 
     # LP epigraph lower bounds for (x+y)² and (x−y)²
-    ep_config = EpigraphQuadConfig()
     epigraph_depth = max(sawtooth_depth, 1)
+    ep_config = EpigraphQuadConfig(epigraph_depth)
     zp1_expr = _add_quadratic_approx!(
         ep_config, container, C, names, time_steps,
-        p1_expr, p1_min, p1_max, epigraph_depth, meta * "_plus",
+        p1_expr, p1_min, p1_max, meta * "_plus",
     )
     zp2_expr = _add_quadratic_approx!(
         ep_config, container, C, names, time_steps,
-        p2_expr, p2_min, p2_max, epigraph_depth, meta * "_diff",
+        p2_expr, p2_min, p2_max, meta * "_diff",
     )
 
     # Two-sided HybS-style bound constraints

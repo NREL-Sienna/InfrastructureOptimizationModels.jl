@@ -156,7 +156,8 @@ function _add_quadratic_approx!(
     if config.pwmcc_segments > 0
         _add_pwmcc_concave_cuts!(
             container, C, names, time_steps,
-            x_var, result_expr, x_min, x_max, config.pwmcc_segments, meta * "_pwmcc",
+            x_var, result_expr, x_min, x_max,
+            config.pwmcc_segments, meta * "_pwmcc",
         )
     end
 

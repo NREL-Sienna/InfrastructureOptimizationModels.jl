@@ -17,10 +17,10 @@ struct ZZBTightenedConstraint <: ConstraintType end
 
 "Config for ZZB (Binary Zig-Zag) quadratic approximation."
 struct ZZBQuadConfig <: QuadraticApproxConfig
+    depth::Int
     tighten::Bool
-    add_mccormick::Bool
 end
-ZZBQuadConfig() = ZZBQuadConfig(false, false)
+ZZBQuadConfig(depth::Int) = ZZBQuadConfig(depth, false)
 
 """
     build_brgc(r::Int) -> Matrix{Int}
@@ -93,7 +93,7 @@ function _build_zzb_coefficients(G::Matrix{Int}, depth::Int)
 end
 
 """
-    _add_quadratic_approx!(config::ZZBQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, depth, meta)
+    _add_quadratic_approx!(config::ZZBQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, meta)
 
 Approximate x² using the ZZB (Binary Zig-Zag) encoding formulation.
 
@@ -114,7 +114,6 @@ y_k between min and max of G[j, k] over segments adjacent to each breakpoint.
 - `x_var`: container of variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
-- `depth::Int`: encoding depth r (uses 2^r + 1 breakpoints, r binary variables)
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
 """
 function _add_quadratic_approx!(
@@ -126,12 +125,13 @@ function _add_quadratic_approx!(
     x_var,
     x_min::Float64,
     x_max::Float64,
-    depth::Int,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
-    IS.@assert_op depth >= 1
+    IS.@assert_op config.depth >= 2
 
+    # d = depth #2^depth
+    depth = round(Int, log2(config.depth))
     d = 2^depth
     n_points = d + 1
     x_bkpts, x_sq_bkpts =
@@ -207,9 +207,9 @@ function _add_quadratic_approx!(
     epigraph_depth = max(2, ceil(Int, 1.5 * depth))
     if config.tighten
         lp_expr = _add_quadratic_approx!(
-            EpigraphQuadConfig(), container, C, names, time_steps,
-            x_var, x_min, x_max,
-            epigraph_depth, meta * "_lb",
+            EpigraphQuadConfig(epigraph_depth),
+            container, C, names, time_steps,
+            x_var, x_min, x_max, meta * "_lb",
         )
         z_var = add_variable_container!(
             container,
@@ -325,15 +325,6 @@ function _add_quadratic_approx!(
         else
             result_expr[name, t] = x_sq_upper
         end
-    end
-
-    if config.add_mccormick
-        _add_mccormick_envelope!(
-            container, C, names, time_steps,
-            x_var, result_expr,
-            x_min, x_max,
-            meta,
-        )
     end
 
     return result_expr
