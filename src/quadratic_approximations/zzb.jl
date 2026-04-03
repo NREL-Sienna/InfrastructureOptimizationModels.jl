@@ -18,9 +18,9 @@ struct ZZBTightenedConstraint <: ConstraintType end
 "Config for ZZB (Binary Zig-Zag) quadratic approximation."
 struct ZZBQuadConfig <: QuadraticApproxConfig
     depth::Int
-    tighten::Bool
+    epigraph_depth::Int
 end
-ZZBQuadConfig(depth::Int) = ZZBQuadConfig(depth, false)
+ZZBQuadConfig(depth::Int) = ZZBQuadConfig(depth, 0)
 
 """
     build_brgc(r::Int) -> Matrix{Int}
@@ -135,7 +135,7 @@ function _add_quadratic_approx!(
     d = 2^depth
     n_points = d + 1
     x_bkpts, x_sq_bkpts =
-        _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments = d)
+        _get_breakpoints_for_pwl_function(0.0, 1.0, _square; num_segments = d)
     jump_model = get_jump_model(container)
 
     # Build encoding coefficient matrices once (invariant across names and time steps)
@@ -204,10 +204,9 @@ function _add_quadratic_approx!(
         meta,
     )
 
-    epigraph_depth = max(2, ceil(Int, 1.5 * depth))
-    if config.tighten
+    if config.epigraph_depth > 0
         lp_expr = _add_quadratic_approx!(
-            EpigraphQuadConfig(epigraph_depth),
+            EpigraphQuadConfig(config.epigraph_depth),
             container, C, names, time_steps,
             x_var, x_min, x_max, meta * "_lb",
         )
@@ -254,7 +253,7 @@ function _add_quadratic_approx!(
         for i in eachindex(x_bkpts)
             add_proportional_to_jump_expression!(link, lambda[i], x_bkpts[i])
         end
-        link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
+        link_cons[name, t] = JuMP.@constraint(jump_model, (x - x_min)/(x_max - x_min) == link)
 
         # Σ λ_i = 1 (normalization)
         norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
@@ -311,7 +310,7 @@ function _add_quadratic_approx!(
             add_proportional_to_jump_expression!(x_sq_upper, lambda[i], x_sq_bkpts[i])
         end
 
-        if config.tighten
+        if config.epigraph_depth > 0
             z =
                 z_var[name, t] = JuMP.@variable(
                     jump_model,
@@ -323,7 +322,7 @@ function _add_quadratic_approx!(
             tight_cons[name, 2, t] = JuMP.@constraint(jump_model, z >= lp_expr[name, t])
             result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
         else
-            result_expr[name, t] = x_sq_upper
+            result_expr[name, t] = (x_max - x_min)^2 * x_sq_upper + x_min * (2 * x - x_min)
         end
     end
 

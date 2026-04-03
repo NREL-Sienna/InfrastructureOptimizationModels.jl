@@ -19,9 +19,9 @@ struct SawtoothTightenedConstraint <: ConstraintType end
 "Config for sawtooth MIP quadratic approximation."
 struct SawtoothQuadConfig <: QuadraticApproxConfig
     depth::Int
-    tighten::Bool
+    epigraph_depth::Int
 end
-SawtoothQuadConfig(depth::Int) = SawtoothQuadConfig(depth, false)
+SawtoothQuadConfig(depth::Int) = SawtoothQuadConfig(depth, 0)
 
 """
     _add_quadratic_approx!(config::SawtoothQuadConfig, container, C, names, time_steps, x_var, x_min, x_max, meta)
@@ -60,7 +60,6 @@ function _add_quadratic_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     IS.@assert_op x_max > x_min
     IS.@assert_op config.depth >= 1
-    epigraph_depth = max(2, ceil(Int, 1.5 * config.depth))
     jump_model = get_jump_model(container)
     delta = x_max - x_min
 
@@ -112,11 +111,11 @@ function _add_quadratic_approx!(
         meta,
     )
 
-    if config.tighten
+    if config.epigraph_depth > 0
         lp_expr = _add_quadratic_approx!(
-            EpigraphQuadConfig(), container, C, names, time_steps,
-            x_var, x_min, x_max,
-            epigraph_depth, meta * "_lb",
+            EpigraphQuadConfig(config.epigraph_depth),
+            container, C, names, time_steps,
+            x_var, x_min, x_max, meta * "_lb",
         )
         z_var = add_variable_container!(
             container,
@@ -206,7 +205,7 @@ function _add_quadratic_approx!(
             )
         end
 
-        if config.tighten
+        if config.epigraph_depth > 0
             z =
                 z_var[name, t] = JuMP.@variable(
                     jump_model,
