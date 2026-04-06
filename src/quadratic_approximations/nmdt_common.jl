@@ -138,7 +138,7 @@ function _discretize!(
 end
 
 """
-    _binary_continuous_product!(container, C, names, time_steps, bin_disc, cont_var, cont_min, cont_max, meta; tighten)
+    _binary_continuous_product!(container, C, names, time_steps, bin_disc, cont_var, cont_min, cont_max, depth, meta; tighten)
 
 Linearize each binary-continuous product β_i·y using McCormick envelopes.
 
@@ -155,6 +155,7 @@ and adds 4 McCormick constraints via `_add_mccormick_envelope!`. Assembles the w
 - `cont_var`: container of continuous variables y indexed by (name, t)
 - `cont_min::Float64`: lower bound of y
 - `cont_max::Float64`: upper bound of y
+- `depth::Int`: number of binary discretization levels
 - `meta::String`: identifier encoding the original variable type being approximated
 - `tighten::Bool`: if true, omit McCormick lower bounds (for use when a tighter bound is applied elsewhere)
 """
@@ -225,7 +226,7 @@ function _binary_continuous_product!(
 end
 
 """
-    _tighten_lower_bounds!(container, C, names, time_steps, result_expr, x_disc, meta)
+    _tighten_lower_bounds!(container, C, names, time_steps, result_expr, x_disc, epigraph_depth, meta)
 
 Add epigraph lower-bound constraints to tighten an NMDT quadratic approximation.
 
@@ -240,6 +241,7 @@ for each (name, t). This improves the lower bound quality of NMDT without adding
 - `time_steps::UnitRange{Int}`: time periods
 - `result_expr`: expression container for the NMDT quadratic result to be tightened
 - `x_disc`: `NMDTDiscretization` for x, providing `norm_expr` and `depth`
+- `epigraph_depth::Int`: depth for the epigraph Q^{L1} lower-bound approximation
 - `meta::String`: identifier encoding the original variable type being approximated
 """
 function _tighten_lower_bounds!(
@@ -413,6 +415,11 @@ function _assemble_product!(
     return result_expr
 end
 
+"""
+    _assemble_product!(container, C, names, time_steps, terms, dz_var, x_disc::NMDTDiscretization, y_disc::NMDTDiscretization, x_min, x_max, y_min, y_max, meta; result_type)
+
+Convenience overload: extracts `norm_expr` from both discretizations and delegates to the core `_assemble_product!`.
+"""
 function _assemble_product!(
     container::OptimizationContainer,
     ::Type{C},
@@ -437,6 +444,11 @@ function _assemble_product!(
     )
 end
 
+"""
+    _assemble_product!(container, C, names, time_steps, terms, dz_var, x_disc::NMDTDiscretization, yh_expr, x_min, x_max, y_min, y_max, meta; result_type)
+
+Convenience overload: extracts `norm_expr` from x_disc and delegates to the core `_assemble_product!`.
+"""
 function _assemble_product!(
     container::OptimizationContainer,
     ::Type{C},

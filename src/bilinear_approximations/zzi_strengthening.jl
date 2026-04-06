@@ -88,7 +88,6 @@ function _add_bilinear_approx!(
         x_max,
         y_min,
         y_max,
-        depth,
         meta,
     )
 

@@ -5,11 +5,18 @@
 struct ManualSOS2BinaryVariable <: SparseVariableType end
 "Ensures exactly one segment is active (∑zⱼ = 1) in manual SOS2 quadratic approximation."
 struct ManualSOS2SegmentSelectionConstraint <: ConstraintType end
+"Expression for the segment selection sum Σ z_j in manual SOS2 quadratic approximation."
 struct ManualSOS2SegmentSelectionExpression <: ExpressionType end
 "Links active segment to lambda variables."
 struct ManualSOS2AdjacencyConstraint <: ConstraintType end
 
-"Config for manual binary-variable SOS2 quadratic approximation."
+"""
+Config for manual binary-variable SOS2 quadratic approximation.
+
+# Fields
+- `depth::Int`: number of PWL segments (breakpoints = depth + 1)
+- `pwmcc_segments::Int`: number of piecewise McCormick cut partitions; 0 to disable (default 4)
+"""
 struct ManualSOS2QuadConfig <: QuadraticApproxConfig
     depth::Int
     pwmcc_segments::Int
@@ -27,7 +34,7 @@ and stores affine expressions approximating x² in a `QuadraticExpression`
 expression container.
 
 # Arguments
-- `config::ManualSOS2QuadConfig`: configuration (includes `add_mccormick` flag)
+- `config::ManualSOS2QuadConfig`: configuration with `depth` (number of PWL segments) and `pwmcc_segments` (PWMCC cut partitions; 0 to disable, default 4)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -50,8 +57,8 @@ function _add_quadratic_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
         _get_breakpoints_for_pwl_function(
-            0.0,
-            1.0,
+            x_min,
+            x_max,
             _square;
             num_segments = config.depth,
         )
@@ -149,7 +156,7 @@ function _add_quadratic_approx!(
         for i in eachindex(x_bkpts)
             add_proportional_to_jump_expression!(link, lambda[i], x_bkpts[i])
         end
-        link_cons[name, t] = JuMP.@constraint(jump_model, (x - x_min)/(x_max - x_min) == link)
+        link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
 
         # Σ λ_i = 1
         norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
@@ -193,7 +200,7 @@ function _add_quadratic_approx!(
         for i in 1:n_points
             add_proportional_to_jump_expression!(x_hat_sq, lambda[i], x_sq_bkpts[i])
         end
-        result_expr[name, t] = (x_max - x_min)^2 * x_hat_sq + x_min * (2 * x - x_min)
+        result_expr[name, t] = x_hat_sq
     end
 
     if config.pwmcc_segments > 0

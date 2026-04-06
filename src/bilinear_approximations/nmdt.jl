@@ -5,12 +5,22 @@
 # Reference: Teles, Castro, Matos (2013), Multiparametric disaggregation technique for global
 # optimization of polynomial programming problems.
 
-"Config for double-NMDT bilinear approximation (discretizes both x and y)."
+"""
+Config for double-NMDT bilinear approximation (discretizes both x and y).
+
+# Fields
+- `depth::Int`: number of binary discretization levels L for both x and y
+"""
 struct DNMDTBilinearConfig <: BilinearApproxConfig
     depth::Int
 end
 
-"Config for single-NMDT bilinear approximation (discretizes x only)."
+"""
+Config for single-NMDT bilinear approximation (discretizes x only).
+
+# Fields
+- `depth::Int`: number of binary discretization levels L for x
+"""
 struct NMDTBilinearConfig <: BilinearApproxConfig
     depth::Int
 end
@@ -80,7 +90,7 @@ function _add_bilinear_approx!(
 end
 
 """
-    _add_bilinear_approx!(config::DNMDTBilinearConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
+    _add_bilinear_approx!(config::DNMDTBilinearConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, meta)
 
 Approximate x·y using the DNMDT method from raw variable inputs.
 
@@ -99,7 +109,6 @@ pre-discretized overload.
 - `x_max::Float64`: upper bound of x
 - `y_min::Float64`: lower bound of y
 - `y_max::Float64`: upper bound of y
-- `depth::Int`: number of binary discretization levels L for both x and y
 - `meta::String`: identifier encoding the original variable type being approximated
 """
 function _add_bilinear_approx!(
@@ -185,6 +194,8 @@ function _add_bilinear_approx!(
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
     yh_expr,
+    x_min::Float64,
+    x_max::Float64,
     y_min::Float64,
     y_max::Float64,
     meta::String;
@@ -208,7 +219,7 @@ function _add_bilinear_approx!(
 end
 
 """
-    _add_bilinear_approx!(config::NMDTBilinearConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
+    _add_bilinear_approx!(config::NMDTBilinearConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, meta)
 
 Approximate x·y using the NMDT method from raw variable inputs.
 
@@ -264,6 +275,8 @@ function _add_bilinear_approx!(
         time_steps,
         x_disc,
         yh_expr,
+        x_min,
+        x_max,
         y_min,
         y_max,
         meta,

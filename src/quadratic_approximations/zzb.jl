@@ -15,7 +15,13 @@ struct ZZBTightenedVariable <: VariableType end
 "Constraints bounding the tightened variable (z ≤ upper, z ≥ lower)."
 struct ZZBTightenedConstraint <: ConstraintType end
 
-"Config for ZZB (Binary Zig-Zag) quadratic approximation."
+"""
+Config for ZZB (Binary Zig-Zag) quadratic approximation.
+
+# Fields
+- `depth::Int`: number of PWL segments; must be ≥ 2 and a power of 2 (log₂(depth) binary variables are used)
+- `epigraph_depth::Int`: LP tightening depth via epigraph Q^{L1} lower bound; 0 to disable (default 0)
+"""
 struct ZZBQuadConfig <: QuadraticApproxConfig
     depth::Int
     epigraph_depth::Int
@@ -97,8 +103,8 @@ end
 
 Approximate x² using the ZZB (Binary Zig-Zag) encoding formulation.
 
-Creates lambda (λ) convex combination variables over 2^depth + 1 breakpoints,
-binary encoding variables y_1,...,y_depth, adds linking, normalization, and
+Creates lambda (λ) convex combination variables over config.depth + 1 breakpoints,
+log₂(config.depth) binary encoding variables, adds linking, normalization, and
 zig-zag encoding constraints, and stores affine expressions approximating x²
 in a `QuadraticExpression` expression container.
 
@@ -106,7 +112,7 @@ The encoding constraints use independent branching: each constraint bounds
 y_k between min and max of G[j, k] over segments adjacent to each breakpoint.
 
 # Arguments
-- `config::ZZBQuadConfig`: configuration (tighten, add_mccormick)
+- `config::ZZBQuadConfig`: configuration with `depth` (number of PWL segments; must be ≥ 2, power of 2) and `epigraph_depth` (LP tightening depth; 0 to disable)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -130,12 +136,11 @@ function _add_quadratic_approx!(
     IS.@assert_op x_max > x_min
     IS.@assert_op config.depth >= 2
 
-    # d = depth #2^depth
     depth = round(Int, log2(config.depth))
     d = 2^depth
     n_points = d + 1
     x_bkpts, x_sq_bkpts =
-        _get_breakpoints_for_pwl_function(0.0, 1.0, _square; num_segments = d)
+        _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments = d)
     jump_model = get_jump_model(container)
 
     # Build encoding coefficient matrices once (invariant across names and time steps)
@@ -253,7 +258,7 @@ function _add_quadratic_approx!(
         for i in eachindex(x_bkpts)
             add_proportional_to_jump_expression!(link, lambda[i], x_bkpts[i])
         end
-        link_cons[name, t] = JuMP.@constraint(jump_model, (x - x_min)/(x_max - x_min) == link)
+        link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
 
         # Σ λ_i = 1 (normalization)
         norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
@@ -322,7 +327,7 @@ function _add_quadratic_approx!(
             tight_cons[name, 2, t] = JuMP.@constraint(jump_model, z >= lp_expr[name, t])
             result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
         else
-            result_expr[name, t] = (x_max - x_min)^2 * x_sq_upper + x_min * (2 * x - x_min)
+            result_expr[name, t] = x_sq_upper
         end
     end
 

@@ -1,6 +1,7 @@
 # McCormick envelope for bilinear products z = x·y.
 # Adds 4 linear inequalities that bound z given variable bounds on x and y.
 
+"Standard McCormick envelope constraints bounding the bilinear product z = x·y."
 struct McCormickConstraint <: ConstraintType end
 
 "Reformulated McCormick constraints on HybS separable variables."

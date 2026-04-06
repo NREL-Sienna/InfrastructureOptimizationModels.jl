@@ -5,14 +5,23 @@
 struct QuadraticVariable <: SparseVariableType end
 "Links x to the weighted sum of breakpoints in SOS2 quadratic approximation."
 struct SOS2LinkingConstraint <: ConstraintType end
+"Expression for the weighted sum of breakpoints Σ λ_i * x_i linking x to lambda variables."
 struct SOS2LinkingExpression <: ExpressionType end
 "Ensures the sum of λ weights equals 1 in SOS2 quadratic approximation."
 struct SOS2NormConstraint <: ConstraintType end
+"Expression for the normalization sum Σ λ_i in SOS2 quadratic approximation."
 struct SOS2NormExpression <: ExpressionType end
 
+"Solver-native MOI.SOS2 adjacency constraint on lambda variables."
 struct SolverSOS2Constraint <: ConstraintType end
 
-"Config for solver-native SOS2 quadratic approximation (MOI.SOS2 adjacency)."
+"""
+Config for solver-native SOS2 quadratic approximation (MOI.SOS2 adjacency).
+
+# Fields
+- `depth::Int`: number of PWL segments (breakpoints = depth + 1)
+- `pwmcc_segments::Int`: number of piecewise McCormick cut partitions; 0 to disable (default 4)
+"""
 struct SolverSOS2QuadConfig <: QuadraticApproxConfig
     depth::Int
     pwmcc_segments::Int
@@ -29,7 +38,7 @@ adds linking, normalization, and MOI.SOS2 constraints, and stores affine express
 approximating x² in a `QuadraticExpression` expression container.
 
 # Arguments
-- `config::SolverSOS2QuadConfig`: configuration (includes `add_mccormick` flag)
+- `config::SolverSOS2QuadConfig`: configuration with `depth` (number of PWL segments) and `pwmcc_segments` (PWMCC cut partitions; 0 to disable, default 4)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -52,8 +61,8 @@ function _add_quadratic_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     x_bkpts, x_sq_bkpts =
         _get_breakpoints_for_pwl_function(
-            0.0,
-            1.0,
+            x_min,
+            x_max,
             _square;
             num_segments = config.depth,
         )
@@ -132,7 +141,7 @@ function _add_quadratic_approx!(
         for i in eachindex(x_bkpts)
             add_proportional_to_jump_expression!(link, lambda[i], x_bkpts[i])
         end
-        link_cons[name, t] = JuMP.@constraint(jump_model, (x - x_min)/(x_max - x_min) == link)
+        link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
 
         # Σ λ_i = 1
         norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
@@ -150,7 +159,7 @@ function _add_quadratic_approx!(
         for i in 1:n_points
             add_proportional_to_jump_expression!(x_hat_sq, lambda[i], x_sq_bkpts[i])
         end
-        result_expr[name, t] = (x_max - x_min)^2 * x_hat_sq + x_min * (2 * x - x_min)
+        result_expr[name, t] = x_hat_sq
     end
 
     if config.pwmcc_segments > 0

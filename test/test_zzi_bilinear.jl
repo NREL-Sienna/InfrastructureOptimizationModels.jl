@@ -322,7 +322,7 @@ const ZZI_META = "ZZITest"
     @testset "ZZI strengthened HybS" begin
         @testset "Constraint structure" begin
             setup = _setup_bilinear_test(["dev1"], 1:1)
-            inner = IOM.HybSConfig(IOM.SawtoothQuadConfig(false, false), true, false)
+            inner = IOM.HybSConfig(IOM.SawtoothQuadConfig(4), 4)
             config = IOM.ZZIStrengthenedConfig(inner, 4, 4)
             IOM._add_bilinear_approx!(
                 config,
@@ -369,7 +369,7 @@ const ZZI_META = "ZZITest"
             JuMP.fix(setup.x_var_container["dev1", 1], 2.0; force = true)
             JuMP.fix(setup.y_var_container["dev1", 1], 3.0; force = true)
 
-            inner = IOM.HybSConfig(IOM.SawtoothQuadConfig(false, false), true, false)
+            inner = IOM.HybSConfig(IOM.SawtoothQuadConfig(4), 4)
             config = IOM.ZZIStrengthenedConfig(inner, 4, 4)
             IOM._add_bilinear_approx!(
                 config,
@@ -412,7 +412,7 @@ const ZZI_META = "ZZITest"
             JuMP.fix(setup.x_var_container["dev1", 1], 2.0; force = true)
             JuMP.fix(setup.y_var_container["dev1", 1], 3.0; force = true)
 
-            inner = IOM.Bin2Config(IOM.SawtoothQuadConfig(false, false), 0)
+            inner = IOM.Bin2Config(IOM.SawtoothQuadConfig(4))
             config = IOM.ZZIStrengthenedConfig(inner, 4, 4)
             IOM._add_bilinear_approx!(
                 config,

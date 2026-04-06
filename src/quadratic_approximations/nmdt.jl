@@ -7,14 +7,26 @@
 # NMDT Reference: Teles, Castro, Matos (2013), Multiparametric disaggregation
 # technique for global optimization of polynomial programming problems.
 
-"Config for double-NMDT quadratic approximation."
+"""
+Config for double-NMDT quadratic approximation.
+
+# Fields
+- `depth::Int`: number of binary discretization levels L
+- `epigraph_depth::Int`: LP tightening depth via epigraph Q^{L1} lower bound; 0 to disable (default 3×depth)
+"""
 struct DNMDTQuadConfig <: QuadraticApproxConfig
     depth::Int
     epigraph_depth::Int
 end
 DNMDTQuadConfig(depth::Int) = DNMDTQuadConfig(depth, 3 * depth)
 
-"Config for single-NMDT quadratic approximation."
+"""
+Config for single-NMDT quadratic approximation.
+
+# Fields
+- `depth::Int`: number of binary discretization levels L
+- `epigraph_depth::Int`: LP tightening depth via epigraph Q^{L1} lower bound; 0 to disable (default 3×depth)
+"""
 struct NMDTQuadConfig <: QuadraticApproxConfig
     depth::Int
     epigraph_depth::Int
@@ -31,7 +43,7 @@ DNMDT assembler, storing results in a `QuadraticExpression` container. Optionall
 tightens lower bounds with an epigraph relaxation via `_tighten_lower_bounds!`.
 
 # Arguments
-- `config::DNMDTQuadConfig`: configuration (contains `tighten` flag)
+- `config::DNMDTQuadConfig`: configuration with `depth` (binary discretization levels) and `epigraph_depth` (LP tightening depth; 0 to disable, default 3×depth)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -89,7 +101,7 @@ Discretizes x via `_discretize!` then delegates to the `NMDTDiscretization` over
 Stores results in a `QuadraticExpression` container.
 
 # Arguments
-- `config::DNMDTQuadConfig`: configuration (contains `tighten` flag)
+- `config::DNMDTQuadConfig`: configuration with `depth` (binary discretization levels) and `epigraph_depth` (LP tightening depth; 0 to disable, default 3×depth)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -131,7 +143,7 @@ assembles x² via `_assemble_product!`. Stores results in a `QuadraticExpression
 container. Optionally tightens lower bounds with an epigraph relaxation.
 
 # Arguments
-- `config::NMDTQuadConfig`: configuration (contains `tighten` flag)
+- `config::NMDTQuadConfig`: configuration with `depth` (binary discretization levels) and `epigraph_depth` (LP tightening depth; 0 to disable, default 3×depth)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -188,7 +200,7 @@ Discretizes x via `_discretize!` then delegates to the `NMDTDiscretization` over
 Stores results in a `QuadraticExpression` container.
 
 # Arguments
-- `config::NMDTQuadConfig`: configuration (contains `tighten` flag)
+- `config::NMDTQuadConfig`: configuration with `depth` (binary discretization levels) and `epigraph_depth` (LP tightening depth; 0 to disable, default 3×depth)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names

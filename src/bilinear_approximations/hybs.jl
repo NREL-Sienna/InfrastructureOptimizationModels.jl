@@ -8,11 +8,14 @@ struct HybSBoundConstraint <: ConstraintType end
 
 """
 Config for HybS (Hybrid Separable) bilinear approximation.
-Combines Bin2 lower bound and Bin3 upper bound with shared quadratic for x², y²
-and LP-only epigraph for (x+y)², (x−y)². Epigraph depth is computed as max(depth, 1).
 
-Set `add_reformulated_mccormick=true` to add 4 additional cuts on the separable
-squared-variable expressions (z_x, z_y, z_p1, z_p2) for tighter bilinear bounds.
+Combines Bin2 lower bound and Bin3 upper bound with shared quadratic for x², y²
+and LP-only epigraph for (x+y)², (x−y)².
+
+# Fields
+- `quad_config::QuadraticApproxConfig`: quadratic method used for the shared x² and y² terms
+- `epigraph_depth::Int`: depth for the epigraph Q^{L1} LP-only approximation of cross-terms (x±y)²
+- `add_mccormick::Bool`: whether to add McCormick envelope cuts on the product variable (default true)
 """
 struct HybSConfig <: BilinearApproxConfig
     quad_config::QuadraticApproxConfig
@@ -25,7 +28,7 @@ HybSConfig(quad_config::QuadraticApproxConfig, epigraph_depth::Int) =
 # --- Unified HybS dispatch methods ---
 
 """
-    _add_bilinear_approx!(config::HybSConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, depth, meta)
+    _add_bilinear_approx!(config::HybSConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, meta)
 
 Approximate x·y using HybS (Hybrid Separable) relaxation with config-selected quadratic method.
 """
@@ -59,7 +62,7 @@ function _add_bilinear_approx!(
 end
 
 """
-    _add_bilinear_approx!(config::HybSConfig, container, C, names, time_steps, x_var, y_var, x_min, x_max, y_min, y_max, xsq, ysq, depth, meta)
+    _add_bilinear_approx!(config::HybSConfig, container, C, names, time_steps, xsq, ysq, x_var, y_var, x_min, x_max, y_min, y_max, meta)
 
 HybS bilinear approximation with pre-computed quadratic approximations for x² and y².
 

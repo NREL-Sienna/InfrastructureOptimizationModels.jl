@@ -87,10 +87,10 @@ const ZZB_META = "ZZBTest"
     # ====================================================================
     @testset "Constraint structure" begin
         setup = _setup_qa_test(["dev1"], 1:1)
-        depth = 2
+        num_segments = 4   # 4 segments → log2(4) = 2 binary variables
 
         IOM._add_quadratic_approx!(
-            IOM.ZZBQuadConfig(false, false),
+            IOM.ZZBQuadConfig(num_segments),
             setup.container,
             MockThermalGen,
             ["dev1"],
@@ -98,7 +98,6 @@ const ZZB_META = "ZZBTest"
             setup.var_container,
             0.0,
             4.0,
-            depth,
             ZZB_META,
         )
         expr_container = IOM.get_expression(
@@ -110,11 +109,11 @@ const ZZB_META = "ZZBTest"
 
         @test expr_container["dev1", 1] isa JuMP.AffExpr
 
-        # r binary variables for depth=r
+        # log2(num_segments) binary variables
         n_bin = count(JuMP.is_binary, JuMP.all_variables(setup.jump_model))
-        @test n_bin == depth
+        @test n_bin == Int(log2(num_segments))
 
-        # Lambda variables exist: 2^depth + 1 = 5 lambda vars
+        # Lambda variables exist: num_segments + 1 = 5 lambda vars
         @test IOM.has_container_key(
             setup.container,
             IOM.ZZBLambdaVariable,
@@ -140,7 +139,7 @@ const ZZB_META = "ZZBTest"
         JuMP.fix(x_var, 0.35; force = true)
 
         IOM._add_quadratic_approx!(
-            IOM.ZZBQuadConfig(false, false),
+            IOM.ZZBQuadConfig(8),
             setup.container,
             MockThermalGen,
             ["dev1"],
@@ -148,7 +147,6 @@ const ZZB_META = "ZZBTest"
             setup.var_container,
             0.0,
             1.0,
-            3,
             ZZB_META,
         )
         expr_container = IOM.get_expression(
@@ -179,7 +177,7 @@ const ZZB_META = "ZZBTest"
         JuMP.fix(x_var, 1.3; force = true)
 
         IOM._add_quadratic_approx!(
-            IOM.ZZBQuadConfig(false, false),
+            IOM.ZZBQuadConfig(8),
             setup.container,
             MockThermalGen,
             ["dev1"],
@@ -187,7 +185,6 @@ const ZZB_META = "ZZBTest"
             setup.var_container,
             0.0,
             2.0,
-            3,
             ZZB_META,
         )
         expr_container = IOM.get_expression(
@@ -212,13 +209,13 @@ const ZZB_META = "ZZBTest"
     @testset "Tightened ZZB bounds x^2" begin
         x0 = 0.35
         true_val = x0^2
-        depth = 2
+        num_segments = 4   # 4 segments → 2 binary variables, epigraph_depth=2
 
         # Minimize tightened: should still be ≤ x²
         setup_min = _setup_qa_test(["dev1"], 1:1)
         JuMP.fix(setup_min.var_container["dev1", 1], x0; force = true)
         IOM._add_quadratic_approx!(
-            IOM.ZZBQuadConfig(true, false),
+            IOM.ZZBQuadConfig(num_segments, Int(log2(num_segments))),
             setup_min.container,
             MockThermalGen,
             ["dev1"],
@@ -226,7 +223,6 @@ const ZZB_META = "ZZBTest"
             setup_min.var_container,
             0.0,
             1.0,
-            depth,
             ZZB_META,
         )
         expr_min = IOM.get_expression(
@@ -249,7 +245,7 @@ const ZZB_META = "ZZBTest"
         setup_max = _setup_qa_test(["dev1"], 1:1)
         JuMP.fix(setup_max.var_container["dev1", 1], x0; force = true)
         IOM._add_quadratic_approx!(
-            IOM.ZZBQuadConfig(true, false),
+            IOM.ZZBQuadConfig(num_segments, Int(log2(num_segments))),
             setup_max.container,
             MockThermalGen,
             ["dev1"],
@@ -257,7 +253,6 @@ const ZZB_META = "ZZBTest"
             setup_max.var_container,
             0.0,
             1.0,
-            depth,
             ZZB_META,
         )
         expr_max = IOM.get_expression(
@@ -277,16 +272,16 @@ const ZZB_META = "ZZBTest"
         @test max_val >= true_val - 1e-6
     end
 
-    @testset "Approximation quality improves with depth" begin
+    @testset "Approximation quality improves with segments" begin
         errors = Float64[]
         true_val = 0.35^2
-        for depth in 1:4
+        for num_segments in [2, 4, 8, 16]
             setup = _setup_qa_test(["dev1"], 1:1)
             x_var = setup.var_container["dev1", 1]
             JuMP.fix(x_var, 0.35; force = true)
 
             IOM._add_quadratic_approx!(
-                IOM.ZZBQuadConfig(false, false),
+                IOM.ZZBQuadConfig(num_segments),
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
@@ -294,7 +289,6 @@ const ZZB_META = "ZZBTest"
                 setup.var_container,
                 0.0,
                 1.0,
-                depth,
                 ZZB_META,
             )
             expr_container = IOM.get_expression(
@@ -321,7 +315,7 @@ const ZZB_META = "ZZBTest"
     @testset "Multiple time steps" begin
         setup = _setup_qa_test(["dev1"], 1:3)
         IOM._add_quadratic_approx!(
-            IOM.ZZBQuadConfig(false, false),
+            IOM.ZZBQuadConfig(4),
             setup.container,
             MockThermalGen,
             ["dev1"],
@@ -329,7 +323,6 @@ const ZZB_META = "ZZBTest"
             setup.var_container,
             0.0,
             4.0,
-            2,
             ZZB_META,
         )
         expr_container = IOM.get_expression(
@@ -351,10 +344,10 @@ end
 @testset "HybS + ZZB Bilinear Approximation" begin
     @testset "Constraint structure" begin
         setup = _setup_bilinear_test(["dev1"], 1:1)
-        depth = 2
+        num_segments = 4   # 4 segments → 2 binary vars per quadratic
 
         IOM._add_bilinear_approx!(
-            IOM.HybSConfig(IOM.ZZBQuadConfig(false, false), true, false),
+            IOM.HybSConfig(IOM.ZZBQuadConfig(num_segments), Int(log2(num_segments)), false),
             setup.container,
             MockThermalGen,
             ["dev1"],
@@ -365,7 +358,6 @@ end
             4.0,
             0.0,
             4.0,
-            depth,
             ZZB_META,
         )
         expr_container = IOM.get_expression(
@@ -377,9 +369,9 @@ end
 
         @test expr_container["dev1", 1] isa JuMP.AffExpr
 
-        # Binary count: 2L (L for x², L for y²), zero from epigraphs
+        # Binary count: 2 * log2(num_segments) (one set for x², one for y²), zero from epigraphs
         n_bin = count(JuMP.is_binary, JuMP.all_variables(setup.jump_model))
-        @test n_bin == 2 * depth
+        @test n_bin == 2 * Int(log2(num_segments))
     end
 
     @testset "Brackets true product at interior points" begin
@@ -392,7 +384,7 @@ end
                 JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
 
                 IOM._add_bilinear_approx!(
-                    IOM.HybSConfig(IOM.ZZBQuadConfig(false, false), true, false),
+                    IOM.HybSConfig(IOM.ZZBQuadConfig(4), 2, false),
                     setup.container,
                     MockThermalGen,
                     ["dev1"],
@@ -403,7 +395,6 @@ end
                     1.0,
                     0.0,
                     1.0,
-                    2,
                     ZZB_META,
                 )
                 expr_container = IOM.get_expression(
@@ -436,7 +427,7 @@ end
         JuMP.fix(y_var, 3.0; force = true)
 
         IOM._add_bilinear_approx!(
-            IOM.HybSConfig(IOM.ZZBQuadConfig(false, false), true, false),
+            IOM.HybSConfig(IOM.ZZBQuadConfig(8), 3, false),
             setup.container,
             MockThermalGen,
             ["dev1"],
@@ -447,7 +438,6 @@ end
             4.0,
             0.0,
             4.0,
-            3,
             ZZB_META,
         )
         expr_container = IOM.get_expression(
@@ -467,69 +457,13 @@ end
         @test JuMP.objective_value(setup.jump_model) ≈ 6.0 atol = 0.5
     end
 
-    # ====================================================================
-    # 5. Reformulated McCormick
-    # ====================================================================
-    @testset "Reformulated McCormick constraint exists when enabled" begin
-        setup = _setup_bilinear_test(["dev1"], 1:1)
-
-        IOM._add_bilinear_approx!(
-            IOM.HybSConfig(IOM.ZZBQuadConfig(false, false), true, true),
-            setup.container,
-            MockThermalGen,
-            ["dev1"],
-            1:1,
-            setup.x_var_container,
-            setup.y_var_container,
-            0.0,
-            4.0,
-            0.0,
-            4.0,
-            2,
-            ZZB_META,
-        )
-
-        @test IOM.has_container_key(
-            setup.container,
-            IOM.ReformulatedMcCormickConstraint,
-            MockThermalGen,
-            ZZB_META,
-        )
-    end
-
-    @testset "Reformulated McCormick absent when disabled" begin
-        setup = _setup_bilinear_test(["dev1"], 1:1)
-
-        IOM._add_bilinear_approx!(
-            IOM.HybSConfig(IOM.ZZBQuadConfig(false, false), true, false),
-            setup.container,
-            MockThermalGen,
-            ["dev1"],
-            1:1,
-            setup.x_var_container,
-            setup.y_var_container,
-            0.0,
-            4.0,
-            0.0,
-            4.0,
-            2,
-            ZZB_META,
-        )
-
-        @test !IOM.has_container_key(
-            setup.container,
-            IOM.ReformulatedMcCormickConstraint,
-            MockThermalGen,
-            ZZB_META,
-        )
-    end
-
     @testset "HybS+ZZB uses fewer binaries than Bin2+ZZB" begin
-        for depth in [1, 2, 3]
+        for num_segments in [2, 4, 8]
+            binary_depth = Int(log2(num_segments))
             # HybS
             setup_h = _setup_bilinear_test(["dev1"], 1:1)
             IOM._add_bilinear_approx!(
-                IOM.HybSConfig(IOM.ZZBQuadConfig(false, false), true, false),
+                IOM.HybSConfig(IOM.ZZBQuadConfig(num_segments), binary_depth, false),
                 setup_h.container,
                 MockThermalGen,
                 ["dev1"],
@@ -540,13 +474,12 @@ end
                 1.0,
                 0.0,
                 1.0,
-                depth,
                 ZZB_META,
             )
             n_bin_hybs =
                 count(JuMP.is_binary, JuMP.all_variables(setup_h.jump_model))
 
-            @test n_bin_hybs == 2 * depth
+            @test n_bin_hybs == 2 * binary_depth
         end
     end
 end

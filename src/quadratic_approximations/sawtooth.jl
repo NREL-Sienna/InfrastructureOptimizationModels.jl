@@ -12,11 +12,18 @@ struct SawtoothTightenedVariable <: VariableType end
 struct SawtoothLinkingConstraint <: ConstraintType end
 "Constrains g_j based on g_{j-1}."
 struct SawtoothMIPConstraint <: ConstraintType end
+"LP relaxation constraints (g_j ≤ 2g_{j-1}, g_j ≤ 2(1−g_{j-1})) used in epigraph tightening."
 struct SawtoothLPConstraint <: ConstraintType end
 "Bounds tightened variable."
 struct SawtoothTightenedConstraint <: ConstraintType end
 
-"Config for sawtooth MIP quadratic approximation."
+"""
+Config for sawtooth MIP quadratic approximation.
+
+# Fields
+- `depth::Int`: recursion depth L; uses L binary variables for 2^L + 1 breakpoints
+- `epigraph_depth::Int`: LP tightening depth via epigraph Q^{L1} lower bound; 0 to disable (default 0)
+"""
 struct SawtoothQuadConfig <: QuadraticApproxConfig
     depth::Int
     epigraph_depth::Int
@@ -37,7 +44,7 @@ For depth L, the approximation interpolates x² at 2^L + 1 uniformly spaced brea
 with maximum overestimation error Δ² · 2^{-2L-2} where Δ = x_max - x_min.
 
 # Arguments
-- `config::SawtoothQuadConfig`: configuration
+- `config::SawtoothQuadConfig`: configuration with `depth` (recursion depth L; uses L binary variables) and `epigraph_depth` (LP tightening depth; 0 to disable)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names

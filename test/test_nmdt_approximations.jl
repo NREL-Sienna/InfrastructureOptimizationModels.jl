@@ -13,9 +13,9 @@ const NMDT_BILINEAR_META = "NMDTBilinearTest"
         JuMP.fix(setup.var_container["gen1", 1], 0.6; force = true)
 
         IOM._add_quadratic_approx!(
-            IOM.DNMDTQuadConfig(false),
+            IOM.DNMDTQuadConfig(4, 0),
             setup.container, MockThermalGen, names, ts,
-            setup.var_container, 0.0, 1.0, 4, DNMDT_META,
+            setup.var_container, 0.0, 1.0, DNMDT_META,
         )
 
         JuMP.@objective(setup.jump_model, Min, 0)
@@ -47,9 +47,9 @@ const NMDT_BILINEAR_META = "NMDTBilinearTest"
                 JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
 
                 IOM._add_quadratic_approx!(
-                    IOM.DNMDTQuadConfig(false),
+                    IOM.DNMDTQuadConfig(3, 0),
                     setup.container, MockThermalGen, ["gen1"], 1:1,
-                    setup.var_container, 0.0, 1.0, 3, DNMDT_META,
+                    setup.var_container, 0.0, 1.0, DNMDT_META,
                 )
                 expr = IOM.get_expression(
                     setup.container, IOM.QuadraticExpression(),
@@ -78,9 +78,9 @@ const NMDT_BILINEAR_META = "NMDTBilinearTest"
                     JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
 
                     IOM._add_quadratic_approx!(
-                        IOM.DNMDTQuadConfig(false),
+                        IOM.DNMDTQuadConfig(2 * L, 0),
                         setup.container, MockThermalGen, ["gen1"], 1:1,
-                        setup.var_container, 0.0, 1.0, 2 * L, DNMDT_META,
+                        setup.var_container, 0.0, 1.0, DNMDT_META,
                     )
                     expr = IOM.get_expression(
                         setup.container, IOM.QuadraticExpression(),
@@ -104,9 +104,9 @@ const NMDT_BILINEAR_META = "NMDTBilinearTest"
         depth = 3
 
         IOM._add_quadratic_approx!(
-            IOM.DNMDTQuadConfig(false),
+            IOM.DNMDTQuadConfig(depth, 0),
             setup.container, MockThermalGen, ["gen1"], 1:1,
-            setup.var_container, 0.0, 1.0, depth, DNMDT_META,
+            setup.var_container, 0.0, 1.0, DNMDT_META,
         )
 
         # L binary variables for univariate
@@ -128,9 +128,9 @@ const NMDT_BILINEAR_META = "NMDTBilinearTest"
         setup = _setup_qa_test(names, ts)
 
         IOM._add_quadratic_approx!(
-            IOM.DNMDTQuadConfig(false),
+            IOM.DNMDTQuadConfig(2, 0),
             setup.container, MockThermalGen, names, ts,
-            setup.var_container, 0.0, 1.0, 2, DNMDT_META,
+            setup.var_container, 0.0, 1.0, DNMDT_META,
         )
         expr = IOM.get_expression(
             setup.container, IOM.QuadraticExpression(),
@@ -153,9 +153,9 @@ end
                 JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
 
                 IOM._add_quadratic_approx!(
-                    IOM.DNMDTQuadConfig(tighten),
+                    (tighten ? IOM.DNMDTQuadConfig(2) : IOM.DNMDTQuadConfig(2, 0)),
                     setup.container, MockThermalGen, ["gen1"], 1:1,
-                    setup.var_container, 0.0, 1.0, 2, DNMDT_META,
+                    setup.var_container, 0.0, 1.0, DNMDT_META,
                 )
                 expr = IOM.get_expression(
                     setup.container, IOM.QuadraticExpression(),
@@ -190,9 +190,9 @@ end
             JuMP.fix(setup.var_container["gen1", 1], 0.35; force = true)
 
             IOM._add_quadratic_approx!(
-                IOM.DNMDTQuadConfig(true),
+                IOM.DNMDTQuadConfig(L),
                 setup.container, MockThermalGen, ["gen1"], 1:1,
-                setup.var_container, 0.0, 1.0, L, DNMDT_META,
+                setup.var_container, 0.0, 1.0, DNMDT_META,
             )
             expr = IOM.get_expression(
                 setup.container, IOM.QuadraticExpression(),
@@ -224,10 +224,10 @@ end
                 JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
 
                 IOM._add_bilinear_approx!(
-                    IOM.DNMDTBilinearConfig(),
+                    IOM.DNMDTBilinearConfig(2),
                     setup.container, MockThermalGen, ["dev1"], 1:1,
                     setup.x_var_container, setup.y_var_container,
-                    0.0, 1.0, 0.0, 1.0, 2, DNMDT_META,
+                    0.0, 1.0, 0.0, 1.0, DNMDT_META,
                 )
                 expr = IOM.get_expression(
                     setup.container, IOM.BilinearProductExpression(),
@@ -258,10 +258,10 @@ end
                         JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
 
                         IOM._add_bilinear_approx!(
-                            IOM.DNMDTBilinearConfig(),
+                            IOM.DNMDTBilinearConfig(2 * L),
                             setup.container, MockThermalGen, ["dev1"], 1:1,
                             setup.x_var_container, setup.y_var_container,
-                            0.0, 1.0, 0.0, 1.0, 2 * L, DNMDT_META,
+                            0.0, 1.0, 0.0, 1.0, DNMDT_META,
                         )
                         expr = IOM.get_expression(
                             setup.container, IOM.BilinearProductExpression(),
@@ -293,10 +293,10 @@ end
                 JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
 
                 IOM._add_bilinear_approx!(
-                    IOM.DNMDTBilinearConfig(),
+                    IOM.DNMDTBilinearConfig(8),
                     setup.container, MockThermalGen, ["dev1"], 1:1,
                     setup.x_var_container, setup.y_var_container,
-                    x_min, x_max, y_min, y_max, 8, DNMDT_META,
+                    x_min, x_max, y_min, y_max, DNMDT_META,
                 )
                 expr = IOM.get_expression(
                     setup.container, IOM.BilinearProductExpression(),
@@ -321,13 +321,11 @@ end
         depth = 2
 
         IOM._add_bilinear_approx!(
-            IOM.DNMDTBilinearConfig(),
+            IOM.DNMDTBilinearConfig(depth),
             setup.container, MockThermalGen, ["dev1"], 1:1,
             setup.x_var_container, setup.y_var_container,
-            0.0, 1.0, 0.0, 1.0, depth, DNMDT_META,
+            0.0, 1.0, 0.0, 1.0, DNMDT_META,
         )
-
-        # 2L binary variables for bivariate
         # n_bin = count(JuMP.is_binary, JuMP.all_variables(setup.jump_model))
         # @test n_bin == 2 * depth
 
@@ -359,10 +357,10 @@ end
         JuMP.fix(setup.y_var_container["dev1", 1], 3.0; force = true)
 
         IOM._add_bilinear_approx!(
-            IOM.DNMDTBilinearConfig(),
+            IOM.DNMDTBilinearConfig(3),
             setup.container, MockThermalGen, ["dev1"], 1:1,
             setup.y_var_container, setup.x_var_container,
-            0.0, 4.0, 0.0, 4.0, 3, DNMDT_META,
+            0.0, 4.0, 0.0, 4.0, DNMDT_META,
         )
         expr = IOM.get_expression(
             setup.container, IOM.BilinearProductExpression(),
@@ -382,10 +380,10 @@ end
         setup = _setup_bilinear_test(["dev1"], 1:3)
 
         IOM._add_bilinear_approx!(
-            IOM.DNMDTBilinearConfig(),
+            IOM.DNMDTBilinearConfig(2),
             setup.container, MockThermalGen, ["dev1"], 1:3,
             setup.x_var_container, setup.y_var_container,
-            0.0, 1.0, 0.0, 1.0, 2, DNMDT_META,
+            0.0, 1.0, 0.0, 1.0, DNMDT_META,
         )
         expr = IOM.get_expression(
             setup.container, IOM.BilinearProductExpression(),
@@ -402,10 +400,10 @@ end
         depth = 3
 
         IOM._add_bilinear_approx!(
-            IOM.DNMDTBilinearConfig(),
+            IOM.DNMDTBilinearConfig(depth),
             setup.container, MockThermalGen, ["dev1"], 1:1,
             setup.x_var_container, setup.y_var_container,
-            0.0, 1.0, 0.0, 1.0, depth, DNMDT_META,
+            0.0, 1.0, 0.0, 1.0, DNMDT_META,
         )
 
         # D-NMDT discretizes both x and y → 2L binary variables
@@ -422,10 +420,10 @@ end
             JuMP.fix(setup_d.y_var_container["dev1", 1], 0.7; force = true)
 
             IOM._add_bilinear_approx!(
-                IOM.DNMDTBilinearConfig(),
+                IOM.DNMDTBilinearConfig(depth),
                 setup_d.container, MockThermalGen, ["dev1"], 1:1,
                 setup_d.x_var_container, setup_d.y_var_container,
-                0.0, 1.0, 0.0, 1.0, depth, DNMDT_META,
+                0.0, 1.0, 0.0, 1.0, DNMDT_META,
             )
             expr_d = IOM.get_expression(
                 setup_d.container, IOM.BilinearProductExpression(),
@@ -444,10 +442,10 @@ end
             JuMP.fix(setup_h.y_var_container["dev1", 1], 0.7; force = true)
 
             IOM._add_bilinear_approx!(
-                IOM.HybSConfig(IOM.SawtoothQuadConfig(false, false), true),
+                IOM.HybSConfig(IOM.SawtoothQuadConfig(depth), depth),
                 setup_h.container, MockThermalGen, ["dev1"], 1:1,
                 setup_h.x_var_container, setup_h.y_var_container,
-                0.0, 1.0, 0.0, 1.0, depth, DNMDT_HYBS_META,
+                0.0, 1.0, 0.0, 1.0, DNMDT_HYBS_META,
             )
             expr_h = IOM.get_expression(
                 setup_h.container, IOM.BilinearProductExpression(),
@@ -481,9 +479,9 @@ end
         JuMP.fix(setup.var_container["gen1", 1], 0.6; force = true)
 
         IOM._add_quadratic_approx!(
-            IOM.NMDTQuadConfig(false),
+            IOM.NMDTQuadConfig(4, 0),
             setup.container, MockThermalGen, names, ts,
-            setup.var_container, 0.0, 1.0, 4, NMDT_META,
+            setup.var_container, 0.0, 1.0, NMDT_META,
         )
 
         JuMP.@objective(setup.jump_model, Min, 0)
@@ -515,9 +513,9 @@ end
                 JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
 
                 IOM._add_quadratic_approx!(
-                    IOM.NMDTQuadConfig(false),
+                    IOM.NMDTQuadConfig(3, 0),
                     setup.container, MockThermalGen, ["gen1"], 1:1,
-                    setup.var_container, 0.0, 1.0, 3, NMDT_META,
+                    setup.var_container, 0.0, 1.0, NMDT_META,
                 )
                 expr = IOM.get_expression(
                     setup.container, IOM.QuadraticExpression(),
@@ -548,9 +546,9 @@ end
                     JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
 
                     IOM._add_quadratic_approx!(
-                        IOM.NMDTQuadConfig(false),
+                        IOM.NMDTQuadConfig(L, 0),
                         setup.container, MockThermalGen, ["gen1"], 1:1,
-                        setup.var_container, 0.0, 1.0, L, NMDT_META,
+                        setup.var_container, 0.0, 1.0, NMDT_META,
                     )
                     expr = IOM.get_expression(
                         setup.container, IOM.QuadraticExpression(),
@@ -574,9 +572,9 @@ end
         depth = 3
 
         IOM._add_quadratic_approx!(
-            IOM.NMDTQuadConfig(false),
+            IOM.NMDTQuadConfig(depth, 0),
             setup.container, MockThermalGen, ["gen1"], 1:1,
-            setup.var_container, 0.0, 1.0, depth, NMDT_META,
+            setup.var_container, 0.0, 1.0, NMDT_META,
         )
 
         # NMDT uses exactly L binary variables (one per discretization level)
@@ -600,9 +598,9 @@ end
         setup = _setup_qa_test(names, ts)
 
         IOM._add_quadratic_approx!(
-            IOM.NMDTQuadConfig(false),
+            IOM.NMDTQuadConfig(2, 0),
             setup.container, MockThermalGen, names, ts,
-            setup.var_container, 0.0, 1.0, 2, NMDT_META,
+            setup.var_container, 0.0, 1.0, NMDT_META,
         )
         expr = IOM.get_expression(
             setup.container, IOM.QuadraticExpression(),
@@ -623,9 +621,9 @@ end
                 JuMP.fix(setup.var_container["gen1", 1], x0; force = true)
 
                 IOM._add_quadratic_approx!(
-                    IOM.NMDTQuadConfig(tighten),
+                    (tighten ? IOM.NMDTQuadConfig(2) : IOM.NMDTQuadConfig(2, 0)),
                     setup.container, MockThermalGen, ["gen1"], 1:1,
-                    setup.var_container, 0.0, 1.0, 2, NMDT_META,
+                    setup.var_container, 0.0, 1.0, NMDT_META,
                 )
                 expr = IOM.get_expression(
                     setup.container, IOM.QuadraticExpression(),
@@ -660,8 +658,8 @@ end
             gaps_dnmdt = Float64[]
             for x0 in range(0.05, 0.95; length = 9)
                 for (config_fn, tag) in [
-                    (L -> IOM.NMDTQuadConfig(false), :nmdt),
-                    (L -> IOM.DNMDTQuadConfig(false), :dnmdt),
+                    (L -> IOM.NMDTQuadConfig(L, 0), :nmdt),
+                    (L -> IOM.DNMDTQuadConfig(L, 0), :dnmdt),
                 ]
                     z_vals = Float64[]
                     for sense in [JuMP.MIN_SENSE, JuMP.MAX_SENSE]
@@ -671,7 +669,7 @@ end
                         IOM._add_quadratic_approx!(
                             config_fn(L),
                             setup.container, MockThermalGen, ["gen1"], 1:1,
-                            setup.var_container, 0.0, 1.0, L, NMDT_META,
+                            setup.var_container, 0.0, 1.0, NMDT_META,
                         )
                         expr = IOM.get_expression(
                             setup.container, IOM.QuadraticExpression(),
@@ -704,17 +702,17 @@ end
         depth = 4
         setup_n = _setup_qa_test(["gen1"], 1:1)
         IOM._add_quadratic_approx!(
-            IOM.NMDTQuadConfig(false),
+            IOM.NMDTQuadConfig(depth, 0),
             setup_n.container, MockThermalGen, ["gen1"], 1:1,
-            setup_n.var_container, 0.0, 1.0, depth, NMDT_META,
+            setup_n.var_container, 0.0, 1.0, NMDT_META,
         )
         n_bin_nmdt = count(JuMP.is_binary, JuMP.all_variables(setup_n.jump_model))
 
         setup_d = _setup_qa_test(["gen1"], 1:1)
         IOM._add_quadratic_approx!(
-            IOM.DNMDTQuadConfig(false),
+            IOM.DNMDTQuadConfig(depth, 0),
             setup_d.container, MockThermalGen, ["gen1"], 1:1,
-            setup_d.var_container, 0.0, 1.0, depth, DNMDT_META,
+            setup_d.var_container, 0.0, 1.0, DNMDT_META,
         )
         n_bin_dnmdt = count(JuMP.is_binary, JuMP.all_variables(setup_d.jump_model))
 
@@ -738,10 +736,10 @@ end
                 JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
 
                 IOM._add_bilinear_approx!(
-                    IOM.NMDTBilinearConfig(),
+                    IOM.NMDTBilinearConfig(3),
                     setup.container, MockThermalGen, ["dev1"], 1:1,
                     setup.x_var_container, setup.y_var_container,
-                    0.0, 1.0, 0.0, 1.0, 3, NMDT_BILINEAR_META,
+                    0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
                 )
                 expr = IOM.get_expression(
                     setup.container, IOM.BilinearProductExpression(),
@@ -773,10 +771,10 @@ end
                         JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
 
                         IOM._add_bilinear_approx!(
-                            IOM.NMDTBilinearConfig(),
+                            IOM.NMDTBilinearConfig(L),
                             setup.container, MockThermalGen, ["dev1"], 1:1,
                             setup.x_var_container, setup.y_var_container,
-                            0.0, 1.0, 0.0, 1.0, L, NMDT_BILINEAR_META,
+                            0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
                         )
                         expr = IOM.get_expression(
                             setup.container, IOM.BilinearProductExpression(),
@@ -802,10 +800,10 @@ end
         depth = 3
 
         IOM._add_bilinear_approx!(
-            IOM.NMDTBilinearConfig(),
+            IOM.NMDTBilinearConfig(depth),
             setup.container, MockThermalGen, ["dev1"], 1:1,
             setup.x_var_container, setup.y_var_container,
-            0.0, 1.0, 0.0, 1.0, depth, NMDT_BILINEAR_META,
+            0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
         )
 
         # NMDT only discretizes x → L binary variables (half of D-NMDT's 2L)
@@ -822,10 +820,10 @@ end
         setup = _setup_bilinear_test(["dev1"], 1:3)
 
         IOM._add_bilinear_approx!(
-            IOM.NMDTBilinearConfig(),
+            IOM.NMDTBilinearConfig(2),
             setup.container, MockThermalGen, ["dev1"], 1:3,
             setup.x_var_container, setup.y_var_container,
-            0.0, 1.0, 0.0, 1.0, 2, NMDT_BILINEAR_META,
+            0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
         )
         expr = IOM.get_expression(
             setup.container, IOM.BilinearProductExpression(),
@@ -843,10 +841,10 @@ end
         JuMP.fix(setup.y_var_container["dev1", 1], 0.5; force = true)
 
         IOM._add_bilinear_approx!(
-            IOM.NMDTBilinearConfig(),
+            IOM.NMDTBilinearConfig(4),
             setup.container, MockThermalGen, ["dev1"], 1:1,
             setup.x_var_container, setup.y_var_container,
-            0.0, 1.0, 0.0, 1.0, 4, NMDT_BILINEAR_META,
+            0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
         )
         expr = IOM.get_expression(
             setup.container, IOM.BilinearProductExpression(),
@@ -869,19 +867,19 @@ end
         L = 3
         setup_n = _setup_bilinear_test(["dev1"], 1:1)
         IOM._add_bilinear_approx!(
-            IOM.NMDTBilinearConfig(),
+            IOM.NMDTBilinearConfig(L),
             setup_n.container, MockThermalGen, ["dev1"], 1:1,
             setup_n.x_var_container, setup_n.y_var_container,
-            0.0, 1.0, 0.0, 1.0, L, NMDT_BILINEAR_META,
+            0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
         )
         n_bin_nmdt = count(JuMP.is_binary, JuMP.all_variables(setup_n.jump_model))
 
         setup_d = _setup_bilinear_test(["dev1"], 1:1)
         IOM._add_bilinear_approx!(
-            IOM.DNMDTBilinearConfig(),
+            IOM.DNMDTBilinearConfig(L),
             setup_d.container, MockThermalGen, ["dev1"], 1:1,
             setup_d.x_var_container, setup_d.y_var_container,
-            0.0, 1.0, 0.0, 1.0, L, DNMDT_META,
+            0.0, 1.0, 0.0, 1.0, DNMDT_META,
         )
         n_bin_dnmdt = count(JuMP.is_binary, JuMP.all_variables(setup_d.jump_model))
 
@@ -899,10 +897,10 @@ end
             JuMP.fix(setup_n.y_var_container["dev1", 1], 0.7; force = true)
 
             IOM._add_bilinear_approx!(
-                IOM.NMDTBilinearConfig(),
+                IOM.NMDTBilinearConfig(L),
                 setup_n.container, MockThermalGen, ["dev1"], 1:1,
                 setup_n.x_var_container, setup_n.y_var_container,
-                0.0, 1.0, 0.0, 1.0, L, NMDT_BILINEAR_META,
+                0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
             )
             expr_n = IOM.get_expression(
                 setup_n.container, IOM.BilinearProductExpression(),
@@ -920,10 +918,10 @@ end
             JuMP.fix(setup_d.y_var_container["dev1", 1], 0.7; force = true)
 
             IOM._add_bilinear_approx!(
-                IOM.DNMDTBilinearConfig(),
+                IOM.DNMDTBilinearConfig(L),
                 setup_d.container, MockThermalGen, ["dev1"], 1:1,
                 setup_d.x_var_container, setup_d.y_var_container,
-                0.0, 1.0, 0.0, 1.0, L, DNMDT_META,
+                0.0, 1.0, 0.0, 1.0, DNMDT_META,
             )
             expr_d = IOM.get_expression(
                 setup_d.container, IOM.BilinearProductExpression(),
