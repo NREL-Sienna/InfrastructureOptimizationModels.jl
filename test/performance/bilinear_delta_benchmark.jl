@@ -1102,7 +1102,6 @@ end
 Bin2_sSOS(R) = Bin2_(R, IOM.SolverSOS2QuadConfig)
 Bin2_mSOS(R) = Bin2_(R, IOM.ManualSOS2QuadConfig)
 Bin2_Saw(R) = Bin2_(R, IOM.SawtoothQuadConfig)
-Bin2_ZZB(R) = Bin2_(R, IOM.ZZBQuadConfig)
 
 function HybS_(R, quad_config)
     q = quad_config(R)
@@ -1111,7 +1110,6 @@ end
 HybS_sSOS(R) = HybS_(R, IOM.SolverSOS2QuadConfig)
 HybS_mSOS(R) = HybS_(R, IOM.ManualSOS2QuadConfig)
 HybS_Saw(R) = HybS_(R, IOM.SawtoothQuadConfig)
-HybS_ZZB(R) = HybS_(R, IOM.ZZBQuadConfig)
 
 function DNMDT_DNMDT(R)
     IOM.DNMDTBilinearConfig(R), IOM.DNMDTQuadConfig(R, ceil(Int, epi_C * R))
@@ -1123,11 +1121,9 @@ bilinear_methods = (
     ("Bin2+sSOS", Bin2_sSOS),
     ("Bin2+mSOS", Bin2_mSOS),
     ("Bin2+Saw", Bin2_Saw),
-    ("Bin2+ZZB", Bin2_ZZB),
     ("HybS+sSOS", HybS_sSOS),
     ("HybS+mSOS", HybS_mSOS),
     ("HybS+Saw", HybS_Saw),
-    ("HybS+ZZB", HybS_ZZB),
     ("DNMDT", DNMDT_DNMDT),
 )
 
@@ -1190,20 +1186,20 @@ if abspath(PROGRAM_FILE) == @__FILE__
             build_only = parsed["build-only"]
             refinements = parsed["refinements"]
 
-            # Run small network so second run is faster.
-            # redirect_stdout(devnull) do
-            #     run_benchmark(;
-            #         N = 2,
-            #         K = 1,
-            #         seed = 0,
-            #         build_only = false,
-            #         refinements = [1],
-            #     )
-            # end
 
             if ENVIRONMENT == :kestrel && !build_only
                 run_benchmark_parallel(; N, K, seed, refinements)
             else
+                # Run small network so second run is faster.
+                redirect_stdout(devnull) do
+                    run_benchmark(;
+                        N = 2,
+                        K = 1,
+                        seed = 0,
+                        build_only = false,
+                        refinements = [1],
+                    )
+                end
                 run_benchmark(; N, K, seed, build_only, refinements)
             end
         end
