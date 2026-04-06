@@ -84,7 +84,7 @@ function _add_bilinear_approx!(
     return _assemble_dnmdt!(
         container, C, names, time_steps,
         bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr,
-        x_disc, y_disc, x_min, x_max, y_min, y_max, 
+        x_disc, y_disc, x_min, x_max, y_min, y_max,
         config.depth, meta; result_type = BilinearProductExpression,
     )
 end

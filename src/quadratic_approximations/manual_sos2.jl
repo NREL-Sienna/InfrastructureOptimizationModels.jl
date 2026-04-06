@@ -157,7 +157,7 @@ function _add_quadratic_approx!(
         for i in eachindex(x_bkpts)
             add_proportional_to_jump_expression!(link, lambda[i], x_bkpts[i])
         end
-        link_cons[name, t] = JuMP.@constraint(jump_model, (x - x_min)/lx == link)
+        link_cons[name, t] = JuMP.@constraint(jump_model, (x - x_min) / lx == link)
 
         # Σ λ_i = 1
         norm = norm_expr[name, t] = JuMP.AffExpr(0.0)

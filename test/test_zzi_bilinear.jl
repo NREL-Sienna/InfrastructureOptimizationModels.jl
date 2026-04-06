@@ -119,7 +119,10 @@ const ZZI_META = "ZZITest"
                 IOM.BilinearProductExpression(),
                 MockThermalGen,
                 ZZI_META,
-            )["dev1", 1]
+            )[
+                "dev1",
+                1,
+            ]
             JuMP.@objective(setup.jump_model, Max, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
             JuMP.set_silent(setup.jump_model)
@@ -157,7 +160,10 @@ const ZZI_META = "ZZITest"
                 IOM.BilinearProductExpression(),
                 MockThermalGen,
                 ZZI_META,
-            )["dev1", 1]
+            )[
+                "dev1",
+                1,
+            ]
             JuMP.@objective(setup.jump_model, Min, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
             JuMP.set_silent(setup.jump_model)
@@ -197,7 +203,10 @@ const ZZI_META = "ZZITest"
                     IOM.BilinearProductExpression(),
                     MockThermalGen,
                     ZZI_META,
-                )["dev1", 1]
+                )[
+                    "dev1",
+                    1,
+                ]
                 JuMP.@objective(setup.jump_model, Min, z_expr)
                 JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
                 JuMP.set_silent(setup.jump_model)
@@ -305,7 +314,10 @@ const ZZI_META = "ZZITest"
                 IOM.BilinearProductExpression(),
                 MockThermalGen,
                 ZZI_META,
-            )["dev1", 1]
+            )[
+                "dev1",
+                1,
+            ]
             JuMP.@objective(setup.jump_model, Max, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
             JuMP.set_silent(setup.jump_model)
@@ -392,7 +404,10 @@ const ZZI_META = "ZZITest"
                 IOM.BilinearProductExpression(),
                 MockThermalGen,
                 ZZI_META,
-            )["dev1", 1]
+            )[
+                "dev1",
+                1,
+            ]
             JuMP.@objective(setup.jump_model, Max, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
             JuMP.set_silent(setup.jump_model)
@@ -435,7 +450,10 @@ const ZZI_META = "ZZITest"
                 IOM.BilinearProductExpression(),
                 MockThermalGen,
                 ZZI_META,
-            )["dev1", 1]
+            )[
+                "dev1",
+                1,
+            ]
             JuMP.@objective(setup.jump_model, Min, z_expr)
             JuMP.set_optimizer(setup.jump_model, HiGHS.Optimizer)
             JuMP.set_silent(setup.jump_model)
@@ -445,5 +463,4 @@ const ZZI_META = "ZZITest"
             @test JuMP.objective_value(setup.jump_model) ≈ 6.0 atol = 0.5
         end
     end
-
 end

@@ -212,7 +212,7 @@ function _add_bilinear_approx!(
         _add_mccormick_envelope!(
             container, C, names, time_steps,
             x_var, y_var, z_var,
-            x_min, x_max, y_min, y_max, meta
+            x_min, x_max, y_min, y_max, meta,
         )
     end
 
