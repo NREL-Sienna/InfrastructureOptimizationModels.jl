@@ -620,10 +620,11 @@ function _add_variable_container!(
     container::OptimizationContainer,
     var_key::VariableKey{T, U},
     sparse::Bool,
-    axs...,
+    axs::Vararg{Any, N},
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     if sparse
         var_container = sparse_container_spec(JuMP.VariableRef, axs...)
@@ -638,12 +639,13 @@ function add_variable_container!(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     var_key = VariableKey(T, U, meta)
     return _add_variable_container!(container, var_key, sparse, axs...)
@@ -654,11 +656,12 @@ function add_variable_container!(
     ::T,
     ::Type{U},
     meta::String,
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     var_key = VariableKey(T, U, meta)
     return _add_variable_container!(container, var_key, sparse, axs...)
@@ -714,12 +717,13 @@ function add_aux_variable_container!(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: AuxVariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     var_key = AuxVarKey(T, U, meta)
     if sparse
@@ -762,12 +766,13 @@ function add_dual_container!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     if is_milp(container)
         @warn("The model has resulted in a MILP, \\
@@ -792,9 +797,9 @@ end
 function _add_constraints_container!(
     container::OptimizationContainer,
     cons_key::ConstraintKey,
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
-)
+) where {N}
     if sparse
         cons_container = sparse_container_spec(JuMP.ConstraintRef, axs...)
     else
@@ -808,12 +813,13 @@ function add_constraints_container!(
     container::OptimizationContainer,
     ::T,
     ::Type{U},
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     cons_key = ConstraintKey(T, U, meta)
     return _add_constraints_container!(container, cons_key, axs...; sparse = sparse)
@@ -873,9 +879,9 @@ function add_param_container_shared_axes!(
     key::ParameterKey,
     attribute::ParameterAttributes,
     param_type::DataType,
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
-)
+) where {N}
     if sparse
         param_array = sparse_container_spec(param_type, axs...)
         multiplier_array = sparse_container_spec(Float64, axs...)

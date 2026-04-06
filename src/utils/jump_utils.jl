@@ -430,14 +430,14 @@ end
 """
 Returns the correct container specification for the selected type of JuMP Model
 """
-function container_spec(::Type{T}, axs...) where {T <: Any}
+function container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: Any, N}
     return DenseAxisArray{T}(undef, axs...)
 end
 
 """
 Returns the correct container specification for the selected type of JuMP Model
 """
-function container_spec(::Type{Float64}, axs...)
+function container_spec(::Type{Float64}, axs::Vararg{Any, N}) where {N}
     cont = DenseAxisArray{Float64}(undef, axs...)
     cont.data .= fill(NaN, size(cont.data))
     return cont
@@ -446,25 +446,25 @@ end
 """
 Returns the correct container specification for the selected type of JuMP Model
 """
-function sparse_container_spec(::Type{T}, axs...) where {T <: JuMP.AbstractJuMPScalar}
+function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: JuMP.AbstractJuMPScalar, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), T}(indexes .=> zero(T))
     return SparseAxisArray(contents)
 end
 
-function sparse_container_spec(::Type{T}, axs...) where {T <: JuMP.VariableRef}
+function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: JuMP.VariableRef, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), Union{Nothing, T}}(indexes .=> nothing)
     return SparseAxisArray(contents)
 end
 
-function sparse_container_spec(::Type{T}, axs...) where {T <: JuMP.ConstraintRef}
+function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: JuMP.ConstraintRef, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), Union{Nothing, T}}(indexes .=> nothing)
     return SparseAxisArray(contents)
 end
 
-function sparse_container_spec(::Type{T}, axs...) where {T <: Number}
+function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: Number, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), T}(indexes .=> zero(T))
     return SparseAxisArray(contents)
