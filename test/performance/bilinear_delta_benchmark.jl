@@ -1186,7 +1186,6 @@ if abspath(PROGRAM_FILE) == @__FILE__
             build_only = parsed["build-only"]
             refinements = parsed["refinements"]
 
-
             if ENVIRONMENT == :kestrel && !build_only
                 run_benchmark_parallel(; N, K, seed, refinements)
             else
