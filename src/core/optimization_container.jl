@@ -348,14 +348,13 @@ function finalize_jump_model!(container::OptimizationContainer, settings::Settin
     return
 end
 
-# FIXME init_optimization_container! currently relies on PSY code, which means we can't use mock systems.
-using Dates
+# Dispatch helpers so init_optimization_container! works with both PSY.System and mock containers.
 temp_set_units_base_system!(sys::PSY.System, base::String) =
     PSY.set_units_base_system!(sys, base)
 temp_set_units_base_system!(::IS.InfrastructureSystemsContainer, ::String) = nothing
 temp_get_forecast_initial_timestamp(sys::PSY.System) =
     PSY.get_forecast_initial_timestamp(sys)
-temp_get_forecast_initial_timestamp(::IS.InfrastructureSystemsContainer) = DateTime(1970)
+temp_get_forecast_initial_timestamp(::IS.InfrastructureSystemsContainer) = Dates.DateTime(1970)
 
 function init_optimization_container!(
     container::OptimizationContainer,
