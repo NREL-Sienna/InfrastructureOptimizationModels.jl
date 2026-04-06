@@ -1,4 +1,5 @@
 const _SERIALIZED_MODEL_FILENAME = "model.bin"
+const _SERIALIZED_HDF5_MODEL_FILENAME = "model.h5"
 
 struct OptimizerAttributes
     name::String
@@ -36,6 +37,14 @@ struct ProblemSerializationWrapper
 end
 
 function serialize_problem(model::OperationModel; optimizer = nothing)
+    _serialize_problem_to_file(model, get_store(model); optimizer = optimizer)
+end
+
+function _serialize_problem_to_file(
+    model::OperationModel,
+    store::AbstractModelStore;
+    optimizer = nothing,
+)
     # A PowerSystem cannot be serialized in this format because of how it stores
     # time series data. Use its specialized serialization method instead.
     sys_to_file = get_system_to_file(get_settings(model))
@@ -65,6 +74,80 @@ function serialize_problem(model::OperationModel; optimizer = nothing)
     bin_file_name = joinpath(get_output_dir(model), _SERIALIZED_MODEL_FILENAME)
     Serialization.serialize(bin_file_name, obj)
     @info "Serialized OperationModel to" bin_file_name
+end
+
+# Convert Settings fields to HDF5-compatible scalar values via multiple dispatch.
+_settings_field_to_hdf5(val::Base.RefValue) = _settings_field_to_hdf5(val[])
+_settings_field_to_hdf5(val::Dates.Millisecond) = val.value
+_settings_field_to_hdf5(val::Dates.DateTime) = string(val)
+_settings_field_to_hdf5(val::Bool) = val
+_settings_field_to_hdf5(val::Number) = val
+_settings_field_to_hdf5(val::AbstractString) = val
+_settings_field_to_hdf5(::Nothing) = "nothing"
+_settings_field_to_hdf5(val::Dict) = string(val)
+_settings_field_to_hdf5(val) = string(val)
+
+function _serialize_problem_to_file(
+    model::OperationModel,
+    store::EmulationModelStore{HDF5Dataset};
+    optimizer = nothing,
+)
+    output_dir = get_output_dir(model)
+    h5_file_path = joinpath(output_dir, _SERIALIZED_HDF5_MODEL_FILENAME)
+
+    if optimizer === nothing
+        optimizer = get_optimizer(get_settings(model))
+        @assert optimizer !== nothing "optimizer must be passed if it wasn't saved in Settings"
+    end
+
+    container = get_optimization_container(model)
+    opt_attrs = OptimizerAttributes(model, optimizer)
+
+    HDF5.h5open(h5_file_path, "w") do h5_file
+        # Embed system JSON directly in HDF5 (always, regardless of system_to_file setting)
+        sys = get_system(model)
+        sys_json_tmp = joinpath(mktempdir(), make_system_filename(sys))
+        PSY.to_json(sys, sys_json_tmp)
+        h5_file["system_json"] = read(sys_json_tmp, String)
+
+        # Model metadata
+        h5_file["name"] = string(get_name(model))
+        h5_file["model_type"] = string(typeof(model))
+
+        # Settings — each field as its own dataset
+        settings = container.settings_copy
+        sg = HDF5.create_group(h5_file, "settings")
+        for name in fieldnames(Settings)
+            sg[string(name)] = _settings_field_to_hdf5(getfield(settings, name))
+        end
+
+        # Optimizer attributes
+        og = HDF5.create_group(h5_file, "optimizer")
+        og["name"] = opt_attrs.name
+        og["version"] = opt_attrs.version
+        og["attributes"] = string(opt_attrs.attributes)
+
+        # Template — structured groups with formulation type names
+        tg = HDF5.create_group(h5_file, "template")
+        template = model.template
+        tg["network_model_type"] = string(get_network_formulation(template))
+
+        dg = HDF5.create_group(tg, "devices")
+        for (sym, dm) in template.devices
+            dg[string(sym)] = string(get_formulation(dm))
+        end
+
+        bg = HDF5.create_group(tg, "branches")
+        for (sym, bm) in template.branches
+            bg[string(sym)] = string(get_formulation(bm))
+        end
+
+        svg = HDF5.create_group(tg, "services")
+        for ((sname, sym), sm) in template.services
+            svg["$(sname)__$(sym)"] = string(get_formulation(sm))
+        end
+    end
+    @info "Serialized OperationModel to HDF5" h5_file_path
 end
 
 function deserialize_problem(
