@@ -15,7 +15,7 @@ and LP-only epigraph for (x+y)², (x−y)².
 # Fields
 - `quad_config::QuadraticApproxConfig`: quadratic method used for the shared x² and y² terms
 - `epigraph_depth::Int`: depth for the epigraph Q^{L1} LP-only approximation of cross-terms (x±y)²
-- `add_mccormick::Bool`: whether to add McCormick envelope cuts on the product variable (default true)
+- `add_mccormick::Bool`: whether to add standard McCormick envelope cuts on the product variable (default false)
 """
 struct HybSConfig <: BilinearApproxConfig
     quad_config::QuadraticApproxConfig
@@ -23,7 +23,7 @@ struct HybSConfig <: BilinearApproxConfig
     add_mccormick::Bool
 end
 HybSConfig(quad_config::QuadraticApproxConfig, epigraph_depth::Int) =
-    HybSConfig(quad_config, epigraph_depth, true)
+    HybSConfig(quad_config, epigraph_depth, false)
 
 # --- Unified HybS dispatch methods ---
 
