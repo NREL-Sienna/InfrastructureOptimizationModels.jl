@@ -82,16 +82,23 @@ src/
     model_numerical_analysis_utils.jl
     optimization_debugging.jl # Debug/diagnostic tools
   quadratic_approximations/  # PWL approximation of x² (univariate)
+    common.jl                 # Abstract config hierarchy and shared normalization
     pwl_utils.jl              # Shared breakpoint generator, _square helper
     incremental.jl            # Incremental PWL formulation (δ/z variables)
     solver_sos2.jl            # Solver-native SOS2 quadratic approximation
     manual_sos2.jl            # Manual SOS2 (binary adjacency) quadratic approximation
     sawtooth.jl               # Sawtooth relaxation approximation
     epigraph.jl               # Epigraph-based approximation
+    nmdt.jl                   # DNMDT quadratic approximation config and dispatch
+    nmdt_common.jl            # Shared NMDT discretization utilities
+    no_approx.jl              # No-op passthrough (exact x² for NLP solvers)
+    pwmcc_cuts.jl             # Piecewise McCormick tightening cuts
   bilinear_approximations/  # Approximation of bilinear products x·y
     mccormick.jl              # McCormick envelopes for bilinear terms
-    bilinear.jl               # Bin2 separable bilinear approximation
+    bin2.jl                   # Bin2 separable bilinear approximation
     hybs.jl                   # HybS hybrid separable approximation
+    nmdt.jl                   # NMDT bilinear approximation config and dispatch
+    no_approx.jl              # No-op passthrough (exact x·y for NLP solvers)
   utils/                  # General-purpose utilities
     jump_utils.jl             # JuMP helper functions
     dataframes_utils.jl       # DataFrame manipulation
