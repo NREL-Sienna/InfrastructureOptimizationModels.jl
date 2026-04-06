@@ -42,9 +42,13 @@ LP_OPT = if ENVIRONMENT == :github
     @eval using HiGHS
     HiGHS.Optimizer
 elseif ENVIRONMENT == :kestrel
+    @eval import Pkg
+    Pkg.add("Xpress")
     @eval using Xpress
     Xpress.Optimizer
 else
+    @eval import Pkg
+    Pkg.add("Xpress_jll")
     @eval import Xpress_jll
     ENV["XPRESS_JL_LIBRARY"] = Xpress_jll.libxprs
     @eval using Xpress
