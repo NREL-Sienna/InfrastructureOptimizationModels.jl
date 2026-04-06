@@ -207,7 +207,7 @@ function _add_bilinear_approx!(
         result_expr[name, t] = JuMP.AffExpr(0.0, z => 1.0)
     end
 
-    # --- Reformulated McCormick cuts through separable variables ---
+    # --- Standard McCormick envelope cuts on the product variable ---
     if config.add_mccormick
         _add_mccormick_envelope!(
             container, C, names, time_steps,
