@@ -55,10 +55,11 @@ function _add_quadratic_approx!(
     x_max::Float64,
     meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    lx = x_max - x_min
     x_bkpts, x_sq_bkpts =
         _get_breakpoints_for_pwl_function(
-            x_min,
-            x_max,
+            0.0,
+            1.0,
             _square;
             num_segments = config.depth,
         )
@@ -156,7 +157,7 @@ function _add_quadratic_approx!(
         for i in eachindex(x_bkpts)
             add_proportional_to_jump_expression!(link, lambda[i], x_bkpts[i])
         end
-        link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
+        link_cons[name, t] = JuMP.@constraint(jump_model, (x - x_min)/lx == link)
 
         # Σ λ_i = 1
         norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
@@ -200,7 +201,11 @@ function _add_quadratic_approx!(
         for i in 1:n_points
             add_proportional_to_jump_expression!(x_hat_sq, lambda[i], x_sq_bkpts[i])
         end
-        result_expr[name, t] = x_hat_sq
+        x_sq = JuMP.AffExpr(0.0)
+        add_proportional_to_jump_expression!(x_sq, x_hat_sq, lx * lx)
+        add_proportional_to_jump_expression!(x_sq, x, 2 * x_min)
+        add_constant_to_jump_expression!(x_sq, -x_min * x_min)
+        result_expr[name, t] = x_sq
     end
 
     if config.pwmcc_segments > 0

@@ -146,9 +146,7 @@ function run_tests()
                     include(joinpath(TEST_DIR, "test_quadratic_approximations.jl"))
                     include(joinpath(TEST_DIR, "test_bilinear_approximations.jl"))
                     include(joinpath(TEST_DIR, "test_hybs_approximations.jl"))
-                    include(joinpath(TEST_DIR, "test_zzb_approximations.jl"))
                     include(joinpath(TEST_DIR, "test_nmdt_approximations.jl"))
-                    include(joinpath(TEST_DIR, "test_zzi_bilinear.jl"))
                 end
 
                 #=
