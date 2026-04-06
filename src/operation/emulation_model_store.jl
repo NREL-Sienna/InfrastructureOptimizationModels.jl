@@ -154,7 +154,10 @@ function read_outputs(
     end
 end
 
-function get_column_names(store::EmulationModelStore{InMemoryDataset}, key::OptimizationContainerKey)
+function get_column_names(
+    store::EmulationModelStore{InMemoryDataset},
+    key::OptimizationContainerKey,
+)
     container = get_data_field(store, get_store_container_type(key))
     return get_column_names_from_axis_array(key, container[key].values)
 end

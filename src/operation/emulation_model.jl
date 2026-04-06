@@ -300,7 +300,10 @@ function init_model_store_params!(model::EmulationModel)
     return
 end
 
-function update_parameters!(model::EmulationModel, store::EmulationModelStore{InMemoryDataset})
+function update_parameters!(
+    model::EmulationModel,
+    store::EmulationModelStore{InMemoryDataset},
+)
     update_parameters!(model, store.data_container)
     return
 end
