@@ -247,7 +247,7 @@ function _set_parameter!(
     return
 end
 
-function set_multiplier!(container::ParameterContainer, multiplier::Float64, ixs...)
+function set_multiplier!(container::ParameterContainer, multiplier::Float64, ixs::Vararg{Any, N}) where {N}
     assign_maybe_broadcast!(get_multiplier_array(container), multiplier, ixs)
     return
 end
@@ -256,8 +256,8 @@ function set_parameter!(
     container::ParameterContainer,
     jump_model::JuMP.Model,
     parameter::Union{ValidDataParamEltypes, AbstractVector{<:ValidDataParamEltypes}},
-    ixs...,
-)
+    ixs::Vararg{Any, N},
+) where {N}
     param_array = get_parameter_array(container)
     _set_parameter!(param_array, jump_model, parameter, ixs)
     return
