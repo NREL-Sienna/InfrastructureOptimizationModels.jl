@@ -132,12 +132,8 @@ struct MockNetworkNode <: IS.InfrastructureSystemsComponent
     loss::Vector{Float64}
     i_min::Float64
     i_max::Float64
-    function MockNetworkNode(name::String, loss::Vector{Float64})
-        new(name, loss, I_GEN_MIN, I_GEN_MAX)
-    end
-    function MockNetworkNode(name::String)
-        new(name, [0.0], I_DEM_MIN, I_DEM_MAX)
-    end
+    v_min::Float64
+    v_max::Float64
 end
 get_name(n::MockNetworkNode) = n.name
 
@@ -164,14 +160,14 @@ IOM.get_variable_binary(
 
 IOM.get_variable_lower_bound(
     ::MockVoltageVariable,
-    ::MockNetworkNode,
+    n::MockNetworkNode,
     ::TestDeviceFormulation,
-) = V_MIN
+) = n.v_min
 IOM.get_variable_upper_bound(
     ::MockVoltageVariable,
-    ::MockNetworkNode,
+    n::MockNetworkNode,
     ::TestDeviceFormulation,
-) = V_MAX
+) = n.v_max
 
 IOM.get_variable_lower_bound(
     ::MockCurrentVariable,

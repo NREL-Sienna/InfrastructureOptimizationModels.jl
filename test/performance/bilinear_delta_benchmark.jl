@@ -351,8 +351,8 @@ function build_mip_model(
     time_steps = 1:1
     adj = adjacency_list(net)
 
-    gen_devices = [MockNetworkNode(g, net.loss[g]) for g in net.gen_nodes]
-    dem_devices = [MockNetworkNode(d) for d in net.dem_nodes]
+    gen_devices = [MockNetworkNode(g, net.loss[g], I_GEN_MIN, I_GEN_MAX, V_MIN, V_MAX) for g in net.gen_nodes]
+    dem_devices = [MockNetworkNode(d, [0.0], I_DEM_MIN, I_DEM_MAX, V_MIN, V_MAX) for d in net.dem_nodes]
     all_devices = [gen_devices; dem_devices]
     for device in all_devices
         add_component!(system, device)
