@@ -2,8 +2,8 @@
 Verify mock objects work correctly by instantiating each struct and calling each function.
 """
 
-# MockOptimizer
-MockOptimizer()
+# MockMOIOptimizer
+MockMOIOptimizer()
 
 # MockSystem
 sys = MockSystem()

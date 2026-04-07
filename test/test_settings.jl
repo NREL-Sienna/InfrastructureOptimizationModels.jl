@@ -1,6 +1,6 @@
 """
 Unit tests for Settings struct and related functions.
-Uses MockSystem and MockOptimizer from mocks/mock_system.jl
+Uses MockSystem and MockMOIOptimizer from mocks/mock_system.jl
 """
 
 using Dates
@@ -12,7 +12,7 @@ if !@isdefined(PSI)
     const PSI = InfrastructureOptimizationModels
 end
 
-# MockSystem and MockOptimizer are defined in mocks/ and loaded by InfrastructureOptimizationModelsTests.jl
+# MockSystem and MockMOIOptimizer are defined in mocks/ and loaded by InfrastructureOptimizationModelsTests.jl
 
 @testset "Settings" begin
     @testset "Construction with defaults" begin
@@ -72,14 +72,24 @@ end
         settings_none = PSI.Settings(sys; horizon = Hour(24), resolution = Hour(1))
         @test PSI.get_optimizer(settings_none) === nothing
 
-        # Test with duck-typed optimizer instance (passes through directly)
-        settings_duck = PSI.Settings(
+        # Test with MOI.OptimizerWithAttributes (passes through directly)
+        opt_with_attrs = JuMP.MOI.OptimizerWithAttributes(MockMOIOptimizer)
+        settings_owa = PSI.Settings(
             sys;
             horizon = Hour(24),
             resolution = Hour(1),
-            optimizer = MockOptimizer(),
+            optimizer = opt_with_attrs,
         )
-        @test PSI.get_optimizer(settings_duck) isa MockOptimizer
+        @test PSI.get_optimizer(settings_owa) isa JuMP.MOI.OptimizerWithAttributes
+
+        # Test with DataType: should be coerced to MOI.OptimizerWithAttributes
+        settings_dt = PSI.Settings(
+            sys;
+            horizon = Hour(24),
+            resolution = Hour(1),
+            optimizer = MockMOIOptimizer,
+        )
+        @test PSI.get_optimizer(settings_dt) isa JuMP.MOI.OptimizerWithAttributes
     end
 
     @testset "Time series cache override for in-memory storage" begin

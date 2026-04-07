@@ -4,7 +4,7 @@ struct Settings
     time_series_cache_size::Int
     warm_start::Base.RefValue{Bool}
     initial_time::Base.RefValue{Dates.DateTime}
-    optimizer::Any  # Union{Nothing, MOI.OptimizerWithAttributes} or duck-typed optimizer
+    optimizer::Union{Nothing, MOI.OptimizerWithAttributes}
     direct_mode_optimizer::Bool
     optimizer_solve_log_print::Bool
     detailed_optimizer_stats::Bool
@@ -51,11 +51,11 @@ function Settings(
         time_series_cache_size = 0
     end
 
-    # Handle optimizer: wrap DataType in OptimizerWithAttributes, pass through others (duck-typing)
+    # Handle optimizer: wrap DataType in OptimizerWithAttributes, pass through nothing/OptimizerWithAttributes
     if isa(optimizer, DataType)
         optimizer_ = MOI.OptimizerWithAttributes(optimizer)
     else
-        optimizer_ = optimizer  # nothing, OptimizerWithAttributes, or duck-typed optimizer
+        optimizer_ = optimizer  # nothing or MOI.OptimizerWithAttributes
     end
 
     return Settings(
