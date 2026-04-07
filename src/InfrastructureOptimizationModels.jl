@@ -156,7 +156,7 @@ using DocStringExtensions
 # Base Models
 export DecisionModel
 export EmulationModel
-export ProblemTemplate
+export AbstractProblemTemplate
 export ServicesModelContainer, DevicesModelContainer, BranchModelContainer
 export InitialCondition
 
@@ -218,11 +218,11 @@ export add_linear_to_jump_expression!
 # Cost term helpers (generic objective function building blocks)
 export add_cost_term_invariant!
 export add_cost_term_variant!
-export add_pwl_variables!
+export add_pwl_variables_delta!
 export add_pwl_linking_constraint!
 export add_pwl_normalization_constraint!
 export add_pwl_sos2_constraint!
-export get_pwl_cost_expression
+export get_pwl_cost_expression_delta
 export process_market_bid_parameters!
 
 ## Outputs interfaces
@@ -328,6 +328,11 @@ export get_branch_argument_variable_axis
 # Network reduction helpers
 export get_branch_argument_constraint_axis, get_reduced_branch_tracker
 export search_for_reduced_branch_variable!
+export search_for_reduced_branch_parameter!
+export search_for_reduced_branch_argument!
+export get_branch_argument_parameter_axes
+export get_parameter_dict
+export get_device_with_time_series
 # Container/variable helpers
 export add_variable_container!, add_constraint_dual!
 export add_to_objective_invariant_expression!, lazy_container_addition!
@@ -342,7 +347,7 @@ export add_reserve_bound_range_constraints!
 export add_semicontinuous_range_constraints!, add_semicontinuous_ramp_constraints!
 # Cost helpers
 export add_shut_down_cost!, add_start_up_cost!
-export _add_pwl_term!, _get_sos_value, _onvar_cost
+export add_pwl_term_lambda!, _get_sos_value, _onvar_cost
 export uses_commitment_variables
 export add_cost_to_expression!
 # Duration constraint helpers
@@ -412,6 +417,7 @@ export get_services, get_contributing_devices, get_contributing_devices_map
 export set_resolution!, finalize_template!
 # JuMP access
 export get_jump_model
+export _get_breakpoints_for_pwl_function, _add_generic_incremental_interpolation_constraint!
 # Cost utilities
 export get_proportional_cost_per_system_unit
 # Output writing/conversion
@@ -446,7 +452,6 @@ export ActivePowerVariable, ActivePowerInVariable, ActivePowerOutVariable
 export PowerAboveMinimumVariable
 export OnVariable, StartVariable, StopVariable
 export ReservationVariable
-export ServiceRequirementVariable
 export PiecewiseLinearCostVariable
 export RateofChangeConstraintSlackUp, RateofChangeConstraintSlackDown
 export DCVoltage
@@ -558,8 +563,8 @@ include("common_models/interfaces.jl")
 include("common_models/add_variable.jl")
 include("common_models/add_auxiliary_variable.jl")
 include("common_models/add_constraint_dual.jl")
-include("common_models/add_jump_expressions.jl") # helpers only used in POM.
-include("common_models/set_expression.jl") # helpers only used in POM.
+include("common_models/add_jump_expressions.jl")
+include("common_models/set_expression.jl")
 include("common_models/get_time_series.jl")
 # PWL interpolation methods moved to quadratic_approximations/
 include("common_models/constraint_helpers.jl")
@@ -586,24 +591,28 @@ include("objective_function/objective_function_pwl_lambda.jl") # lambda/convex c
 include("objective_function/objective_function_pwl_delta.jl")  # delta/incremental block PWL
 
 # Cost-data-specific mapping to PWL formulations
-include("objective_function/piecewise_linear.jl")  # CostCurve/FuelCurve → lambda PWL
-include("objective_function/market_bid.jl")         # OfferCurveCost → delta PWL
+include("objective_function/piecewise_linear.jl")    # CostCurve/FuelCurve → lambda PWL
+include("objective_function/value_curve_cost.jl")    # ValueCurve → delta PWL
 
 # Quadratic approximations (PWL via SOS2)
+include("quadratic_approximations/common.jl")
+include("quadratic_approximations/no_approx.jl")
 include("quadratic_approximations/pwl_utils.jl")
 include("quadratic_approximations/incremental.jl")
 include("quadratic_approximations/solver_sos2.jl")
 include("quadratic_approximations/manual_sos2.jl")
 include("quadratic_approximations/sawtooth.jl")
 include("quadratic_approximations/epigraph.jl")
+include("quadratic_approximations/nmdt_common.jl")
+include("quadratic_approximations/nmdt.jl")
+include("quadratic_approximations/pwmcc_cuts.jl")
 
 # Bilinear approximations (x·y via Bin2/HybS decomposition)
 include("bilinear_approximations/mccormick.jl")
-include("bilinear_approximations/bilinear.jl")
+include("bilinear_approximations/bin2.jl")
+include("bilinear_approximations/no_approx.jl")
 include("bilinear_approximations/hybs.jl")
-
-# DNMDT uses BilinearProductVariable from bilinear.jl — must come after bilinear_approximations
-include("quadratic_approximations/dnmdt.jl")
+include("bilinear_approximations/nmdt.jl")
 
 # add_param_container! wrappers — must come after piecewise_linear.jl
 # (which defines VariableValueParameter and FixValueParameter)
@@ -626,14 +635,7 @@ include("initial_conditions/calculate_initial_condition.jl")
 
 # Utils
 include("utils/indexing.jl")
-@static if pkgversion(PrettyTables).major == 2
-    # When PrettyTables v3 is more widely adopted in the ecosystem, we can remove this file.
-    # In this case, we should also update the compat bounds in Project.toml to list only
-    # PrettyTables v3.
-    include("utils/print_pt_v2.jl")
-else
-    include("utils/print_pt_v3.jl")
-end
+include("utils/print_pt_v3.jl")
 include("utils/file_utils.jl")
 include("utils/logging.jl")
 include("utils/dataframes_utils.jl")

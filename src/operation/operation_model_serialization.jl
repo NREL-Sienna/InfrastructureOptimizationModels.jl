@@ -28,7 +28,7 @@ function _get_optimizer_attributes(model::OperationModel)
 end
 
 struct ProblemSerializationWrapper
-    template::ProblemTemplate
+    template::AbstractProblemTemplate
     sys::Union{Nothing, String}
     settings::Settings
     model_type::DataType

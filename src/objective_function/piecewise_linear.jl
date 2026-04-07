@@ -14,7 +14,7 @@ _get_pwl_cost_multiplier(::IS.CostCurve{IS.PiecewisePointCurve},
     objective_function_multiplier(U(), V())
 
 # FuelCurve/CostCurve: scale for units, then call function data version
-function _get_pwl_cost_expression(
+function get_pwl_cost_expression_lambda(
     container::OptimizationContainer,
     component::T,
     time_period::Int,
@@ -44,7 +44,7 @@ function _get_pwl_cost_expression(
     dt = Dates.value(resolution) / MILLISECONDS_IN_HOUR
     multiplier = _get_pwl_cost_multiplier(cost_function, U(), V())
     name = get_name(component)
-    fuel_consumption_expression = _get_pwl_cost_expression(
+    fuel_consumption_expression = get_pwl_cost_expression_lambda(
         container,
         T,
         name,
@@ -64,7 +64,7 @@ Add PWL cost terms using the **lambda (convex combination) formulation**.
 
 Given a `PiecewisePointCurve` with breakpoints ``(P_i, C_i)``, this function:
 
-1. Creates lambda variables ``\\lambda_i \\in [0, 1]`` at each breakpoint via `_add_pwl_variables!`.
+1. Creates lambda variables ``\\lambda_i \\in [0, 1]`` at each breakpoint via `add_pwl_variables_lambda!`.
 2. Adds linking and normalization constraints via `_add_pwl_constraint_standard!`.
 3. If the cost curve is **non-convex**, adds an SOS2 adjacency constraint so that at most
    two neighboring ``\\lambda`` values are nonzero.
@@ -73,10 +73,10 @@ Given a `PiecewisePointCurve` with breakpoints ``(P_i, C_i)``, this function:
 Returns a vector of cost expressions, one per time step, which the caller adds to the
 objective function.
 
-See also: [`add_pwl_term!`](@ref) for the delta (block-offer) formulation used by
+See also: [`add_pwl_term_delta!`](@ref) for the delta (block-offer) formulation used by
 `MarketBidCost`.
 """
-function _add_pwl_term!(
+function add_pwl_term_lambda!(
     container::OptimizationContainer,
     component::T,
     cost_function::Union{
@@ -126,7 +126,7 @@ function _add_pwl_term!(
     power_variables = get_variable(container, U(), T)
     n_points = length(break_points)
     for t in time_steps
-        _add_pwl_variables!(container, T, name, t, data)
+        add_pwl_variables_lambda!(container, T, name, t, data)
         _add_pwl_constraint_standard!(
             container,
             component,
@@ -141,7 +141,7 @@ function _add_pwl_term!(
             add_pwl_sos2_constraint!(container, T, name, t, pwl_vars)
         end
         pwl_cost =
-            _get_pwl_cost_expression(container, component, t, cost_function, U(), V())
+            get_pwl_cost_expression_lambda(container, component, t, cost_function, U(), V())
         pwl_cost_expressions[t] = pwl_cost
     end
     return pwl_cost_expressions
@@ -173,7 +173,7 @@ function add_variable_cost_to_objective!(
     component_name = get_name(component)
     @debug "PWL Variable Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     pwl_cost_expressions =
-        _add_pwl_term!(container, component, cost_function, T(), U())
+        add_pwl_term_lambda!(container, component, cost_function, T(), U())
     isnothing(pwl_cost_expressions) && return
     for t in get_time_steps(container)
         add_cost_to_expression!(
@@ -211,7 +211,7 @@ function add_variable_cost_to_objective!(
     component_name = get_name(component)
     @debug "PWL Variable Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     pwl_fuel_consumption_expressions =
-        _add_pwl_term!(container, component, cost_function, T(), U())
+        add_pwl_term_lambda!(container, component, cost_function, T(), U())
     isnothing(pwl_fuel_consumption_expressions) && return
 
     # IS getter: simply returns the field of the FuelCurve struct

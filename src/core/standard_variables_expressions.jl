@@ -18,8 +18,7 @@ struct StopVariable <: VariableType end
 # Reservation Variable (used in range_constraint for reserve bounds)
 struct ReservationVariable <: VariableType end
 
-# Service Variables (used in market_bid)
-struct ServiceRequirementVariable <: VariableType end
+# ServiceRequirementVariable moved to POM — not needed by IOM objective formulations.
 
 # Cost Variables (used in piecewise_linear)
 """
