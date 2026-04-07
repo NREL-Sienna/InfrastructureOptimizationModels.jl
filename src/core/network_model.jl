@@ -134,15 +134,6 @@ function add_dual!(model::NetworkModel, dual)
     return
 end
 
-function _model_has_branch_filters(branch_models::BranchModelContainer)
-    for (_, bm) in branch_models
-        if get_attribute(bm, "filter_function") !== nothing
-            return true
-        end
-    end
-    return false
-end
-
 # Default implementations for network model compatibility checks
 # These can be extended in PowerOperationsModels for specific network formulations
 requires_all_branch_models(::Type{<:AbstractPowerModel}) = true
@@ -151,25 +142,28 @@ ignores_branch_filtering(::Type{<:AbstractPowerModel}) = false
 
 function _check_branch_network_compatibility(
     ::NetworkModel{T},
-    branch_models::BranchModelContainer,
-    sys::PSY.System,
+    unmodeled_branch_types::Vector{DataType},
 ) where {T <: AbstractPowerModel}
-    if requires_all_branch_models(T)
-        for d in PSY.get_existing_device_types(sys)
-            if d <: PSY.ACTransmission && !haskey(branch_models, Symbol(d))
-                throw(
-                    IS.ConflictingInputsError(
-                        "Network model $(T) requires all AC Transmission devices have a model \
-                        The system has a branch branch type $(d) but the DeviceModel is not included in the Template.",
-                    ),
-                )
-            end
+    if requires_all_branch_models(T) && !isempty(unmodeled_branch_types)
+        for d in unmodeled_branch_types
+            @error "The system has a branch branch type $(d) but the DeviceModel is not included in the Template."
         end
+        throw(
+            IS.ConflictingInputsError(
+                "Network model $(T) requires all AC Transmission devices have a model",
+            ),
+        )
     end
+    return
+end
 
-    if supports_branch_filtering(T) || !_model_has_branch_filters(branch_models)
+function _validate_branch_models(
+    ::Type{T},
+    model_has_branch_filters::Bool,
+) where {T <: AbstractPowerModel}
+    if supports_branch_filtering(T) || !model_has_branch_filters
         return
-    elseif _model_has_branch_filters(branch_models)
+    elseif model_has_branch_filters
         if ignores_branch_filtering(T)
             @warn "Branch filtering is ignored for network model $(T)"
         else
@@ -187,6 +181,16 @@ function _check_branch_network_compatibility(
             ),
         )
     end
+    return
+end
+
+function validate_network_model(
+    network_model::NetworkModel{T},
+    unmodeled_branch_types::Vector{DataType},
+    model_has_branch_filters::Bool,
+) where {T <: AbstractPowerModel}
+    _check_branch_network_compatibility(network_model, unmodeled_branch_types)
+    _validate_branch_models(T, model_has_branch_filters)
     return
 end
 
