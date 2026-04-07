@@ -615,7 +615,7 @@ end
     key::OptimizationContainerKey{T, U},
     ::Type{E},
     sparse::Bool,
-    axs...,
+    axs::Vararg{Any, N},
 ) where {
     T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
@@ -757,12 +757,13 @@ function add_dual_container!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     if is_milp(container)
         @warn("The model has resulted in a MILP, \\
@@ -843,9 +844,9 @@ function add_param_container_shared_axes!(
     key::ParameterKey,
     attribute::ParameterAttributes,
     param_type::DataType,
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
-)
+) where {N}
     if sparse
         param_array = sparse_container_spec(param_type, axs...)
         multiplier_array = sparse_container_spec(Float64, axs...)
