@@ -121,7 +121,6 @@ const LOWER_BOUND = "lb"
 const MAX_OPTIMIZE_TRIES = 2
 
 # File Names definitions
-const PROBLEM_SERIALIZATION_FILENAME = "operation_problem.bin"
 const PROBLEM_LOG_FILENAME = "operation_problem.log"
 const KNOWN_SIMULATION_PATHS = [
     "data_store",
@@ -182,10 +181,10 @@ function get_enum_value(enum, value::String)
     return ENUM_MAPPINGS[enum][val]
 end
 
-Base.convert(::Type{SimulationBuildStatus}, val::String) =
-    get_enum_value(SimulationBuildStatus, val)
-Base.convert(::Type{ModelBuildStatus}, val::String) = get_enum_value(ModelBuildStatus, val)
-Base.convert(::Type{RunStatus}, val::String) = get_enum_value(RunStatus, val)
+# Base.convert(::Type{SimulationBuildStatus}, val::String) =
+#     get_enum_value(SimulationBuildStatus, val)
+# Base.convert(::Type{ModelBuildStatus}, val::String) = get_enum_value(ModelBuildStatus, val)
+# Base.convert(::Type{RunStatus}, val::String) = get_enum_value(RunStatus, val)
 Base.convert(::Type{SOSStatusVariable}, x::String) = get_enum_value(SOSStatusVariable, x)
 
 const SYSTEM_TYPE = IS.ComponentContainer

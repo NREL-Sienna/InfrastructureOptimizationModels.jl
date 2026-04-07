@@ -40,7 +40,7 @@ Build the optimization problem of type M with the specific system and template.
   - `horizon::Dates.Period = UNSET_HORIZON`: Manually specify the length of the forecast Horizon
   - `resolution::Dates.Period = UNSET_RESOLUTION`: Manually specify the model's resolution
   - `warm_start::Bool = true`: True will use the current operation point in the system to initialize variable values. False initializes all variables to zero. Default is true
-  - `system_to_file::Bool = true:`: True to create a copy of the system used in the model.
+  - `check_components::Bool = true`: True to check the components valid fields when building
   - `initialize_model::Bool = true`: Option to decide to initialize the model or not.
   - `initialization_file::String = ""`: This allows to pass pre-existing initialization values to avoid the solution of an optimization problem to find feasible initial conditions.
   - `deserialize_initial_conditions::Bool = false`: Option to deserialize conditions
@@ -103,7 +103,7 @@ function DecisionModel{M}(
     horizon = UNSET_HORIZON,
     resolution = UNSET_RESOLUTION,
     warm_start = true,
-    system_to_file = true,
+    check_components = true,
     initialize_model = true,
     initialization_file = "",
     deserialize_initial_conditions = false,
@@ -128,7 +128,7 @@ function DecisionModel{M}(
         optimizer = optimizer,
         time_series_cache_size = time_series_cache_size,
         warm_start = warm_start,
-        system_to_file = system_to_file,
+        check_components = check_components,
         initialize_model = initialize_model,
         initialization_file = initialization_file,
         deserialize_initial_conditions = deserialize_initial_conditions,
@@ -192,37 +192,15 @@ function DecisionModel{M}(
     )
 end
 
-"""
-Construct an DecisionProblem from a serialized file.
+get_problem_type(::DecisionModel{M}) where {M <: DecisionProblem} = M
 
-# Arguments
-
-  - `directory::AbstractString`: Directory containing a serialized model
-  - `jump_model::Union{Nothing, JuMP.Model}` = nothing: The JuMP model does not get
-    serialized. Callers should pass whatever they passed to the original problem.
-  - `optimizer::Union{Nothing,MOI.OptimizerWithAttributes}` = nothing: The optimizer does
-    not get serialized. Callers should pass whatever they passed to the original problem.
-  - `system::Union{Nothing, PSY.System}`: Optionally, the system used for the model.
-    If nothing and sys_to_file was set to true when the model was created, the system will
-    be deserialized from a file.
-"""
-function DecisionModel(
-    directory::AbstractString,
-    optimizer::MOI.OptimizerWithAttributes;
-    jump_model::Union{Nothing, JuMP.Model} = nothing,
-    system::Union{Nothing, PSY.System} = nothing,
-)
-    return deserialize_problem(
-        DecisionModel,
-        directory;
-        jump_model = jump_model,
-        optimizer = optimizer,
-        system = system,
-    )
+function validate_template(::DecisionModel{M}) where {M <: DecisionProblem}
+    error("validate_template is not implemented for DecisionModel{$M}")
 end
 
-get_problem_type(::DecisionModel{M}) where {M <: DecisionProblem} = M
-validate_template(::DecisionModel{<:DecisionProblem}) = nothing
+function validate_template(::DecisionModel{<:DefaultDecisionProblem})
+    return nothing
+end
 
 # Probably could be more efficient by storing the info in the internal
 function get_current_time(model::DecisionModel)

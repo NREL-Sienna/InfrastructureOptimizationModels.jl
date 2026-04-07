@@ -167,6 +167,8 @@ export get_duals, get_reference_buses, get_subnetworks, get_bus_area_map
 export get_power_flow_evaluation, has_subnetworks, get_subsystem
 export set_subsystem!, add_dual!
 export requires_all_branch_models, supports_branch_filtering, ignores_branch_filtering
+export validate_network_model
+export validate_available_devices
 export BranchReductionOptimizationTracker
 export get_variable_dict, get_constraint_dict, get_constraint_map_by_type
 export get_number_of_steps, set_number_of_steps!
@@ -177,6 +179,7 @@ export get_number_of_steps, set_number_of_steps!
 export DeviceModel
 export ServiceModel
 export FixedOutput
+export get_device_cache
 
 # Parameter Container Infrastructure
 export ParameterContainer
@@ -193,7 +196,6 @@ export validate_time_series!
 export init_optimization_container!
 ## Op Model Exports
 export get_initial_conditions
-export serialize_problem
 export serialize_outputs
 export serialize_optimization_model
 
@@ -328,6 +330,11 @@ export get_branch_argument_variable_axis
 # Network reduction helpers
 export get_branch_argument_constraint_axis, get_reduced_branch_tracker
 export search_for_reduced_branch_variable!
+export search_for_reduced_branch_parameter!
+export search_for_reduced_branch_argument!
+export get_branch_argument_parameter_axes
+export get_parameter_dict
+export get_device_with_time_series
 # Container/variable helpers
 export add_variable_container!, add_constraint_dual!
 export add_to_objective_invariant_expression!, lazy_container_addition!
@@ -447,7 +454,6 @@ export ActivePowerVariable, ActivePowerInVariable, ActivePowerOutVariable
 export PowerAboveMinimumVariable
 export OnVariable, StartVariable, StopVariable
 export ReservationVariable
-export ServiceRequirementVariable
 export PiecewiseLinearCostVariable
 export RateofChangeConstraintSlackUp, RateofChangeConstraintSlackDown
 export DCVoltage
@@ -477,7 +483,7 @@ export DefaultEmulationProblem
 export Settings
 export get_warm_start
 export get_horizon, get_initial_time, get_optimizer, get_ext
-export get_system_to_file, get_initialize_model, get_initialization_file
+export get_check_components, get_initialize_model, get_initialization_file
 export get_deserialize_initial_conditions, get_export_pwl_vars
 export get_check_numerical_bounds, get_allow_fails
 export get_optimizer_solve_log_print, get_calculate_conflict
@@ -485,7 +491,7 @@ export get_detailed_optimizer_stats, get_direct_mode_optimizer
 export get_store_variable_names, get_export_optimization_model
 export use_time_series_cache
 export set_horizon!, set_initial_time!, set_warm_start!
-export copy_for_serialization, restore_from_copy, log_values
+export log_values
 export InitialConditionsData
 
 # Constants
@@ -550,6 +556,7 @@ include("core/outputs_by_time.jl")
 # Order Required
 include("operation/problem_template.jl")
 include("core/optimization_container.jl")
+include("core/dual_processing.jl")
 include("core/model_store_params.jl")
 
 # Standard variable and expression types (after OptimizationContainer is defined)
@@ -560,8 +567,8 @@ include("common_models/interfaces.jl")
 include("common_models/add_variable.jl")
 include("common_models/add_auxiliary_variable.jl")
 include("common_models/add_constraint_dual.jl")
-include("common_models/add_jump_expressions.jl") # helpers only used in POM.
-include("common_models/set_expression.jl") # helpers only used in POM.
+include("common_models/add_jump_expressions.jl")
+include("common_models/set_expression.jl")
 include("common_models/get_time_series.jl")
 # PWL interpolation methods moved to quadratic_approximations/
 include("common_models/constraint_helpers.jl")
@@ -588,24 +595,28 @@ include("objective_function/objective_function_pwl_lambda.jl") # lambda/convex c
 include("objective_function/objective_function_pwl_delta.jl")  # delta/incremental block PWL
 
 # Cost-data-specific mapping to PWL formulations
-include("objective_function/piecewise_linear.jl")  # CostCurve/FuelCurve → lambda PWL
-include("objective_function/market_bid.jl")         # OfferCurveCost → delta PWL
+include("objective_function/piecewise_linear.jl")    # CostCurve/FuelCurve → lambda PWL
+include("objective_function/value_curve_cost.jl")    # ValueCurve → delta PWL
 
 # Quadratic approximations (PWL via SOS2)
+include("quadratic_approximations/common.jl")
+include("quadratic_approximations/no_approx.jl")
 include("quadratic_approximations/pwl_utils.jl")
 include("quadratic_approximations/incremental.jl")
 include("quadratic_approximations/solver_sos2.jl")
 include("quadratic_approximations/manual_sos2.jl")
 include("quadratic_approximations/sawtooth.jl")
 include("quadratic_approximations/epigraph.jl")
+include("quadratic_approximations/nmdt_common.jl")
+include("quadratic_approximations/nmdt.jl")
+include("quadratic_approximations/pwmcc_cuts.jl")
 
 # Bilinear approximations (x·y via Bin2/HybS decomposition)
 include("bilinear_approximations/mccormick.jl")
-include("bilinear_approximations/bilinear.jl")
+include("bilinear_approximations/bin2.jl")
+include("bilinear_approximations/no_approx.jl")
 include("bilinear_approximations/hybs.jl")
-
-# DNMDT uses BilinearProductVariable from bilinear.jl — must come after bilinear_approximations
-include("quadratic_approximations/dnmdt.jl")
+include("bilinear_approximations/nmdt.jl")
 
 # add_param_container! wrappers — must come after piecewise_linear.jl
 # (which defines VariableValueParameter and FixValueParameter)
@@ -619,7 +630,6 @@ include("operation/initial_conditions_update_in_memory_store.jl")
 include("operation/decision_model.jl")
 include("operation/emulation_model.jl")
 include("operation/problem_outputs.jl")
-include("operation/operation_model_serialization.jl")
 include("operation/time_series_interface.jl")
 include("operation/optimization_debugging.jl")
 include("operation/model_numerical_analysis_utils.jl")

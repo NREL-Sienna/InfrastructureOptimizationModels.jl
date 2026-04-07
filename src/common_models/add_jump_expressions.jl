@@ -23,9 +23,9 @@ Add variable with multiplier to JuMP expression: expression += multiplier * var
 """
 function add_proportional_to_jump_expression!(
     expression::T,
-    var::JuMP.VariableRef,
+    var::U,
     multiplier::Float64,
-) where {T <: JuMP.AbstractJuMPScalar}
+) where {T <: JuMP.AbstractJuMPScalar, U <: JuMP.AbstractJuMPScalar}
     JuMP.add_to_expression!(expression, multiplier, var)
     return
 end

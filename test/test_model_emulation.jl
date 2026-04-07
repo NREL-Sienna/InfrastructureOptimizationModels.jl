@@ -258,8 +258,9 @@ end
     var2 = read_variable(outputs2, ActivePowerVariable, ThermalStandard)
     @test var1_a == var2
     @test get_source_data(outputs2) === nothing
-    load_system(outputs2)
-    @test get_source_data(outputs2) isa PSY.System
+    # Commented out for now, as we no longer automatically serialize the system with results, but this should be added back in the future.
+    # load_system(outputs2)
+    # @test get_source_data(outputs2) isa PSY.System
 
     # Serialize to a new directory with the exported function.
     outputs_path = joinpath(path, "outputs")
@@ -277,50 +278,6 @@ end
     var4 = read_dataframe(exp_file)
     # Manually Multiply by the base power var1_a has natural units and export writes directly from the solver
     @test var1_a.value == var4.value .* 100.0
-end
-
-@testset "Test deserialization and re-run of EmulationModel" begin
-    path = mktempdir(; cleanup = true)
-    template = get_thermal_dispatch_template_network()
-    c_sys5 = PSB.build_system(
-        PSITestSystems,
-        "c_sys5_uc";
-        add_single_time_series = true,
-        force_build = true,
-    )
-
-    model = EmulationModel(template, c_sys5; optimizer = HiGHS_optimizer)
-    executions = 10
-    @test build!(model; executions = executions, output_dir = path) ==
-          PSI.ModelBuildStatus.BUILT
-    @test run!(model) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
-    outputs = OptimizationProblemOutputs(model)
-    var1 = read_variable(outputs, ActivePowerVariable, ThermalStandard)
-
-    file_list = sort!(collect(readdir(path)))
-    @test PSI._JUMP_MODEL_FILENAME in file_list
-    @test PSI._SERIALIZED_MODEL_FILENAME in file_list
-    path2 = joinpath(path, "tmp")
-    model2 = EmulationModel(path, HiGHS_optimizer)
-    build!(model2; output_dir = path2)
-    @test run!(model2) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
-    outputs2 = OptimizationProblemOutputs(model2)
-    var2 = read_variable(outputs, ActivePowerVariable, ThermalStandard)
-
-    @test var1 == var2
-
-    # Deserialize with different optimizer attributes.
-    optimizer = JuMP.optimizer_with_attributes(HiGHS.Optimizer, "time_limit" => 110.0)
-    @test_logs (:warn, r"Original solver was .*, new solver is") match_mode = :any EmulationModel(
-        path,
-        optimizer,
-    )
-
-    # Deserialize with a different optimizer.
-    @test_logs (:warn, r"Original solver was .* new solver is") match_mode = :any EmulationModel(
-        path,
-        HiGHS_optimizer,
-    )
 end
 
 @testset "Test serialization of InitialConditionsData" begin

@@ -20,7 +20,8 @@ pages = OrderedDict(
         "Developers" => ["Developer Guidelines" => "reference/developer_guidelines.md",
         "Internals" => "reference/internal.md"],
         "Public API" => "reference/public.md",
-        "Piecewise Linear Cost Functions" => "explanation/piecewise_linear_cost_functions.md",
+        "Piecewise Linear Objective Functions" => "explanation/piecewise_linear_objective_functions.md",
+        "Time-Varying Objective Functions" => "explanation/time_varying_objective_functions.md",
         "Quadratic Approximations" => "explanation/quadratic_approximations.md",
     ],
 )
