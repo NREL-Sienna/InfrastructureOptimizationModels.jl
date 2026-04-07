@@ -678,7 +678,7 @@ function add_variable_container!(
 end
 
 function _get_pwl_variables_container()
-    contents = Dict{Tuple{String, Int, Int}, Any}()
+    contents = Dict{Tuple{String, Int, Int}, JuMP.VariableRef}()
     return SparseAxisArray(contents)
 end
 
