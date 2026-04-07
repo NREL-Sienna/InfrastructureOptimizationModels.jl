@@ -36,7 +36,7 @@ types should be defined in PowerOperationsModels.
 """
 function update_initial_conditions!(
     ics::Vector{<:InitialCondition},
-    store::EmulationModelStore,
+    store::EmulationModelStore{InMemoryDataset},
     resolution::Dates.Millisecond,
 )
     # This is a stub - concrete implementations for specific initial condition types

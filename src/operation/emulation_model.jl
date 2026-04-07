@@ -274,7 +274,10 @@ function init_model_store_params!(model::EmulationModel)
     return
 end
 
-function update_parameters!(model::EmulationModel, store::EmulationModelStore)
+function update_parameters!(
+    model::EmulationModel,
+    store::EmulationModelStore{InMemoryDataset},
+)
     update_parameters!(model, store.data_container)
     return
 end
@@ -294,7 +297,7 @@ end
 
 function update_model!(
     model::EmulationModel,
-    source::EmulationModelStore,
+    source::EmulationModelStore{InMemoryDataset},
     ini_cond_chronology,
 )
     TimerOutputs.@timeit RUN_SIMULATION_TIMER "Parameter Updates" begin

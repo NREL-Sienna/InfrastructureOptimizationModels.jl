@@ -1,8 +1,10 @@
 """
-Stores outputs data for one EmulationModel
+Stores outputs data for one EmulationModel.
+Parameterized by `T <: AbstractDataset` to support different storage backends
+(e.g., `InMemoryDataset`, `HDF5Dataset`).
 """
-mutable struct EmulationModelStore <: AbstractModelStore
-    data_container::DatasetContainer{InMemoryDataset}
+mutable struct EmulationModelStore{T <: AbstractDataset} <: AbstractModelStore
+    data_container::DatasetContainer{T}
     optimizer_stats::OrderedDict{Int, OptimizerStats}
 end
 
@@ -68,7 +70,7 @@ function Base.isempty(store::EmulationModelStore)
 end
 
 function initialize_storage!(
-    store::EmulationModelStore,
+    store::EmulationModelStore{InMemoryDataset},
     container::OptimizationContainer,
     params::ModelStoreParams,
 )
@@ -134,7 +136,7 @@ function write_output!(
 end
 
 function read_outputs(
-    store::EmulationModelStore,
+    store::EmulationModelStore{InMemoryDataset},
     key::OptimizationContainerKey;
     index::Union{Int, Nothing} = nothing,
     len::Union{Int, Nothing} = nothing,
@@ -152,7 +154,10 @@ function read_outputs(
     end
 end
 
-function get_column_names(store::EmulationModelStore, key::OptimizationContainerKey)
+function get_column_names(
+    store::EmulationModelStore{InMemoryDataset},
+    key::OptimizationContainerKey,
+)
     container = get_data_field(store, get_store_container_type(key))
     return get_column_names_from_axis_array(key, container[key].values)
 end
