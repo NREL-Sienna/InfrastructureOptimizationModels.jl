@@ -16,15 +16,35 @@ IOM.start_up_cost(
     ::TestDeviceFormulation,
 ) = cost
 
+# AffExpr startup costs pass through (time-variant path produces AffExpr from param * mult).
+IOM.start_up_cost(
+    cost::JuMP.AffExpr,
+    ::Type{<:IS.InfrastructureSystemsComponent},
+    ::TestStartVariable,
+    ::TestDeviceFormulation,
+) = cost
+
 # Helper to create a MockThermalGen with specified startup/shutdown costs
 function make_thermal_with_costs(
     name::String;
-    startup_cost::Float64 = 0.0,
-    shutdown_cost::Float64 = 0.0,
+    startup_cost::Union{Float64, IS.TimeSeriesKey} = 0.0,
+    shutdown_cost::Union{Float64, IS.TimeSeriesKey} = 0.0,
     must_run::Bool = false,
 )
     op_cost = MockOperationCost(0.0, false, 0.0, startup_cost, shutdown_cost)
     return make_mock_thermal(name; operation_cost = op_cost, must_run = must_run)
+end
+
+# Helper to create a dummy TimeSeriesKey for triggering the time-variant path
+function make_dummy_ts_key()
+    return IS.StaticTimeSeriesKey(
+        IS.SingleTimeSeries,
+        "cost",
+        Dates.DateTime(2024, 1, 1),
+        Dates.Hour(1),
+        3,
+        Dict{String, Any}(),
+    )
 end
 
 # Helper to set up container with variables for mock devices
@@ -312,6 +332,90 @@ end
             "gen2",
             startup2;
             variant = false,
+        )
+    end
+
+    @testset "add_shut_down_cost! time-variant path" begin
+        time_steps = 1:3
+        ts_key = make_dummy_ts_key()
+        device = make_thermal_with_costs("gen1"; shutdown_cost = ts_key)
+        devices = [device]
+        container = setup_startup_shutdown_test_container(
+            time_steps,
+            devices,
+            TestShutDownVariable(),
+        )
+
+        # Set up ShutdownCostParameter with known values
+        shutdown_values = [10.0 20.0 30.0]
+        add_test_parameter!(
+            container,
+            IOM.ShutdownCostParameter,
+            MockThermalGen,
+            ["gen1"],
+            time_steps,
+            shutdown_values,
+        )
+
+        devices_iter = make_mock_device_iterator(devices)
+
+        IOM.add_shut_down_cost!(
+            container,
+            TestShutDownVariable(),
+            devices_iter,
+            TestDeviceFormulation(),
+        )
+
+        # Time-variant costs go into variant expression
+        @test verify_objective_coefficients(
+            container,
+            TestShutDownVariable(),
+            MockThermalGen,
+            "gen1",
+            shutdown_values[1, :];
+            variant = true,
+        )
+    end
+
+    @testset "add_start_up_cost! time-variant path" begin
+        time_steps = 1:3
+        ts_key = make_dummy_ts_key()
+        device = make_thermal_with_costs("gen1"; startup_cost = ts_key)
+        devices = [device]
+        container = setup_startup_shutdown_test_container(
+            time_steps,
+            devices,
+            TestStartVariable(),
+        )
+
+        # Set up StartupCostParameter with known values
+        startup_values = [50.0 100.0 150.0]
+        add_test_parameter!(
+            container,
+            IOM.StartupCostParameter,
+            MockThermalGen,
+            ["gen1"],
+            time_steps,
+            startup_values,
+        )
+
+        devices_iter = make_mock_device_iterator(devices)
+
+        IOM.add_start_up_cost!(
+            container,
+            TestStartVariable(),
+            devices_iter,
+            TestDeviceFormulation(),
+        )
+
+        # Time-variant costs go into variant expression
+        @test verify_objective_coefficients(
+            container,
+            TestStartVariable(),
+            MockThermalGen,
+            "gen1",
+            startup_values[1, :];
+            variant = true,
         )
     end
 end

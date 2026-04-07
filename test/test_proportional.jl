@@ -374,4 +374,51 @@ end
         @test count_objective_terms(container; variant = false) == 0
         @test count_objective_terms(container; variant = true) == 0
     end
+
+    @testset "add_proportional_cost_maybe_time_variant! with skip_proportional_cost" begin
+        # Override skip_proportional_cost for MockThermalGen
+        IOM.skip_proportional_cost(::MockThermalGen) = true
+
+        time_steps = 1:2
+        cost_value = 15.0
+        device = make_mock_thermal(
+            "gen1";
+            operation_cost = MockOperationCost(cost_value, true),
+        )
+        devices = [device]
+        container = setup_proportional_test_container(time_steps, devices)
+
+        # Add ProductionCostExpression so add_cost_to_expression! has somewhere to write
+        device_names = [get_name(d) for d in devices]
+        add_test_expression!(
+            container,
+            IOM.ProductionCostExpression,
+            MockThermalGen,
+            device_names,
+            time_steps,
+        )
+
+        devices_iter = make_device_iterator(devices)
+
+        InfrastructureOptimizationModels.add_proportional_cost_maybe_time_variant!(
+            container,
+            TestProportionalVariable(),
+            devices_iter,
+            TestProportionalFormulation(),
+        )
+
+        # Cost should NOT be in the objective (skip_proportional_cost = true)
+        @test count_objective_terms(container; variant = false) == 0
+        @test count_objective_terms(container; variant = true) == 0
+
+        # But should be in the ProductionCostExpression
+        expr = IOM.get_expression(
+            container, IOM.ProductionCostExpression(), MockThermalGen)
+        for t in time_steps
+            @test JuMP.constant(expr["gen1", t]) ≈ cost_value
+        end
+
+        # Reset to default
+        IOM.skip_proportional_cost(::MockThermalGen) = false
+    end
 end

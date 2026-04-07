@@ -105,7 +105,7 @@ get_device_cache(m::DeviceModel) = m.device_cache
 
 set_subsystem!(m::DeviceModel, id::String) = m.subsystem = id
 
-function _set_model!(
+function set_model!(
     dict::Dict,
     model::DeviceModel{D, B},
 ) where {D <: IS.InfrastructureSystemsComponent, B <: AbstractDeviceFormulation}

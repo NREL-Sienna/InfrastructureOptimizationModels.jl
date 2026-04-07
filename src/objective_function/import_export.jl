@@ -16,7 +16,7 @@ function add_variable_cost_to_objective!(
     @debug "Import Export Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     import_cost_curves = PSY.get_import_offer_curves(cost_function)
     if !isnothing(import_cost_curves)
-        add_pwl_term!(
+        add_pwl_term_delta!(
             false,
             container,
             component,
@@ -42,7 +42,7 @@ function add_variable_cost_to_objective!(
     @debug "Import Export Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     export_cost_curves = PSY.get_export_offer_curves(cost_function)
     if !isnothing(export_cost_curves)
-        add_pwl_term!(
+        add_pwl_term_delta!(
             true,
             container,
             component,

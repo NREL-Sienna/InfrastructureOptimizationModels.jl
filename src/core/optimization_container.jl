@@ -279,7 +279,7 @@ function supports_milp(container::OptimizationContainer)
     return supports_milp(jump_model)
 end
 
-function _validate_warm_start_support(JuMPmodel::JuMP.Model, warm_start_enabled::Bool)
+function validate_warm_start_support(JuMPmodel::JuMP.Model, warm_start_enabled::Bool)
     !warm_start_enabled && return warm_start_enabled
     solver_supports_warm_start =
         MOI.supports(JuMP.backend(JuMPmodel), MOI.VariablePrimalStart(), MOI.VariableIndex)
@@ -294,7 +294,7 @@ function make_empty_jump_model_with_settings(ic_settings::Settings)
     optimizer = get_optimizer(ic_settings)
     JuMPmodel = JuMP.Model(optimizer)
     warm_start_enabled = get_warm_start(ic_settings)
-    solver_supports_warm_start = _validate_warm_start_support(JuMPmodel, warm_start_enabled)
+    solver_supports_warm_start = validate_warm_start_support(JuMPmodel, warm_start_enabled)
     set_warm_start!(ic_settings, solver_supports_warm_start)
     if get_optimizer_solve_log_print(ic_settings)
         JuMP.unset_silent(JuMPmodel)
@@ -306,7 +306,7 @@ function make_empty_jump_model_with_settings(ic_settings::Settings)
     return JuMPmodel
 end
 
-function _finalize_jump_model!(container::OptimizationContainer, settings::Settings)
+function finalize_jump_model!(container::OptimizationContainer, settings::Settings)
     @debug "Instantiating the JuMP model" _group = LOG_GROUP_OPTIMIZATION_CONTAINER
     if built_for_recurrent_solves(container) && get_optimizer(settings) === nothing
         throw(
@@ -328,7 +328,7 @@ function _finalize_jump_model!(container::OptimizationContainer, settings::Setti
 
     JuMPmodel = get_jump_model(container)
     warm_start_enabled = get_warm_start(settings)
-    solver_supports_warm_start = _validate_warm_start_support(JuMPmodel, warm_start_enabled)
+    solver_supports_warm_start = validate_warm_start_support(JuMPmodel, warm_start_enabled)
     set_warm_start!(settings, solver_supports_warm_start)
 
     JuMP.set_string_names_on_creation(JuMPmodel, get_store_variable_names(settings))
@@ -346,18 +346,29 @@ function _finalize_jump_model!(container::OptimizationContainer, settings::Setti
     return
 end
 
+# Dispatch helpers so init_optimization_container! works with both PSY.System and mock containers.
+temp_set_units_base_system!(sys::PSY.System, base::String) =
+    PSY.set_units_base_system!(sys, base)
+temp_set_units_base_system!(::IS.InfrastructureSystemsContainer, ::String) = nothing
+temp_get_forecast_initial_timestamp(sys::PSY.System) =
+    PSY.get_forecast_initial_timestamp(sys)
+temp_get_forecast_initial_timestamp(::IS.InfrastructureSystemsContainer) =
+    Dates.DateTime(1970)
+
 function init_optimization_container!(
     container::OptimizationContainer,
     network_model::NetworkModel{T},
-    sys::PSY.System,
+    sys::IS.InfrastructureSystemsContainer,
 ) where {T <: AbstractPowerModel}
-    PSY.set_units_base_system!(sys, "SYSTEM_BASE")
+    # PSY.set_units_base_system!(sys, "SYSTEM_BASE")
+    temp_set_units_base_system!(sys, "SYSTEM_BASE")
     # The order of operations matter
     settings = get_settings(container)
 
     if get_initial_time(settings) == UNSET_INI_TIME
         if get_default_time_series_type(container) <: PSY.AbstractDeterministic
-            set_initial_time!(settings, PSY.get_forecast_initial_timestamp(sys))
+            # set_initial_time!(settings, PSY.get_forecast_initial_timestamp(sys))
+            set_initial_time!(settings, temp_get_forecast_initial_timestamp(sys))
         elseif get_default_time_series_type(container) <: PSY.SingleTimeSeries
             ini_time, _ = PSY.check_time_series_consistency(sys, PSY.SingleTimeSeries)
             set_initial_time!(settings, ini_time)
@@ -394,7 +405,7 @@ function init_optimization_container!(
     stats = get_optimizer_stats(container)
     stats.detailed_stats = get_detailed_optimizer_stats(settings)
 
-    _finalize_jump_model!(container, settings)
+    finalize_jump_model!(container, settings)
     return
 end
 
@@ -450,7 +461,10 @@ end
 Execute the optimizer on the container's JuMP model, compute aux/dual variables,
 and return the run status. Called `solve_impl!(container, system)` in PSI.
 """
-function execute_optimizer!(container::OptimizationContainer, system::PSY.System)
+function execute_optimizer!(
+    container::OptimizationContainer,
+    system::IS.InfrastructureSystemsContainer,
+)
     optimizer_stats = get_optimizer_stats(container)
 
     jump_model = get_jump_model(container)
@@ -1291,7 +1305,10 @@ function deserialize_key(container::OptimizationContainer, name::AbstractString)
     return deserialize_key(container.metadata, name)
 end
 
-function calculate_aux_variables!(container::OptimizationContainer, system::PSY.System)
+function calculate_aux_variables!(
+    container::OptimizationContainer,
+    system::IS.InfrastructureSystemsContainer,
+)
     aux_var_keys = keys(get_aux_variables(container))
     pf_aux_var_keys = filter(is_from_power_flow ∘ get_entry_type, aux_var_keys)
     non_pf_aux_var_keys = setdiff(aux_var_keys, pf_aux_var_keys)
@@ -1370,7 +1387,7 @@ end
 
 function calculate_dual_variables!(
     container::OptimizationContainer,
-    sys::PSY.System,
+    sys::IS.InfrastructureSystemsContainer,
     is_milp::Bool,
 )
     isempty(get_duals(container)) && return RunStatus.SUCCESSFULLY_FINALIZED

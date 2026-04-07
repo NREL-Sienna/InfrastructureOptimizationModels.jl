@@ -1,12 +1,22 @@
 ##################################################
 # PWL Delta (Incremental/Block) Formulation
 #
-# Pure formulation math for the delta/incremental PWL method.
+# Pure objective function formulation for the delta/incremental PWL method.
 # Variables δ_k >= 0 with block width bounds,
-# P = Σ δ_k + offset, cost = Σ δ_k * slope_k.
+# P = Σ δ_k + offset, objective = Σ δ_k * slope_k.
 #
-# Cost-data-specific mapping (OfferCurveCost → slopes/breakpoints)
-# stays in market_bid.jl.
+# ValueCurve-specific mapping (ValueCurve → slopes/breakpoints)
+# stays in value_curve_cost.jl.
+#
+# Data type relationship:
+#   IS.PiecewiseStepData  →  this formulation (slopes already stored per segment)
+#   IS.PiecewiseIncrementalCurve  =  IncrementalCurve{PiecewiseStepData}  →  this formulation
+#   IS.PiecewiseAverageCurve      =  AverageRateCurve{PiecewiseStepData}  →  this formulation
+#
+# The segment-width upper bounds (δ_k ≤ P_{k+1} - P_k) naturally enforce ordering
+# without SOS2, so non-convex (declining slope) curves remain LP-feasible.
+# Contrast with the lambda formulation (objective_function_pwl_lambda.jl) which
+# operates on IS.PiecewiseLinearData (point values) and requires SOS2 for non-convex curves.
 ##################################################
 
 ##################################################
@@ -25,13 +35,13 @@ Creates `n_points` variables with specified bounds.
 - `name`: component name
 - `t`: time period
 - `n_points`: number of PWL points (= number of delta variables)
-- `upper_bound`: upper bound for variables (default 1.0 for convex combination formulation;
-   use `Inf` for block offer formulation)
+- `upper_bound`: upper bound for variables (default 1.0; use `Inf` for block offer
+   formulation where segment capacity is enforced by constraints instead)
 
 # Returns
 Vector of the created JuMP variables.
 """
-function add_pwl_variables!(
+function add_pwl_variables_delta!(
     container::OptimizationContainer,
     ::Type{V},
     ::Type{C},
@@ -71,22 +81,22 @@ end
 ##################################################
 
 """
-Compute PWL cost expression from delta variables and slopes.
+Compute PWL objective expression from delta variables and slopes.
 
-Returns the cost expression without adding it to the objective (caller decides
+Returns the objective expression without adding it to the objective (caller decides
 whether to use invariant or variant).
 
-    cost = Σ δ[i] * slope[i] * multiplier
+    objective_term = Σ δ[i] * slope[i] * multiplier
 
 # Arguments
 - `pwl_vars`: vector of PWL delta variables
-- `slopes`: vector of slope values (cost per segment, already normalized)
+- `slopes`: vector of slope values (rate per segment, already normalized)
 - `multiplier`: additional multiplier (e.g., dt for time resolution)
 
 # Returns
-JuMP affine expression representing the cost.
+JuMP affine expression representing the objective function term.
 """
-function get_pwl_cost_expression(
+function get_pwl_cost_expression_delta(
     pwl_vars::AbstractVector{JuMP.VariableRef},
     slopes::AbstractVector{Float64},
     multiplier::Float64,
@@ -168,7 +178,7 @@ Implement the constraints for PWL Block Offer variables. That is:
 \\sum_{k\\in\\mathcal{K}} \\delta_{k,t} \\leq P_{k+1,t}^{max} - P_{k,t}^{max}
 ```
 """
-function _add_pwl_constraint!(
+function add_pwl_constraint_delta!(
     container::OptimizationContainer,
     component::T,
     ::U,
@@ -177,7 +187,7 @@ function _add_pwl_constraint!(
     pwl_vars::Vector{JuMP.VariableRef},
     period::Int,
     ::Type{W},
-) where {T <: PSY.Component, U <: VariableType,
+) where {T <: IS.InfrastructureSystemsComponent, U <: VariableType,
     D <: AbstractDeviceFormulation,
     W <: AbstractPiecewiseLinearBlockOfferConstraint}
     variables = get_variable(container, U(), T)
@@ -187,7 +197,7 @@ function _add_pwl_constraint!(
         T,
         axes(variables)...,
     )
-    name = PSY.get_name(component)
+    name = get_name(component)
 
     min_power_offset = if _include_constant_min_gen_power_in_constraint(T, U(), D())
         jump_fixed_value(first(break_points))::Float64
