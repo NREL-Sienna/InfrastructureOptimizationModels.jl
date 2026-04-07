@@ -51,11 +51,18 @@ function Settings(
         time_series_cache_size = 0
     end
 
-    # Handle optimizer: wrap DataType in OptimizerWithAttributes, pass through nothing/OptimizerWithAttributes
-    if isa(optimizer, DataType)
+    if optimizer === nothing
+        optimizer_ = nothing
+    elseif optimizer isa DataType
         optimizer_ = MOI.OptimizerWithAttributes(optimizer)
+    elseif optimizer isa MOI.OptimizerWithAttributes
+        optimizer_ = optimizer
     else
-        optimizer_ = optimizer  # nothing or MOI.OptimizerWithAttributes
+        throw(
+            ArgumentError(
+                "optimizer must be nothing, a DataType, or MOI.OptimizerWithAttributes; got $(typeof(optimizer))",
+            ),
+        )
     end
 
     return Settings(

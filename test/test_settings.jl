@@ -1,6 +1,6 @@
 """
 Unit tests for Settings struct and related functions.
-Uses MockSystem and MockMOIOptimizer from mocks/mock_system.jl
+Uses MockSystem from mocks/mock_system.jl and MockMOIOptimizer from mocks/mock_optimizer.jl
 """
 
 using Dates
@@ -12,7 +12,8 @@ if !@isdefined(PSI)
     const PSI = InfrastructureOptimizationModels
 end
 
-# MockSystem and MockMOIOptimizer are defined in mocks/ and loaded by InfrastructureOptimizationModelsTests.jl
+# MockSystem is defined in mocks/mock_system.jl, MockMOIOptimizer in mocks/mock_optimizer.jl
+# Both are loaded by InfrastructureOptimizationModelsTests.jl
 
 @testset "Settings" begin
     @testset "Construction with defaults" begin
