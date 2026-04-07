@@ -4,7 +4,7 @@
 
 abstract type ParameterAttributes end
 
-struct NoAttributes end
+struct NoAttributes <: ParameterAttributes end
 
 struct TimeSeriesAttributes{T <: IS.TimeSeriesData} <: ParameterAttributes
     name::String
@@ -94,8 +94,8 @@ end
 # Parameter Container - holds parameter arrays and their attributes
 #################################################################################
 
-struct ParameterContainer{T <: AbstractArray, U <: AbstractArray}
-    attributes::ParameterAttributes
+struct ParameterContainer{T <: AbstractArray, U <: AbstractArray, A <: ParameterAttributes}
+    attributes::A
     parameter_array::T
     multiplier_array::U
 end
