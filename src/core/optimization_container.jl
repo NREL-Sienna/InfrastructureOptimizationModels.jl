@@ -355,6 +355,8 @@ function reset_optimization_model!(container::OptimizationContainer)
     for field in [:variables, :aux_variables, :constraints, :expressions, :duals]
         empty!(getfield(container, field))
     end
+    empty!(container.pf_aux_var_keys)
+    empty!(container.non_pf_aux_var_keys)
     container.initial_conditions_data = InitialConditionsData()
     container.objective_function = ObjectiveFunction()
     container.primal_values_cache = PrimalValuesCache()
@@ -647,12 +649,13 @@ Key-constructing overload: builds the key from (T, U, meta) then delegates.
     ::Type{U},
     ::Type{E},
     sparse::Bool,
-    axs...;
+    axs::Vararg{Any, N};
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
     E,
+    N,
 }
     K = key_for_type(T)
     return :(return _add_container!(opt_container, $K(T, U, meta), E, sparse, axs...))

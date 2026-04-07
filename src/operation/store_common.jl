@@ -1,10 +1,25 @@
 """Typed container for export configuration parameters used during model output writing."""
-struct ExportParameters
-    exports::Any
+struct ExportParameters{E}
+    exports::E
     exports_path::String
     file_type::Type
     resolution::Dates.Millisecond
     horizon_count::Int
+end
+
+function _export_container_output!(
+    export_params::ExportParameters,
+    exports_path,
+    key,
+    index,
+    data,
+)
+    df = to_dataframe(data, key)
+    time_col =
+        range(index; length = export_params.horizon_count, step = export_params.resolution)
+    DataFrames.insertcols!(df, 1, :DateTime => time_col)
+    ISOPT.export_output(export_params.file_type, exports_path, key, index, df)
+    return
 end
 
 """Sanitize a model name for use as a filesystem path component.
@@ -73,13 +88,7 @@ function write_model_dual_outputs!(
 
         if export_params !== nothing &&
            should_export_dual(export_params.exports, update_timestamp, model_name, key)
-            horizon_count = export_params.horizon_count
-            resolution = export_params.resolution
-            file_type = export_params.file_type
-            df = to_dataframe(jump_value.(constraint), key)
-            time_col = range(index; length = horizon_count, step = resolution)
-            DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_output(file_type, exports_path, key, index, df)
+            _export_container_output!(export_params, exports_path, key, index, data)
         end
     end
     return
@@ -99,10 +108,6 @@ function write_model_parameter_outputs!(
         mkpath(exports_path)
     end
 
-    horizon = get_horizon(get_settings(model))
-    resolution = get_resolution(get_settings(model))
-    horizon_count = horizon ÷ resolution
-
     parameters = get_parameters(container)
     for (key, param_container) in parameters
         !should_write_resulting_value(key) && continue
@@ -116,12 +121,7 @@ function write_model_parameter_outputs!(
             model_name,
             key,
         )
-            resolution = export_params.resolution
-            file_type = export_params.file_type
-            df = to_dataframe(data, key)
-            time_col = range(index; length = horizon_count, step = resolution)
-            DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_output(file_type, exports_path, key, index, df)
+            _export_container_output!(export_params, exports_path, key, index, data)
         end
     end
     return
@@ -159,13 +159,7 @@ function write_model_variable_outputs!(
             model_name,
             key,
         )
-            horizon_count = export_params.horizon_count
-            resolution = export_params.resolution
-            file_type = export_params.file_type
-            df = to_dataframe(data, key)
-            time_col = range(index; length = horizon_count, step = resolution)
-            DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_output(file_type, exports_path, key, index, df)
+            _export_container_output!(export_params, exports_path, key, index, data)
         end
     end
     return
@@ -197,13 +191,7 @@ function write_model_aux_variable_outputs!(
             model_name,
             key,
         )
-            horizon_count = export_params.horizon_count
-            resolution = export_params.resolution
-            file_type = export_params.file_type
-            df = to_dataframe(data, key)
-            time_col = range(index; length = horizon_count, step = resolution)
-            DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_output(file_type, exports_path, key, index, df)
+            _export_container_output!(export_params, exports_path, key, index, data)
         end
     end
     return
@@ -241,13 +229,7 @@ function write_model_expression_outputs!(
             model_name,
             key,
         )
-            horizon_count = export_params.horizon_count
-            resolution = export_params.resolution
-            file_type = export_params.file_type
-            df = to_dataframe(data, key)
-            time_col = range(index; length = horizon_count, step = resolution)
-            DataFrames.insertcols!(df, 1, :DateTime => time_col)
-            ISOPT.export_output(file_type, exports_path, key, index, df)
+            _export_container_output!(export_params, exports_path, key, index, data)
         end
     end
     return
