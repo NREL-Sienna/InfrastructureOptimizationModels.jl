@@ -29,6 +29,8 @@ using Dates
 using Random
 using Printf
 using JSON3
+using DataFrames
+using CSV
 
 ENVIRONMENT = if get(ENV, "CI", "") == "true" || haskey(ENV, "GITHUB_ACTIONS")
     :github
@@ -224,117 +226,134 @@ function make_container(optimizer)
     return container, system
 end
 
-# ─── Dispatched gen bilinear construction ─────────────────────────────────────
+# ─── Dispatched bilinear construction ─────────────────────────────────────────
 
 """
 Separable methods: precompute V² and I², call wrapper's precomputed overload.
-I² is reused in the loss constraint.
 """
-function build_gen_bilinear(
-    container, net::MockNetworkProblem, V_container, I_container, time_steps,
+function build_bilinear(
+    container, nodes::Vector{String}, V_container, I_container, time_steps,
     bilinear_config::Union{IOM.Bin2Config, IOM.HybSConfig}, quad_config,
+    v_min, v_max, i_min, i_max, tag::String,
 )
     V_sq = IOM._add_quadratic_approx!(
         quad_config,
         container,
         MockNetworkNode,
-        net.gen_nodes,
+        nodes,
         time_steps,
         V_container,
-        V_MIN,
-        V_MAX,
-        "gen_V_sq",
+        v_min,
+        v_max,
+        "$(tag)_V_sq",
     )
     I_sq = IOM._add_quadratic_approx!(
         quad_config,
         container,
         MockNetworkNode,
-        net.gen_nodes,
+        nodes,
         time_steps,
         I_container,
-        I_GEN_MIN,
-        I_GEN_MAX,
-        "gen_I_sq",
+        i_min,
+        i_max,
+        "$(tag)_I_sq",
     )
-    z_gen = IOM._add_bilinear_approx!(
+    z = IOM._add_bilinear_approx!(
         bilinear_config,
         container,
         MockNetworkNode,
-        net.gen_nodes,
+        nodes,
         time_steps,
         V_sq,
         I_sq,
         V_container,
         I_container,
-        V_MIN,
-        V_MAX,
-        I_GEN_MIN,
-        I_GEN_MAX,
-        "gen",
+        v_min,
+        v_max,
+        i_min,
+        i_max,
+        tag,
     )
-    return z_gen, I_sq
+    return z, I_sq, V_sq
 end
 
 """
-DNMDT: discretize V and I, compute I² from I's discretization,
-call DNMDT bilinear with pre-built discretizations. I² is reused in the loss constraint.
+DNMDT: discretize V and I, compute V² and I² from discretizations,
+call DNMDT bilinear with pre-built discretizations.
 """
-function build_gen_bilinear(
-    container, net::MockNetworkProblem, V_container, I_container, time_steps,
+function build_bilinear(
+    container, nodes::Vector{String}, V_container, I_container, time_steps,
     bilinear_config::IOM.DNMDTBilinearConfig, quad_config::IOM.DNMDTQuadConfig,
+    v_min, v_max, i_min, i_max, tag::String,
 )
     V_disc = IOM._discretize!(
-        container, MockNetworkNode, net.gen_nodes, time_steps,
-        V_container, V_MIN, V_MAX, quad_config.depth, "gen_V",
+        container, MockNetworkNode, nodes, time_steps,
+        V_container, v_min, v_max, quad_config.depth, "$(tag)_V",
     )
     I_disc = IOM._discretize!(
-        container, MockNetworkNode, net.gen_nodes, time_steps,
-        I_container, I_GEN_MIN, I_GEN_MAX, quad_config.depth, "gen_I",
+        container, MockNetworkNode, nodes, time_steps,
+        I_container, i_min, i_max, quad_config.depth, "$(tag)_I",
+    )
+    V_sq = IOM._add_quadratic_approx!(
+        quad_config, container, MockNetworkNode, nodes, time_steps,
+        V_disc, v_min, v_max, "$(tag)_V_sq",
     )
     I_sq = IOM._add_quadratic_approx!(
-        quad_config, container, MockNetworkNode, net.gen_nodes, time_steps,
-        I_disc, I_GEN_MIN, I_GEN_MAX, "gen_I_sq",
+        quad_config, container, MockNetworkNode, nodes, time_steps,
+        I_disc, i_min, i_max, "$(tag)_I_sq",
     )
-    z_gen = IOM._add_bilinear_approx!(
-        bilinear_config, container, MockNetworkNode, net.gen_nodes, time_steps,
-        V_disc, I_disc, V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX, "gen",
+    z = IOM._add_bilinear_approx!(
+        bilinear_config, container, MockNetworkNode, nodes, time_steps,
+        V_disc, I_disc, v_min, v_max, i_min, i_max, tag,
     )
-    return z_gen, I_sq
+    return z, I_sq, V_sq
 end
 
 """
-Exact (NLP): exact bilinear V·I and exact quadratic I².
+Exact (NLP): exact bilinear V·I, exact quadratic V² and I².
 """
-function build_gen_bilinear(
-    container, net::MockNetworkProblem, V_container, I_container, time_steps,
+function build_bilinear(
+    container, nodes::Vector{String}, V_container, I_container, time_steps,
     bilinear_config::IOM.NoBilinearApproxConfig, quad_config::IOM.NoQuadApproxConfig,
+    v_min, v_max, i_min, i_max, tag::String,
 )
-    z_gen = IOM._add_bilinear_approx!(
+    z = IOM._add_bilinear_approx!(
         bilinear_config,
         container,
         MockNetworkNode,
-        net.gen_nodes,
+        nodes,
         time_steps,
         V_container,
         I_container,
-        V_MIN,
-        V_MAX,
-        I_GEN_MIN,
-        I_GEN_MAX,
-        "gen",
+        v_min,
+        v_max,
+        i_min,
+        i_max,
+        tag,
+    )
+    V_sq = IOM._add_quadratic_approx!(
+        quad_config,
+        container,
+        MockNetworkNode,
+        nodes,
+        time_steps,
+        V_container,
+        v_min,
+        v_max,
+        "$(tag)_V_sq",
     )
     I_sq = IOM._add_quadratic_approx!(
         quad_config,
         container,
         MockNetworkNode,
-        net.gen_nodes,
+        nodes,
         time_steps,
         I_container,
-        I_GEN_MIN,
-        I_GEN_MAX,
-        "gen_I_sq",
+        i_min,
+        i_max,
+        "$(tag)_I_sq",
     )
-    return z_gen, I_sq
+    return z, I_sq, V_sq
 end
 
 # ─── MIP model  ──────────────────────────────────────────────────────────────
@@ -387,15 +406,16 @@ function build_mip_model(
     Pg = IOM.get_variable(container, ActivePowerVariable(), MockNetworkNode)
 
     # --- Bilinear gen: dispatched on config type ---
-    z_gen, I_sq = build_gen_bilinear(
-        container, net, V_container, I_container, time_steps,
+    z_gen, I_sq_gen, V_sq_gen = build_bilinear(
+        container, net.gen_nodes, V_container, I_container, time_steps,
         bilinear_config, quad_config,
+        V_MIN, V_MAX, I_GEN_MIN, I_GEN_MAX, "gen",
     )
 
-    # --- Bilinear dem: always uses the config-based dispatch ---
-    z_dem = IOM._add_bilinear_approx!(
-        bilinear_config, container, MockNetworkNode, net.dem_nodes, time_steps,
-        V_container, I_container,
+    # --- Bilinear dem: same logic as gen, different bounds ---
+    z_dem, I_sq_dem, V_sq_dem = build_bilinear(
+        container, net.dem_nodes, V_container, I_container, time_steps,
+        bilinear_config, quad_config,
         V_MIN, V_MAX, I_DEM_MIN, I_DEM_MAX, "dem",
     )
 
@@ -454,7 +474,7 @@ function build_mip_model(
             JuMP.@constraint(
                 jump_model,
                 Pg[g, 1] ==
-                z_gen[g, 1] + a * I_sq[g, 1] + b * I_container[g, 1] + c
+                z_gen[g, 1] + a * I_sq_gen[g, 1] + b * I_container[g, 1] + c
             )
     end
 
@@ -503,7 +523,8 @@ function build_mip_model(
         )
     end
 
-    return (; container, system, jump_model, V_container, I_container, z_gen, z_dem, I_sq)
+    return (; container, system, jump_model, V_container, I_container,
+        z_gen, z_dem, I_sq_gen, V_sq_gen, I_sq_dem, V_sq_dem)
 end
 
 # ─── Metrics ──────────────────────────────────────────────────────────────────
@@ -532,15 +553,26 @@ function compute_bilinear_residuals(result, net::MockNetworkProblem)
         product = v * i
         approx = JuMP.value(result.z_gen[g, 1])
         push!(bilin_residuals, residual(product, approx))
-        quad = i * i
-        approx = JuMP.value(result.I_sq[g, 1])
-        push!(quad_residuals, residual(quad, approx))
+        i_sq = i * i
+        approx = JuMP.value(result.I_sq_gen[g, 1])
+        push!(quad_residuals, residual(i_sq, approx))
+        v_sq = v * v
+        approx = JuMP.value(result.V_sq_gen[g, 1])
+        push!(quad_residuals, residual(v_sq, approx))
     end
 
     for d in net.dem_nodes
-        product = JuMP.value(V[d, 1]) * JuMP.value(I[d, 1])
+        v = JuMP.value(V[d, 1])
+        i = JuMP.value(I[d, 1])
+        product = v * i
         approx = JuMP.value(result.z_dem[d, 1])
         push!(bilin_residuals, residual(product, approx))
+        i_sq = i * i
+        approx = JuMP.value(result.I_sq_dem[d, 1])
+        push!(quad_residuals, residual(i_sq, approx))
+        v_sq = v * v
+        approx = JuMP.value(result.V_sq_dem[d, 1])
+        push!(quad_residuals, residual(v_sq, approx))
     end
 
     return (
@@ -549,6 +581,98 @@ function compute_bilinear_residuals(result, net::MockNetworkProblem)
         rmse(quad_residuals),
         maximum(quad_residuals),
     )
+end
+
+"""
+Collect per-node data from a solved model result into a Dict suitable for a
+DataFrame row. For each node: V, I, V², V²_approx, V²_residual, I², I²_approx,
+I²_residual, V·I, V·I_approx, V·I_residual.
+"""
+function collect_node_data(result, net::MockNetworkProblem, label::String, refinement::Int)
+    V = result.V_container
+    I = result.I_container
+    row = Dict{String, Any}("method" => "$label R=$refinement")
+
+    for g in net.gen_nodes
+        v = JuMP.value(V[g, 1])
+        i = JuMP.value(I[g, 1])
+        v2 = v * v
+        i2 = i * i
+        vi = v * i
+        v2_approx = JuMP.value(result.V_sq_gen[g, 1])
+        i2_approx = JuMP.value(result.I_sq_gen[g, 1])
+        vi_approx = JuMP.value(result.z_gen[g, 1])
+        row["$(g)_V"] = v
+        row["$(g)_I"] = i
+        row["$(g)_V2"] = v2
+        row["$(g)_V2_approx"] = v2_approx
+        row["$(g)_V2_residual"] = residual(v2, v2_approx)
+        row["$(g)_I2"] = i2
+        row["$(g)_I2_approx"] = i2_approx
+        row["$(g)_I2_residual"] = residual(i2, i2_approx)
+        row["$(g)_VI"] = vi
+        row["$(g)_VI_approx"] = vi_approx
+        row["$(g)_VI_residual"] = residual(vi, vi_approx)
+    end
+
+    for d in net.dem_nodes
+        v = JuMP.value(V[d, 1])
+        i = JuMP.value(I[d, 1])
+        v2 = v * v
+        i2 = i * i
+        vi = v * i
+        v2_approx = JuMP.value(result.V_sq_dem[d, 1])
+        i2_approx = JuMP.value(result.I_sq_dem[d, 1])
+        vi_approx = JuMP.value(result.z_dem[d, 1])
+        row["$(d)_V"] = v
+        row["$(d)_I"] = i
+        row["$(d)_V2"] = v2
+        row["$(d)_V2_approx"] = v2_approx
+        row["$(d)_V2_residual"] = residual(v2, v2_approx)
+        row["$(d)_I2"] = i2
+        row["$(d)_I2_approx"] = i2_approx
+        row["$(d)_I2_residual"] = residual(i2, i2_approx)
+        row["$(d)_VI"] = vi
+        row["$(d)_VI_approx"] = vi_approx
+        row["$(d)_VI_residual"] = residual(vi, vi_approx)
+    end
+
+    return row
+end
+
+"""
+Build ordered column names for the node data DataFrame.
+"""
+function node_data_columns(net::MockNetworkProblem)
+    cols = String["method"]
+    for node in [net.gen_nodes; net.dem_nodes]
+        push!(cols, "$(node)_V", "$(node)_I")
+        push!(cols, "$(node)_V2", "$(node)_V2_approx", "$(node)_V2_residual")
+        push!(cols, "$(node)_I2", "$(node)_I2_approx", "$(node)_I2_residual")
+        push!(cols, "$(node)_VI", "$(node)_VI_approx", "$(node)_VI_residual")
+    end
+    return cols
+end
+
+"""Save a single-row node data Dict as a CSV file."""
+function save_node_data_csv(row::Dict{String, Any}, filepath::String, net::MockNetworkProblem)
+    cols = node_data_columns(net)
+    df = DataFrame([col => [get(row, col, missing)] for col in cols])
+    CSV.write(filepath, df)
+    return filepath
+end
+
+"""Read and combine multiple single-row node data CSVs into one DataFrame."""
+function combine_node_data_csvs(paths::Vector{String}, output_path::String)
+    dfs = DataFrame[]
+    for p in paths
+        isfile(p) || continue
+        push!(dfs, CSV.read(p, DataFrame))
+    end
+    isempty(dfs) && return nothing
+    combined = vcat(dfs...; cols = :union)
+    CSV.write(output_path, combined)
+    return combined
 end
 
 function model_size(jump_model)
@@ -656,10 +780,12 @@ function run_single_case(;
     mn_q = NaN
     mx_q = NaN
 
+    node_data = nothing
     if solved
         obj = JuMP.objective_value(result.jump_model)
         gap = residual(nlp_obj, obj) * 100.0
         mn_bi, mx_bi, mn_q, mx_q = compute_bilinear_residuals(result, net)
+        node_data = collect_node_data(result, net, label, refinement)
         if !is_exact
             try
                 mip_gap = JuMP.relative_gap(result.jump_model) * 100.0
@@ -689,6 +815,7 @@ function run_single_case(;
         binaries = sz.binaries,
         build_t,
         solve_t,
+        node_data,
     )
 end
 
@@ -913,6 +1040,7 @@ function run_benchmark_parallel(;
     # ── Phase 1: NLP references (sequential, no time limit) ──
     nlp_obj = NaN
     nlp_results = []
+    nlp_csv_paths = String[]
     for (label, opt_fn) in [
         ("NLP (Ipopt)", Ipopt.Optimizer),
         ("NLP (Uno)", () -> UnoSolver.Optimizer(; preset = "filtersqp")),
@@ -936,6 +1064,20 @@ function run_benchmark_parallel(;
         end
         print_result_row(r)
         push!(nlp_results, r)
+        # Save NLP node data CSV
+        if r.node_data !== nothing
+            res_dir_nlp = results_dir()
+            safe_label = replace(label, " " => "_")
+            safe_label = replace(safe_label, "(" => "")
+            safe_label = replace(safe_label, ")" => "")
+            csv_path = joinpath(
+                res_dir_nlp,
+                "$(SLURM_JOB_ID)_$(safe_label)_nodes.csv",
+            )
+            save_node_data_csv(r.node_data, csv_path, net)
+            push!(nlp_csv_paths, csv_path)
+            @info "NLP node data: $csv_path"
+        end
         println()
     end
     flush(logfile)
@@ -1005,6 +1147,7 @@ function run_benchmark_parallel(;
 
     # ── Phase 3: Aggregate results ──
     mip_results = []
+    mip_csv_paths = String[]
     for (mi, ref) in jobs
         label = mip_methods[mi][1]
         outfile =
@@ -1032,6 +1175,11 @@ function run_benchmark_parallel(;
                 ),
             )
         end
+        # Collect per-worker node data CSV path
+        csv_path = replace(outfile, ".json" => "_nodes.csv")
+        if isfile(csv_path)
+            push!(mip_csv_paths, csv_path)
+        end
     end
 
     # Print MIP results grouped by method
@@ -1044,6 +1192,20 @@ function run_benchmark_parallel(;
         println()
     end
     println("="^120)
+
+    # ── Phase 4: Combine node data CSVs into final DataFrame ──
+    all_csv_paths = [nlp_csv_paths; mip_csv_paths]
+    if !isempty(all_csv_paths)
+        tag = isempty(SLURM_JOB_ID) ? Dates.format(Dates.now(), "yyyy-mm-ddTHH-MM-SS") : SLURM_JOB_ID
+        output_csv = joinpath(res_dir, "$(tag)_node_data.csv")
+        combined = combine_node_data_csvs(all_csv_paths, output_csv)
+        if combined !== nothing
+            println("Node data DataFrame saved: $output_csv ($(nrow(combined)) rows)")
+        else
+            @warn "No node data CSVs found to combine"
+        end
+    end
+
     flush(stdout)
 end
 
@@ -1098,6 +1260,13 @@ function run_worker(parsed)
         mkpath(dirname(outfile))
         open(outfile, "w") do io
             JSON3.write(io, result_to_dict(r))
+        end
+
+        # Save per-node data CSV alongside JSON
+        if r.node_data !== nothing
+            csv_path = replace(outfile, ".json" => "_nodes.csv")
+            save_node_data_csv(r.node_data, csv_path, net)
+            @info "Worker node data: $csv_path"
         end
 
         @info "Worker done: $label R=$ref status=$(r.status) obj=$(r.obj) log=$worker_log_path"
