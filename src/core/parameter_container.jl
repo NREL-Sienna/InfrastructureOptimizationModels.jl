@@ -247,7 +247,11 @@ function _set_parameter!(
     return
 end
 
-function set_multiplier!(container::ParameterContainer, multiplier::Float64, ixs::Vararg{Any, N}) where {N}
+function set_multiplier!(
+    container::ParameterContainer,
+    multiplier::Float64,
+    ixs::Vararg{Any, N},
+) where {N}
     assign_maybe_broadcast!(get_multiplier_array(container), multiplier, ixs)
     return
 end

@@ -1,12 +1,12 @@
 struct PrimalValuesCache
-    variables_cache::Dict{VariableKey, AbstractArray}
-    expressions_cache::Dict{ExpressionKey, AbstractArray}
+    variables_cache::Dict{VariableKey, JuMPArray}
+    expressions_cache::Dict{ExpressionKey, JuMPArray}
 end
 
 function PrimalValuesCache()
     return PrimalValuesCache(
-        Dict{VariableKey, AbstractArray}(),
-        Dict{ExpressionKey, AbstractArray}(),
+        Dict{VariableKey, JuMPArray}(),
+        Dict{ExpressionKey, JuMPArray}(),
     )
 end
 
@@ -64,12 +64,12 @@ mutable struct OptimizationContainer <: AbstractOptimizationContainer
     JuMPmodel::JuMP.Model
     time_steps::UnitRange{Int}
     settings::Settings
-    variables::OrderedDict{VariableKey, AbstractArray}
-    aux_variables::OrderedDict{AuxVarKey, AbstractArray}
-    duals::OrderedDict{ConstraintKey, AbstractArray}
-    constraints::OrderedDict{ConstraintKey, AbstractArray}
+    variables::OrderedDict{VariableKey, JuMPArray}
+    aux_variables::OrderedDict{AuxVarKey, JuMPArray}
+    duals::OrderedDict{ConstraintKey, JuMPArray}
+    constraints::OrderedDict{ConstraintKey, JuMPArray}
     objective_function::ObjectiveFunction
-    expressions::OrderedDict{ExpressionKey, AbstractArray}
+    expressions::OrderedDict{ExpressionKey, JuMPArray}
     parameters::OrderedDict{ParameterKey, ParameterContainer}
     primal_values_cache::PrimalValuesCache
     initial_conditions::OrderedDict{InitialConditionKey, Vector{<:InitialCondition}}
@@ -106,12 +106,12 @@ function OptimizationContainer(
         jump_model === nothing ? JuMP.Model() : jump_model,
         1:1,
         settings,
-        OrderedDict{VariableKey, AbstractArray}(),
-        OrderedDict{AuxVarKey, AbstractArray}(),
-        OrderedDict{ConstraintKey, AbstractArray}(),
-        OrderedDict{ConstraintKey, AbstractArray}(),
+        OrderedDict{VariableKey, JuMPArray}(),
+        OrderedDict{AuxVarKey, JuMPArray}(),
+        OrderedDict{ConstraintKey, JuMPArray}(),
+        OrderedDict{ConstraintKey, JuMPArray}(),
         ObjectiveFunction(),
-        OrderedDict{ExpressionKey, AbstractArray}(),
+        OrderedDict{ExpressionKey, JuMPArray}(),
         OrderedDict{ParameterKey, ParameterContainer}(),
         PrimalValuesCache(),
         OrderedDict{InitialConditionKey, Vector{InitialCondition}}(),
@@ -620,6 +620,7 @@ end
     T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
     E,
+    N,
 }
     field = QuoteNode(field_for_type(T))
     return quote
