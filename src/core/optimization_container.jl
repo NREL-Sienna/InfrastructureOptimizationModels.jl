@@ -79,6 +79,8 @@ mutable struct OptimizationContainer <: AbstractOptimizationContainer
     model_base_power::Float64
     optimizer_stats::OptimizerStats
     built_for_recurrent_solves::Bool
+    pf_aux_var_keys::Vector{AuxVarKey}
+    non_pf_aux_var_keys::Vector{AuxVarKey}
     metadata::OptimizationContainerMetadata
     default_time_series_type::Type
     power_flow_evaluation_data::Vector{<:AbstractPowerFlowEvaluationData}
@@ -121,6 +123,8 @@ function OptimizationContainer(
         get_base_power(sys),
         OptimizerStats(),
         false,
+        AuxVarKey[],
+        AuxVarKey[],
         OptimizationContainerMetadata(),
         T,
         AbstractPowerFlowEvaluationData[],
@@ -1250,13 +1254,23 @@ function deserialize_key(container::OptimizationContainer, name::AbstractString)
     return deserialize_key(container.metadata, name)
 end
 
+function _cache_aux_variable_key_partitions!(container::OptimizationContainer)
+    aux_var_keys = keys(get_aux_variables(container))
+    pf_keys = filter(is_from_power_flow ∘ get_entry_type, aux_var_keys)
+    container.pf_aux_var_keys = collect(pf_keys)
+    container.non_pf_aux_var_keys = collect(setdiff(aux_var_keys, pf_keys))
+    return
+end
+
 function calculate_aux_variables!(
     container::OptimizationContainer,
     system::IS.InfrastructureSystemsContainer,
 )
-    aux_var_keys = keys(get_aux_variables(container))
-    pf_aux_var_keys = filter(is_from_power_flow ∘ get_entry_type, aux_var_keys)
-    non_pf_aux_var_keys = setdiff(aux_var_keys, pf_aux_var_keys)
+    if isempty(container.pf_aux_var_keys) && isempty(container.non_pf_aux_var_keys)
+        _cache_aux_variable_key_partitions!(container)
+    end
+    pf_aux_var_keys = container.pf_aux_var_keys
+    non_pf_aux_var_keys = container.non_pf_aux_var_keys
     # We should only have power flow aux vars if we have power flow evaluators
     @assert isempty(pf_aux_var_keys) || !isempty(get_power_flow_evaluation_data(container))
 
