@@ -38,6 +38,8 @@ else
     :local
 end
 
+# We use Pkg.add here because precompilation will fail on CI/CD if Xpress is
+# in the manifest.
 LP_OPT = if ENVIRONMENT == :github
     @eval using HiGHS
     HiGHS.Optimizer
@@ -48,6 +50,7 @@ elseif ENVIRONMENT == :kestrel
     Xpress.Optimizer
 else
     @eval import Pkg
+    Pkg.add("Xpress")
     Pkg.add("Xpress_jll")
     @eval import Xpress_jll
     ENV["XPRESS_JL_LIBRARY"] = Xpress_jll.libxprs
@@ -620,6 +623,9 @@ function run_single_case(;
         println(logfile, "="^80)
         flush(logfile)
         solve_t = @elapsed redirect_stdout(logfile) do
+            # We use this directly because we need to cut the model off after 
+            # a time limit. If we use the optimization container, it will
+            # attempt to re-solve.
             JuMP.optimize!(jump_model)
         end
         flush(logfile)
