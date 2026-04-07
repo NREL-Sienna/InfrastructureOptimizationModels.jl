@@ -593,6 +593,10 @@ function collect_node_data(result, net::MockNetworkProblem, label::String, refin
     I = result.I_container
     row = Dict{String, Any}("method" => "$label R=$refinement")
 
+    v2_residuals = Float64[]
+    i2_residuals = Float64[]
+    vi_residuals = Float64[]
+
     for g in net.gen_nodes
         v = JuMP.value(V[g, 1])
         i = JuMP.value(I[g, 1])
@@ -602,17 +606,23 @@ function collect_node_data(result, net::MockNetworkProblem, label::String, refin
         v2_approx = JuMP.value(result.V_sq_gen[g, 1])
         i2_approx = JuMP.value(result.I_sq_gen[g, 1])
         vi_approx = JuMP.value(result.z_gen[g, 1])
+        v2_res = residual(v2, v2_approx)
+        i2_res = residual(i2, i2_approx)
+        vi_res = residual(vi, vi_approx)
+        push!(v2_residuals, v2_res)
+        push!(i2_residuals, i2_res)
+        push!(vi_residuals, vi_res)
         row["$(g)_V"] = v
         row["$(g)_I"] = i
         row["$(g)_V2"] = v2
         row["$(g)_V2_approx"] = v2_approx
-        row["$(g)_V2_residual"] = residual(v2, v2_approx)
+        row["$(g)_V2_residual"] = v2_res
         row["$(g)_I2"] = i2
         row["$(g)_I2_approx"] = i2_approx
-        row["$(g)_I2_residual"] = residual(i2, i2_approx)
+        row["$(g)_I2_residual"] = i2_res
         row["$(g)_VI"] = vi
         row["$(g)_VI_approx"] = vi_approx
-        row["$(g)_VI_residual"] = residual(vi, vi_approx)
+        row["$(g)_VI_residual"] = vi_res
     end
 
     for d in net.dem_nodes
@@ -624,18 +634,31 @@ function collect_node_data(result, net::MockNetworkProblem, label::String, refin
         v2_approx = JuMP.value(result.V_sq_dem[d, 1])
         i2_approx = JuMP.value(result.I_sq_dem[d, 1])
         vi_approx = JuMP.value(result.z_dem[d, 1])
+        v2_res = residual(v2, v2_approx)
+        i2_res = residual(i2, i2_approx)
+        vi_res = residual(vi, vi_approx)
+        push!(v2_residuals, v2_res)
+        push!(i2_residuals, i2_res)
+        push!(vi_residuals, vi_res)
         row["$(d)_V"] = v
         row["$(d)_I"] = i
         row["$(d)_V2"] = v2
         row["$(d)_V2_approx"] = v2_approx
-        row["$(d)_V2_residual"] = residual(v2, v2_approx)
+        row["$(d)_V2_residual"] = v2_res
         row["$(d)_I2"] = i2
         row["$(d)_I2_approx"] = i2_approx
-        row["$(d)_I2_residual"] = residual(i2, i2_approx)
+        row["$(d)_I2_residual"] = i2_res
         row["$(d)_VI"] = vi
         row["$(d)_VI_approx"] = vi_approx
-        row["$(d)_VI_residual"] = residual(vi, vi_approx)
+        row["$(d)_VI_residual"] = vi_res
     end
+
+    row["rmse_V2"] = rmse(v2_residuals)
+    row["max_V2"] = maximum(v2_residuals)
+    row["rmse_I2"] = rmse(i2_residuals)
+    row["max_I2"] = maximum(i2_residuals)
+    row["rmse_VI"] = rmse(vi_residuals)
+    row["max_VI"] = maximum(vi_residuals)
 
     return row
 end
@@ -644,7 +667,7 @@ end
 Build ordered column names for the node data DataFrame.
 """
 function node_data_columns(net::MockNetworkProblem)
-    cols = String["method"]
+    cols = String["method", "rmse_V2", "max_V2", "rmse_I2", "max_I2", "rmse_VI", "max_VI"]
     for node in [net.gen_nodes; net.dem_nodes]
         push!(cols, "$(node)_V", "$(node)_I")
         push!(cols, "$(node)_V2", "$(node)_V2_approx", "$(node)_V2_residual")
