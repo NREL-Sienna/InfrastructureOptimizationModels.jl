@@ -152,7 +152,8 @@ Test types defined in test_utils/test_types.jl.
             )
 
             # Verify expression was updated
-            expr_container = IOM.get_expression(container, TestCostExpression, MockThermalGen)
+            expr_container =
+                IOM.get_expression(container, TestCostExpression, MockThermalGen)
             expr = expr_container["gen1", 1]
             @test JuMP.coefficient(expr, var) ≈ 15.0
         end
