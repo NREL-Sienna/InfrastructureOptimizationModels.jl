@@ -55,6 +55,7 @@ mutable struct DeviceModel{
     time_series_names::Dict{Type{<:ParameterType}, String}
     attributes::Dict{String, Any}
     subsystem::Union{Nothing, String}
+    device_cache::Vector{D}
     function DeviceModel(
         ::Type{D},
         ::Type{B};
@@ -79,6 +80,7 @@ mutable struct DeviceModel{
             time_series_names,
             attributes_,
             nothing,
+            Vector{D}(),
         )
     end
 end
@@ -99,6 +101,7 @@ get_attributes(m::DeviceModel) = m.attributes
 get_attribute(::Nothing, ::String) = nothing
 get_attribute(m::DeviceModel, key::String) = get(m.attributes, key, nothing)
 get_subsystem(m::DeviceModel) = m.subsystem
+get_device_cache(m::DeviceModel) = m.device_cache
 
 set_subsystem!(m::DeviceModel, id::String) = m.subsystem = id
 

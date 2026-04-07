@@ -31,7 +31,7 @@ end
         @test PSI.get_optimizer_solve_log_print(settings) == false
         @test PSI.get_detailed_optimizer_stats(settings) == false
         @test PSI.get_calculate_conflict(settings) == false
-        @test PSI.get_system_to_file(settings) == true
+        @test PSI.get_check_components(settings) == true
         @test PSI.get_initialize_model(settings) == true
         @test PSI.get_initialization_file(settings) == ""
         @test PSI.get_deserialize_initial_conditions(settings) == false
@@ -51,7 +51,6 @@ end
             horizon = Hour(48),
             resolution = Minute(30),
             warm_start = false,
-            system_to_file = false,
             allow_fails = true,
             check_numerical_bounds = false,
             ext = Dict{String, Any}("custom" => 123),
@@ -60,7 +59,7 @@ end
         @test PSI.get_horizon(settings) == Dates.Millisecond(Hour(48))
         @test PSI.get_resolution(settings) == Dates.Millisecond(Minute(30))
         @test PSI.get_warm_start(settings) == false
-        @test PSI.get_system_to_file(settings) == false
+        @test PSI.get_check_components(settings) == true
         @test PSI.get_allow_fails(settings) == true
         @test PSI.get_check_numerical_bounds(settings) == false
         @test PSI.get_ext(settings)["custom"] == 123
@@ -132,49 +131,6 @@ end
         @test PSI.get_warm_start(settings) == false
         PSI.set_warm_start!(settings, true)
         @test PSI.get_warm_start(settings) == true
-    end
-
-    @testset "copy_for_serialization" begin
-        sys = MockSystem(100.0, false)
-        optimizer = MockOptimizer()
-
-        original = PSI.Settings(
-            sys;
-            horizon = Hour(24),
-            resolution = Hour(1),
-            optimizer = optimizer,
-            warm_start = false,
-        )
-
-        copied = PSI.copy_for_serialization(original)
-
-        # Optimizer should be set to nothing in copy
-        @test PSI.get_optimizer(copied) === nothing
-
-        # Other values should be preserved
-        @test PSI.get_horizon(copied) == PSI.get_horizon(original)
-        @test PSI.get_resolution(copied) == PSI.get_resolution(original)
-        @test PSI.get_warm_start(copied) == PSI.get_warm_start(original)
-    end
-
-    @testset "restore_from_copy" begin
-        sys = MockSystem(100.0, false)
-        optimizer = MockOptimizer()
-
-        original = PSI.Settings(
-            sys;
-            horizon = Hour(24),
-            resolution = Hour(1),
-            warm_start = false,
-            allow_fails = true,
-        )
-
-        restored_vals = PSI.restore_from_copy(original; optimizer = optimizer)
-
-        @test restored_vals isa Dict{Symbol, Any}
-        @test restored_vals[:optimizer] === optimizer
-        @test restored_vals[:warm_start] == false
-        @test restored_vals[:allow_fails] == true
     end
 
     @testset "Different time period types" begin
