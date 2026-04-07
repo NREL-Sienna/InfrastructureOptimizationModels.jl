@@ -182,82 +182,20 @@ function reset_power_flow_is_solved!(container::OptimizationContainer)
     end
 end
 
-function has_container_key(
+@generated function has_container_key(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
-    T <: ExpressionType,
+    T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 }
-    key = ExpressionKey(T, U, meta)
-    return haskey(container.expressions, key)
-end
-
-function has_container_key(
-    container::OptimizationContainer,
-    ::Type{T},
-    ::Type{U},
-    meta = CONTAINER_KEY_EMPTY_META,
-) where {
-    T <: VariableType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    key = VariableKey(T, U, meta)
-    return haskey(container.variables, key)
-end
-
-function has_container_key(
-    container::OptimizationContainer,
-    ::Type{T},
-    ::Type{U},
-    meta = CONTAINER_KEY_EMPTY_META,
-) where {
-    T <: AuxVariableType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    key = AuxVarKey(T, U, meta)
-    return haskey(container.aux_variables, key)
-end
-
-function has_container_key(
-    container::OptimizationContainer,
-    ::Type{T},
-    ::Type{U},
-    meta = CONTAINER_KEY_EMPTY_META,
-) where {
-    T <: ConstraintType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    key = ConstraintKey(T, U, meta)
-    return haskey(container.constraints, key)
-end
-
-function has_container_key(
-    container::OptimizationContainer,
-    ::Type{T},
-    ::Type{U},
-    meta = CONTAINER_KEY_EMPTY_META,
-) where {
-    T <: ParameterType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    key = ParameterKey(T, U, meta)
-    return haskey(container.parameters, key)
-end
-
-function has_container_key(
-    container::OptimizationContainer,
-    ::Type{T},
-    ::Type{U},
-    meta = CONTAINER_KEY_EMPTY_META,
-) where {
-    T <: InitialConditionType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    key = InitialConditionKey(T, U, meta)
-    return haskey(container.initial_conditions, key)
+    # without the QuoteNode, we'd get <field_name> when interpolated, not :<field_name>
+    # also, QuoteNode(foo) evaluates foo then quotes, whereas :(foo) quotes first.
+    field = QuoteNode(field_for_type(T))
+    K = key_for_type(T)
+    return :(return haskey(getfield(container, $field), $K(T, U, meta)))
 end
 
 function is_milp(container::OptimizationContainer)::Bool
@@ -626,39 +564,103 @@ function _assign_container!(container::OrderedDict, key::OptimizationContainerKe
     return
 end
 
-####################################### Variable Container #################################
-function _add_variable_container!(
+########################### Generic Container Access ########################################
+
+"""
+Generic container entry getter. Dispatches on key type to access the correct field.
+Replaces per-type get_variable, get_aux_variable, get_constraint, etc. by key.
+"""
+@generated function _get_entry(
     container::OptimizationContainer,
-    var_key::VariableKey{T, U},
+    key::OptimizationContainerKey{T, U},
+) where {
+    T <: OptimizationKeyType,
+    U <: InfrastructureSystemsType,
+}
+    field = QuoteNode(field_for_type(T))
+    return quote
+        val = get(getfield(container, $field), key, nothing)
+        if val === nothing
+            throw(
+                IS.InvalidValue(
+                    "$(encode_key(key)) is not stored. $(encode_key.(collect(keys(getfield(container, $field)))))",
+                ),
+            )
+        end
+        return val
+    end
+end
+
+"""
+Generic container entry getter by entry type and component type.
+Constructs the appropriate key and delegates to the key-based _get_entry.
+"""
+@generated function _get_entry(
+    container::OptimizationContainer,
+    ::Type{T},
+    ::Type{U},
+    meta = CONTAINER_KEY_EMPTY_META,
+) where {
+    T <: OptimizationKeyType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+}
+    K = key_for_type(T)
+    return :(return _get_entry(container, $K(T, U, meta)))
+end
+
+########################### Generic Container Creation ######################################
+
+@generated function _add_container!(
+    opt_container::OptimizationContainer,
+    key::OptimizationContainerKey{T, U},
+    ::Type{E},
     sparse::Bool,
     axs...,
 ) where {
-    T <: VariableType,
+    T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    E,
 }
-    if sparse
-        var_container = sparse_container_spec(JuMP.VariableRef, axs...)
-    else
-        var_container = container_spec(JuMP.VariableRef, axs...)
+    field = QuoteNode(field_for_type(T))
+    return quote
+        if sparse
+            value = sparse_container_spec(E, axs...)
+        else
+            value = container_spec(E, axs...)
+        end
+        _assign_container!(getfield(opt_container, $field), key, value)
+        return value
     end
-    _assign_container!(container.variables, var_key, var_container)
-    return var_container
 end
 
-function add_variable_container!(
-    container::OptimizationContainer,
-    ::T,
+"""
+Key-constructing overload: builds the key from (T, U, meta) then delegates.
+"""
+@generated function _add_container!(
+    opt_container::OptimizationContainer,
+    ::Type{T},
     ::Type{U},
+    ::Type{E},
+    sparse::Bool,
     axs...;
-    sparse = false,
     meta = CONTAINER_KEY_EMPTY_META,
+) where {
+    T <: OptimizationKeyType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    E,
+}
+    K = key_for_type(T)
+    return :(return _add_container!(opt_container, $K(T, U, meta), E, sparse, axs...))
+end
+
+####################################### Variable Container #################################
+add_variable_container!(
+    container::OptimizationContainer, ::T, ::Type{U}, axs...;
+    sparse = false, meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    var_key = VariableKey(T, U, meta)
-    return _add_variable_container!(container, var_key, sparse, axs...)
-end
+} = _add_container!(container, T, U, JuMP.VariableRef, sparse, axs...; meta = meta)
 
 function add_variable_container!(
     container::OptimizationContainer,
@@ -671,8 +673,7 @@ function add_variable_container!(
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 }
-    var_key = VariableKey(T, U, meta)
-    return _add_variable_container!(container, var_key, sparse, axs...)
+    return _add_container!(container, T, U, JuMP.VariableRef, sparse, axs...; meta = meta)
 end
 
 function _get_pwl_variables_container()
@@ -698,75 +699,58 @@ function get_variable_keys(container::OptimizationContainer)
     return collect(keys(container.variables))
 end
 
-function get_variable(container::OptimizationContainer, key::VariableKey)
-    var = get(container.variables, key, nothing)
-    if var === nothing
-        name = encode_key(key)
-        keys = encode_key.(get_variable_keys(container))
-        throw(IS.InvalidValue("variable $name is not stored. $keys"))
-    end
-    return var
-end
+get_variable(container::OptimizationContainer, key::VariableKey) =
+    _get_entry(container, key)
 
-function get_variable(
-    container::OptimizationContainer,
-    ::T,
-    ::Type{U},
+get_variable(
+    container::OptimizationContainer, ::Type{T}, ::Type{U},
     meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_variable(container, VariableKey(T, U, meta))
-end
+} = _get_entry(container, T, U, meta)
+
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_variable(
+    container::OptimizationContainer, ::T, ::Type{U},
+    meta::String = CONTAINER_KEY_EMPTY_META,
+) where {
+    T <: VariableType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+} = _get_entry(container, T, U, meta)
 
 ##################################### AuxVariable Container ################################
-function add_aux_variable_container!(
-    container::OptimizationContainer,
-    ::T,
-    ::Type{U},
-    axs...;
-    sparse = false,
-    meta = CONTAINER_KEY_EMPTY_META,
+add_aux_variable_container!(
+    container::OptimizationContainer, ::T, ::Type{U}, axs...;
+    sparse = false, meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: AuxVariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    var_key = AuxVarKey(T, U, meta)
-    if sparse
-        aux_variable_container = sparse_container_spec(Float64, axs...)
-    else
-        aux_variable_container = container_spec(Float64, axs...)
-    end
-    _assign_container!(container.aux_variables, var_key, aux_variable_container)
-    return aux_variable_container
-end
+} = _add_container!(container, T, U, Float64, sparse, axs...; meta = meta)
 
 function get_aux_variable_keys(container::OptimizationContainer)
     return collect(keys(container.aux_variables))
 end
 
-function get_aux_variable(container::OptimizationContainer, key::AuxVarKey)
-    aux = get(container.aux_variables, key, nothing)
-    if aux === nothing
-        name = encode_key(key)
-        keys = encode_key.(get_aux_variable_keys(container))
-        throw(IS.InvalidValue("Auxiliary variable $name is not stored. $keys"))
-    end
-    return aux
-end
+get_aux_variable(container::OptimizationContainer, key::AuxVarKey) =
+    _get_entry(container, key)
 
-function get_aux_variable(
-    container::OptimizationContainer,
-    ::T,
-    ::Type{U},
+get_aux_variable(
+    container::OptimizationContainer, ::Type{T}, ::Type{U},
     meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: AuxVariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_aux_variable(container, AuxVarKey(T, U, meta))
-end
+} = _get_entry(container, T, U, meta)
+
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_aux_variable(
+    container::OptimizationContainer, ::T, ::Type{U},
+    meta::String = CONTAINER_KEY_EMPTY_META,
+) where {
+    T <: AuxVariableType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+} = _get_entry(container, T, U, meta)
 
 ##################################### DualVariable Container ################################
 function add_dual_container!(
@@ -800,62 +784,37 @@ function get_dual_keys(container::OptimizationContainer)
 end
 
 ##################################### Constraint Container #################################
-function _add_constraints_container!(
-    container::OptimizationContainer,
-    cons_key::ConstraintKey,
-    axs...;
-    sparse = false,
-)
-    if sparse
-        cons_container = sparse_container_spec(JuMP.ConstraintRef, axs...)
-    else
-        cons_container = container_spec(JuMP.ConstraintRef, axs...)
-    end
-    _assign_container!(container.constraints, cons_key, cons_container)
-    return cons_container
-end
-
-function add_constraints_container!(
-    container::OptimizationContainer,
-    ::T,
-    ::Type{U},
-    axs...;
-    sparse = false,
-    meta = CONTAINER_KEY_EMPTY_META,
+add_constraints_container!(
+    container::OptimizationContainer, ::T, ::Type{U}, axs...;
+    sparse = false, meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    cons_key = ConstraintKey(T, U, meta)
-    return _add_constraints_container!(container, cons_key, axs...; sparse = sparse)
-end
+} = _add_container!(container, T, U, JuMP.ConstraintRef, sparse, axs...; meta = meta)
 
 function get_constraint_keys(container::OptimizationContainer)
     return collect(keys(container.constraints))
 end
 
-function get_constraint(container::OptimizationContainer, key::ConstraintKey)
-    var = get(container.constraints, key, nothing)
-    if var === nothing
-        name = encode_key(key)
-        keys = encode_key.(get_constraint_keys(container))
-        throw(IS.InvalidValue("constraint $name is not stored. $keys"))
-    end
+get_constraint(container::OptimizationContainer, key::ConstraintKey) =
+    _get_entry(container, key)
 
-    return var
-end
-
-function get_constraint(
-    container::OptimizationContainer,
-    ::T,
-    ::Type{U},
+get_constraint(
+    container::OptimizationContainer, ::Type{T}, ::Type{U},
     meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_constraint(container, ConstraintKey(T, U, meta))
-end
+} = _get_entry(container, T, U, meta)
+
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_constraint(
+    container::OptimizationContainer, ::T, ::Type{U},
+    meta::String = CONTAINER_KEY_EMPTY_META,
+) where {
+    T <: ConstraintType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+} = _get_entry(container, T, U, meta)
 
 function read_duals(container::OptimizationContainer)
     return Dict(k => to_dataframe(jump_value.(v), k) for (k, v) in get_duals(container))
@@ -942,30 +901,25 @@ function get_parameter_keys(container::OptimizationContainer)
     return collect(keys(container.parameters))
 end
 
-function get_parameter(container::OptimizationContainer, key::ParameterKey)
-    param_container = get(container.parameters, key, nothing)
-    if param_container === nothing
-        name = encode_key(key)
-        throw(
-            IS.InvalidValue(
-                "parameter $name is not stored. $(collect(keys(container.parameters)))",
-            ),
-        )
-    end
-    return param_container
-end
+get_parameter(container::OptimizationContainer, key::ParameterKey) =
+    _get_entry(container, key)
 
-function get_parameter(
-    container::OptimizationContainer,
-    ::T,
-    ::Type{U},
+get_parameter(
+    container::OptimizationContainer, ::Type{T}, ::Type{U},
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ParameterType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_parameter(container, ParameterKey(T, U, meta))
-end
+} = _get_entry(container, T, U, meta)
+
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_parameter(
+    container::OptimizationContainer, ::T, ::Type{U},
+    meta = CONTAINER_KEY_EMPTY_META,
+) where {
+    T <: ParameterType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+} = _get_entry(container, T, U, meta)
 
 function get_parameter_array(container::OptimizationContainer, key)
     return get_parameter_array(get_parameter(container, key))
@@ -1003,7 +957,7 @@ end
 
 function get_parameter_array(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
@@ -1012,9 +966,19 @@ function get_parameter_array(
 }
     return get_parameter_array(container, ParameterKey(T, U, meta))
 end
+
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_parameter_array(
+    container::OptimizationContainer, ::T, ::Type{U},
+    meta = CONTAINER_KEY_EMPTY_META,
+) where {
+    T <: ParameterType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+} = get_parameter_array(container, T, U, meta)
+
 function get_parameter_multiplier_array(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
@@ -1023,6 +987,15 @@ function get_parameter_multiplier_array(
 }
     return get_multiplier_array(get_parameter(container, ParameterKey(T, U, meta)))
 end
+
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_parameter_multiplier_array(
+    container::OptimizationContainer, ::T, ::Type{U},
+    meta = CONTAINER_KEY_EMPTY_META,
+) where {
+    T <: ParameterType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+} = get_parameter_multiplier_array(container, T, U, meta)
 
 function get_parameter_attributes(
     container::OptimizationContainer,
@@ -1068,23 +1041,6 @@ function _calculate_parameter_values(
     return param_array
 end
 ##################################### Expression Container #################################
-function _add_expression_container!(
-    container::OptimizationContainer,
-    expr_key::ExpressionKey,
-    ::Type{T},
-    axs...;
-    sparse = false,
-) where {T <: JuMP.AbstractJuMPScalar}
-    if sparse
-        expr_container = sparse_container_spec(T, axs...)
-    else
-        expr_container = container_spec(T, axs...)
-    end
-    remove_undef!(expr_container)
-    _assign_container!(container.expressions, expr_key, expr_container)
-    return expr_container
-end
-
 function add_expression_container!(
     container::OptimizationContainer,
     ::T,
@@ -1097,14 +1053,10 @@ function add_expression_container!(
     T <: ExpressionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 }
-    expr_key = ExpressionKey(T, U, meta)
-    return _add_expression_container!(
-        container,
-        expr_key,
-        expr_type,
-        axs...;
-        sparse = sparse,
-    )
+    expr_container =
+        _add_container!(container, T, U, expr_type, sparse, axs...; meta = meta)
+    remove_undef!(expr_container)
+    return expr_container
 end
 
 # NOTE: add_expression_container! for ProductionCostExpression is in standard_variables_expressions.jl
@@ -1114,30 +1066,25 @@ function get_expression_keys(container::OptimizationContainer)
     return collect(keys(container.expressions))
 end
 
-function get_expression(container::OptimizationContainer, key::ExpressionKey)
-    var = get(container.expressions, key, nothing)
-    if var === nothing
-        throw(
-            IS.InvalidValue(
-                "expression $key is not stored. $(collect(keys(container.expressions)))",
-            ),
-        )
-    end
+get_expression(container::OptimizationContainer, key::ExpressionKey) =
+    _get_entry(container, key)
 
-    return var
-end
-
-function get_expression(
-    container::OptimizationContainer,
-    ::T,
-    ::Type{U},
+get_expression(
+    container::OptimizationContainer, ::Type{T}, ::Type{U},
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ExpressionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return get_expression(container, ExpressionKey(T, U, meta))
-end
+} = _get_entry(container, T, U, meta)
+
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_expression(
+    container::OptimizationContainer, ::T, ::Type{U},
+    meta = CONTAINER_KEY_EMPTY_META,
+) where {
+    T <: ExpressionType,
+    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+} = _get_entry(container, T, U, meta)
 
 function read_expressions(container::OptimizationContainer)
     return Dict(
@@ -1188,21 +1135,17 @@ function add_initial_condition_container!(
     return _add_initial_condition_container!(container, ic_key, length(axs))
 end
 
-function get_initial_condition(
-    container::OptimizationContainer,
-    ::T,
-    ::Type{D},
-) where {T <: InitialConditionType, D}
-    return get_initial_condition(container, InitialConditionKey(T, D))
-end
+get_initial_condition(
+    container::OptimizationContainer, ::Type{T}, ::Type{D},
+) where {T <: InitialConditionType, D} = _get_entry(container, T, D)
 
-function get_initial_condition(container::OptimizationContainer, key::InitialConditionKey)
-    initial_conditions = get(container.initial_conditions, key, nothing)
-    if initial_conditions === nothing
-        throw(IS.InvalidValue("initial conditions are not stored for $(key)"))
-    end
-    return initial_conditions
-end
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_initial_condition(
+    container::OptimizationContainer, ::T, ::Type{D},
+) where {T <: InitialConditionType, D} = _get_entry(container, T, D)
+
+get_initial_condition(container::OptimizationContainer, key::InitialConditionKey) =
+    _get_entry(container, key)
 
 function get_initial_conditions_keys(container::OptimizationContainer)
     return collect(keys(container.initial_conditions))
@@ -1400,50 +1343,21 @@ function calculate_dual_variables!(
 end
 
 ########################### Helper Functions to get keys ###################################
-function get_optimization_container_key(
+# FIXME this 3-arg version is only called from POM. move it?
+@generated function get_optimization_container_key(
     ::T,
     ::Type{U},
     meta::String,
 ) where {
-    T <: AuxVariableType,
+    T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 }
-    return AuxVarKey(T, U, meta)
+    K = key_for_type(T)
+    return :($K(T, U, meta))
 end
 
-function get_optimization_container_key(
-    ::T,
-    ::Type{U},
-    meta::String,
-) where {
-    T <: VariableType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return VariableKey(T, U, meta)
-end
-
-function get_optimization_container_key(
-    ::T,
-    ::Type{U},
-    meta::String,
-) where {
-    T <: ParameterType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return ParameterKey(T, U, meta)
-end
-
-function get_optimization_container_key(
-    ::T,
-    ::Type{U},
-    meta::String,
-) where {
-    T <: ConstraintType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-}
-    return ConstraintKey(T, U, meta)
-end
-
+# note these 3 lazy_container_addition! definitions have different meta handling and adder 
+# functions, else we'd collapse into one generated function.
 function lazy_container_addition!(
     container::OptimizationContainer,
     var::T,
@@ -1457,7 +1371,7 @@ function lazy_container_addition!(
     if !has_container_key(container, T, U)
         var_container = add_variable_container!(container, var, U, axs...; kwargs...)
     else
-        var_container = get_variable(container, var, U)
+        var_container = get_variable(container, T, U)
     end
     return var_container
 end
@@ -1477,7 +1391,7 @@ function lazy_container_addition!(
         cons_container =
             add_constraints_container!(container, constraint, U, axs...; kwargs...)
     else
-        cons_container = get_constraint(container, constraint, U, meta)
+        cons_container = get_constraint(container, T, U, meta)
     end
     return cons_container
 end
@@ -1497,7 +1411,7 @@ function lazy_container_addition!(
         expr_container =
             add_expression_container!(container, expression, U, axs...; kwargs...)
     else
-        expr_container = get_expression(container, expression, U, meta)
+        expr_container = get_expression(container, T, U, meta)
     end
     return expr_container
 end
@@ -1553,13 +1467,14 @@ function get_column_names(
     end
 end
 
-lookup_value(container::OptimizationContainer, key::VariableKey) =
-    get_variable(container, key)
-lookup_value(container::OptimizationContainer, key::ParameterKey) =
+lookup_value(
+    container::OptimizationContainer,
+    key::OptimizationContainerKey{T, U},
+) where {T <: OptimizationKeyType, U <: InfrastructureSystemsType} =
+    _get_entry(container, key)
+# ParameterKey special case: unwrap ParameterContainer via calculate_parameter_values
+lookup_value(
+    container::OptimizationContainer,
+    key::OptimizationContainerKey{T, U},
+) where {T <: ParameterType, U <: InfrastructureSystemsType} =
     calculate_parameter_values(get_parameter(container, key))
-lookup_value(container::OptimizationContainer, key::AuxVarKey) =
-    get_aux_variable(container, key)
-lookup_value(container::OptimizationContainer, key::ExpressionKey) =
-    get_expression(container, key)
-lookup_value(container::OptimizationContainer, key::ConstraintKey) =
-    get_constraint(container, key)

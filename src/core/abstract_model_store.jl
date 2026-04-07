@@ -12,13 +12,18 @@ const STORE_CONTAINERS = (
     STORE_CONTAINER_AUX_VARIABLES,
     STORE_CONTAINER_EXPRESSIONS,
 )
+const STORE_CONTAINER_TYPES = (
+    ConstraintType,
+    ParameterType,
+    VariableType,
+    AuxVariableType,
+    ExpressionType,
+)
 
-# Keep these in sync with the Symbols in src/core/definitions.
-get_store_container_type(::AuxVarKey) = STORE_CONTAINER_AUX_VARIABLES
-get_store_container_type(::ConstraintKey) = STORE_CONTAINER_DUALS
-get_store_container_type(::ExpressionKey) = STORE_CONTAINER_EXPRESSIONS
-get_store_container_type(::ParameterKey) = STORE_CONTAINER_PARAMETERS
-get_store_container_type(::VariableKey) = STORE_CONTAINER_VARIABLES
+# Derives from store_field_for_type in optimization_container_utils.jl
+get_store_container_type(
+    ::OptimizationContainerKey{T, U},
+) where {T <: OptimizationKeyType, U <: InfrastructureSystemsType} = store_field_for_type(T)
 
 abstract type AbstractModelStore end
 
@@ -46,6 +51,9 @@ function Base.empty!(store::T) where {T <: AbstractModelStore}
     end
 end
 
+# FIXME getproperty allows for more customization than getfield, but we're not actually
+# using that flexibility anywhere downstream...
+# PERF symbols likely resolve at runtime. Would be better to do type and @generated.
 get_data_field(store::AbstractModelStore, type::Symbol) = getproperty(store, type)
 
 function Base.isempty(store::T) where {T <: AbstractModelStore}
@@ -62,51 +70,34 @@ function Base.isempty(store::T) where {T <: AbstractModelStore}
     return true
 end
 
-function list_fields(store::AbstractModelStore, container_type::Symbol)
-    return keys(get_data_field(store, container_type))
-end
-
-function list_keys(store::AbstractModelStore, container_type::Symbol)
-    container = get_data_field(store, container_type)
-    return collect(keys(container))
-end
-
-function get_value(
+@generated function list_fields(
     store::AbstractModelStore,
-    ::T,
-    ::Type{U},
-) where {T <: VariableType, U <: InfrastructureSystemsType}
-    return get_data_field(store, STORE_CONTAINER_VARIABLES)[VariableKey(T, U)]
+    ::Type{T},
+) where {T <: OptimizationKeyType}
+    field = QuoteNode(store_field_for_type(T))
+    return :(return keys(getfield(store, $field)))
 end
 
-function get_value(
+@generated function list_keys(
     store::AbstractModelStore,
-    ::T,
-    ::Type{U},
-) where {T <: AuxVariableType, U <: InfrastructureSystemsType}
-    return get_data_field(store, STORE_CONTAINER_AUX_VARIABLES)[AuxVarKey(T, U)]
+    ::Type{T},
+) where {T <: OptimizationKeyType}
+    field = QuoteNode(store_field_for_type(T))
+    return :(return collect(keys(getfield(store, $field))))
 end
 
-function get_value(
+@generated function get_value(
     store::AbstractModelStore,
-    ::T,
+    ::Type{T},
     ::Type{U},
-) where {T <: ConstraintType, U <: InfrastructureSystemsType}
-    return get_data_field(store, STORE_CONTAINER_DUALS)[ConstraintKey(T, U)]
+) where {T <: OptimizationKeyType, U <: InfrastructureSystemsType}
+    K = key_for_type(T)
+    field = QuoteNode(store_field_for_type(T))
+    return :(return getfield(store, $field)[$K(T, U)])
 end
 
-function get_value(
-    store::AbstractModelStore,
-    ::T,
-    ::Type{U},
-) where {T <: ParameterType, U <: InfrastructureSystemsType}
-    return get_data_field(store, STORE_CONTAINER_PARAMETERS)[ParameterKey(T, U)]
-end
-
-function get_value(
-    store::AbstractModelStore,
-    ::T,
-    ::Type{U},
-) where {T <: ExpressionType, U <: InfrastructureSystemsType}
-    return get_data_field(store, STORE_CONTAINER_EXPRESSIONS)[ExpressionKey(T, U)]
-end
+# TODO: deprecate once POM is migrated to pass types (issue #18)
+get_value(
+    store::AbstractModelStore, ::T, ::Type{U},
+) where {T <: OptimizationKeyType, U <: InfrastructureSystemsType} =
+    get_value(store, T, U)

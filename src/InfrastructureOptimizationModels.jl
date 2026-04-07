@@ -530,6 +530,7 @@ include("core/optimization_container_types.jl")       # Abstract types (Variable
 include("core/definitions.jl")                        # Aliases and enums (needs VariableType)
 # SimulationInfo is defined in IS.Simulation
 include("core/optimization_container_keys.jl")        # Keys depend on types
+include("core/optimization_container_utils.jl")       # key <-> type <-> field correspondences
 include("core/parameter_container.jl")                # Parameter container infrastructure
 include("core/abstract_model_store.jl")               # Store depends on keys
 include("core/optimizer_stats.jl")                    # Stats standalone

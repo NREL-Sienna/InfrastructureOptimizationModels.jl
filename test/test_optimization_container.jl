@@ -82,7 +82,7 @@ struct MockExpressionType <: ISOPT.ExpressionType end
 
         # Verify dimensions
         retrieved =
-            PSI.get_variable(container, PSI.ActivePowerVariable(), MockComponentType)
+            PSI.get_variable(container, PSI.ActivePowerVariable, MockComponentType)
         @test size(retrieved) == (length(device_names), length(time_steps))
     end
 

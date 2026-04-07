@@ -132,13 +132,11 @@ function _determine_bin_lhs(
     elseif sos_status == SOSStatusVariable.PARAMETER
         @debug "Using Piecewise Linear cost function with parameter OnStatusParameter, $T" _group =
             LOG_GROUP_COST_FUNCTIONS
-        param = OnStatusParameter()
-        return get_parameter(container, param, T).parameter_array[name, period]
+        return get_parameter(container, OnStatusParameter, T).parameter_array[name, period]
     elseif sos_status == SOSStatusVariable.VARIABLE
         @debug "Using Piecewise Linear cost function with variable OnVariable $T" _group =
             LOG_GROUP_COST_FUNCTIONS
-        var = OnVariable()
-        return get_variable(container, var, T)[name, period]
+        return get_variable(container, OnVariable, T)[name, period]
     else
         @assert false
     end
@@ -177,7 +175,7 @@ function _add_pwl_constraint_standard!(
     n_points = length(break_points)
 
     # Get PWL delta variables
-    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable(), T)
+    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable, T)
     pwl_vars = [pwl_var_container[name, i, period] for i in 1:n_points]
 
     # Linking constraint: power_var == sum(pwl_vars * breakpoints)
@@ -241,7 +239,7 @@ function _add_pwl_constraint_compact!(
     end
 
     # Get PWL delta variables
-    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable(), T)
+    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable, T)
     pwl_vars = [pwl_var_container[name, i, period] for i in 1:n_points]
 
     # Create constraint container if needed
@@ -254,7 +252,7 @@ function _add_pwl_constraint_compact!(
             JuMP.Containers.SparseAxisArray(contents),
         )
     end
-    con_container = get_constraint(container, PiecewiseLinearCostConstraint(), T)
+    con_container = get_constraint(container, PiecewiseLinearCostConstraint, T)
     jump_model = get_jump_model(container)
 
     # Compact form linking constraint includes P_min offset
@@ -290,7 +288,7 @@ function get_pwl_cost_expression_lambda(
     cost_data::IS.PiecewiseLinearData,
     multiplier::Float64,
 ) where {T <: IS.InfrastructureSystemsComponent}
-    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable(), T)
+    pwl_var_container = get_variable(container, PiecewiseLinearCostVariable, T)
     gen_cost = JuMP.AffExpr(0.0)
     y_coords_cost_data = IS.get_y_coords(cost_data)
     for (i, cost) in enumerate(y_coords_cost_data)
@@ -344,7 +342,7 @@ function add_pwl_linking_constraint!(
             JuMP.Containers.SparseAxisArray(contents),
         )
     end
-    con_container = get_constraint(container, K(), C)
+    con_container = get_constraint(container, K, C)
     jump_model = get_jump_model(container)
     con_container[name, t] = JuMP.@constraint(
         jump_model,
@@ -386,7 +384,7 @@ function add_pwl_normalization_constraint!(
             JuMP.Containers.SparseAxisArray(contents),
         )
     end
-    con_container = get_constraint(container, K(), C)
+    con_container = get_constraint(container, K, C)
     jump_model = get_jump_model(container)
     con_container[name, t] = JuMP.@constraint(
         jump_model,

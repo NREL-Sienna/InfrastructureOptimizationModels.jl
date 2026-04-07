@@ -123,7 +123,7 @@ function add_pwl_term_lambda!(
     time_steps = get_time_steps(container)
     pwl_cost_expressions = Vector{JuMP.AffExpr}(undef, time_steps[end])
     sos_val = _get_sos_value(container, V, component)
-    power_variables = get_variable(container, U(), T)
+    power_variables = get_variable(container, U, T)
     n_points = length(break_points)
     for t in time_steps
         add_pwl_variables_lambda!(container, T, name, t, data)
@@ -136,7 +136,7 @@ function add_pwl_term_lambda!(
             power_variables[name, t],
         )
         if !cost_is_convex
-            pwl_var_container = get_variable(container, PiecewiseLinearCostVariable(), T)
+            pwl_var_container = get_variable(container, PiecewiseLinearCostVariable, T)
             pwl_vars = [pwl_var_container[name, i, t] for i in 1:n_points]
             add_pwl_sos2_constraint!(container, T, name, t, pwl_vars)
         end
@@ -218,8 +218,8 @@ function add_variable_cost_to_objective!(
     is_time_variant_ = is_time_variant(IS.get_fuel_cost(cost_function))
     for t in get_time_steps(container)
         fuel_cost_value = if is_time_variant_
-            param = get_parameter_array(container, FuelCostParameter(), V)
-            mult = get_parameter_multiplier_array(container, FuelCostParameter(), V)
+            param = get_parameter_array(container, FuelCostParameter, V)
+            mult = get_parameter_multiplier_array(container, FuelCostParameter, V)
             param[component_name, t] * mult[component_name, t]
         else
             get_fuel_cost(component)
