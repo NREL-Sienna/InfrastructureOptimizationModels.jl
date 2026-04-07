@@ -15,11 +15,11 @@ function Base.isempty(pvc::PrimalValuesCache)
 end
 
 mutable struct ObjectiveFunction
-    invariant_terms::JuMP.AbstractJuMPScalar
+    invariant_terms::JuMPScalarExpr
     variant_terms::GAE
     synchronized::Bool
     sense::MOI.OptimizationSense
-    function ObjectiveFunction(invariant_terms::JuMP.AbstractJuMPScalar,
+    function ObjectiveFunction(invariant_terms::JuMPScalarExpr,
         variant_terms::GAE,
         synchronized::Bool,
         sense::MOI.OptimizationSense = MOI.MIN_SENSE)
@@ -1221,11 +1221,11 @@ function add_to_objective_invariant_expression!(
     container::OptimizationContainer,
     cost_expr::T,
 ) where {T <: JuMP.AbstractJuMPScalar}
-    T_cf = typeof(container.objective_function.invariant_terms)
-    if T_cf <: JuMP.GenericAffExpr && T <: JuMP.GenericQuadExpr
+    obj = container.objective_function
+    if obj.invariant_terms isa JuMP.GenericAffExpr && T <: JuMP.GenericQuadExpr
         container.objective_function.invariant_terms += cost_expr
     else
-        JuMP.add_to_expression!(container.objective_function.invariant_terms, cost_expr)
+        JuMP.add_to_expression!(obj.invariant_terms, cost_expr)
     end
     return
 end
