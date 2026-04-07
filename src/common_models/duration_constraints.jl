@@ -79,10 +79,8 @@ function device_duration_retrospective!(
             name = get_component_name(ic)
             # Minimum Up-time Constraint
             lhs_on = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
-            for i in UnitRange{Int}(Int(t - duration_data[ix].up + 1), t)
-                if i in time_steps
-                    JuMP.add_to_expression!(lhs_on, varstart[name, i])
-                end
+            for i in max(first(time_steps), t - duration_data[ix].up + 1):t
+                JuMP.add_to_expression!(lhs_on, varstart[name, i])
             end
             if t <= max(0, duration_data[ix].up - get_value(ic)) && get_value(ic) > 0
                 JuMP.add_to_expression!(lhs_on, 1)
@@ -96,10 +94,8 @@ function device_duration_retrospective!(
             name = get_component_name(ic)
             # Minimum Down-time Constraint
             lhs_off = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
-            for i in UnitRange{Int}(Int(t - duration_data[ix].down + 1), t)
-                if i in time_steps
-                    JuMP.add_to_expression!(lhs_off, varstop[name, i])
-                end
+            for i in max(first(time_steps), t - duration_data[ix].down + 1):t
+                JuMP.add_to_expression!(lhs_off, varstop[name, i])
             end
             if t <= max(0, duration_data[ix].down - get_value(ic)) && get_value(ic) > 0
                 JuMP.add_to_expression!(lhs_off, 1)
@@ -177,10 +173,8 @@ function device_duration_look_ahead!(
             name = get_component_name(ic)
             # Minimum Up-time Constraint
             lhs_on = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
-            for i in UnitRange{Int}(Int(t - duration_data[ix].up + 1), t)
-                if i in time_steps
-                    JuMP.add_to_expression!(lhs_on, varon[name, i])
-                end
+            for i in max(first(time_steps), t - duration_data[ix].up + 1):t
+                JuMP.add_to_expression!(lhs_on, varon[name, i])
             end
             if t <= duration_data[ix].up
                 JuMP.add_to_expression!(lhs_on, get_value(ic))
@@ -196,11 +190,9 @@ function device_duration_look_ahead!(
             name = get_component_name(ic)
             # Minimum Down-time Constraint
             lhs_off = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
-            for i in UnitRange{Int}(Int(t - duration_data[ix].down + 1), t)
-                if i in time_steps
-                    JuMP.add_to_expression!(lhs_off, 1)
-                    JuMP.add_to_expression!(lhs_off, -1, varon[name, i])
-                end
+            for i in max(first(time_steps), t - duration_data[ix].down + 1):t
+                JuMP.add_to_expression!(lhs_off, 1)
+                JuMP.add_to_expression!(lhs_off, -1, varon[name, i])
             end
             if t <= duration_data[ix].down
                 JuMP.add_to_expression!(lhs_off, get_value(ic))
@@ -293,12 +285,12 @@ function device_duration_parameters!(
             name = get_component_name(ic)
             # Minimum Up-time Constraint
             lhs_on = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
-            for i in UnitRange{Int}(Int(t - duration_data[ix].up + 1), t)
-                if t <= duration_data[ix].up
-                    if in(i, time_steps)
-                        JuMP.add_to_expression!(lhs_on, varon[name, i])
-                    end
-                else
+            if t <= duration_data[ix].up
+                for i in max(first(time_steps), t - duration_data[ix].up + 1):t
+                    JuMP.add_to_expression!(lhs_on, varon[name, i])
+                end
+            else
+                for i in (t - duration_data[ix].up + 1):t
                     JuMP.add_to_expression!(lhs_on, varstart[name, i])
                 end
             end
@@ -322,13 +314,13 @@ function device_duration_parameters!(
             name = get_component_name(ic)
             # Minimum Down-time Constraint
             lhs_off = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(0)
-            for i in UnitRange{Int}(Int(t - duration_data[ix].down + 1), t)
-                if t <= duration_data[ix].down
-                    if in(i, time_steps)
-                        JuMP.add_to_expression!(lhs_off, 1)
-                        JuMP.add_to_expression!(lhs_off, -1, varon[name, i])
-                    end
-                else
+            if t <= duration_data[ix].down
+                for i in max(first(time_steps), t - duration_data[ix].down + 1):t
+                    JuMP.add_to_expression!(lhs_off, 1)
+                    JuMP.add_to_expression!(lhs_off, -1, varon[name, i])
+                end
+            else
+                for i in (t - duration_data[ix].down + 1):t
                     JuMP.add_to_expression!(lhs_off, varstop[name, i])
                 end
             end
@@ -422,10 +414,8 @@ function device_duration_compact_retrospective!(
                 Int(min(duration_data[ix].up, total_time_steps)),
                 total_time_steps,
             )
-                for i in UnitRange{Int}(Int(t - duration_data[ix].up + 1), t)
-                    if i in time_steps
-                        JuMP.add_to_expression!(lhs_on, varstart[name, i])
-                    end
+                for i in max(first(time_steps), t - duration_data[ix].up + 1):t
+                    JuMP.add_to_expression!(lhs_on, varstart[name, i])
                 end
             elseif t <= max(0, duration_data[ix].up - get_value(ic)) && get_value(ic) > 0
                 JuMP.add_to_expression!(lhs_on, 1)
@@ -445,10 +435,8 @@ function device_duration_compact_retrospective!(
                 Int(min(duration_data[ix].down, total_time_steps)),
                 total_time_steps,
             )
-                for i in UnitRange{Int}(Int(t - duration_data[ix].down + 1), t)
-                    if i in time_steps
-                        JuMP.add_to_expression!(lhs_off, varstop[name, i])
-                    end
+                for i in max(first(time_steps), t - duration_data[ix].down + 1):t
+                    JuMP.add_to_expression!(lhs_off, varstop[name, i])
                 end
             elseif t <= max(0, duration_data[ix].down - get_value(ic)) && get_value(ic) > 0
                 JuMP.add_to_expression!(lhs_off, 1)
