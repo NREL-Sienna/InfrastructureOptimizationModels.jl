@@ -359,13 +359,13 @@ end
 # ─── MIP model  ──────────────────────────────────────────────────────────────
 
 """
-    build_mip_model(optimizer, net, bilinear_config, quad_config, refinement) -> NamedTuple
+    build_mip_model(optimizer, net, bilinear_config, quad_config) -> NamedTuple
 
 Build the MIP (or NLP) model for a `MockNetworkProblem`. Bilinear
 precomputation is dispatched on the config type.
 """
 function build_mip_model(
-    optimizer, net::MockNetworkProblem, bilinear_config, quad_config, refinement::Int,
+    optimizer, net::MockNetworkProblem, bilinear_config, quad_config,
 )
     container, system = make_container(optimizer)
     tdf = TestDeviceFormulation()
@@ -612,17 +612,17 @@ function collect_node_data(result, net::MockNetworkProblem, label::String, refin
         push!(v2_residuals, v2_res)
         push!(i2_residuals, i2_res)
         push!(vi_residuals, vi_res)
-        row["$(g)_V"] = v
-        row["$(g)_I"] = i
-        row["$(g)_V2"] = v2
-        row["$(g)_V2_approx"] = v2_approx
-        row["$(g)_V2_residual"] = v2_res
-        row["$(g)_I2"] = i2
-        row["$(g)_I2_approx"] = i2_approx
-        row["$(g)_I2_residual"] = i2_res
-        row["$(g)_VI"] = vi
-        row["$(g)_VI_approx"] = vi_approx
-        row["$(g)_VI_residual"] = vi_res
+        row["gen$(g)_V"] = v
+        row["gen$(g)_I"] = i
+        row["gen$(g)_V2"] = v2
+        row["gen$(g)_V2_approx"] = v2_approx
+        row["gen$(g)_V2_residual"] = v2_res
+        row["gen$(g)_I2"] = i2
+        row["gen$(g)_I2_approx"] = i2_approx
+        row["gen$(g)_I2_residual"] = i2_res
+        row["gen$(g)_VI"] = vi
+        row["gen$(g)_VI_approx"] = vi_approx
+        row["gen$(g)_VI_residual"] = vi_res
     end
 
     for d in net.dem_nodes
@@ -640,17 +640,17 @@ function collect_node_data(result, net::MockNetworkProblem, label::String, refin
         push!(v2_residuals, v2_res)
         push!(i2_residuals, i2_res)
         push!(vi_residuals, vi_res)
-        row["$(d)_V"] = v
-        row["$(d)_I"] = i
-        row["$(d)_V2"] = v2
-        row["$(d)_V2_approx"] = v2_approx
-        row["$(d)_V2_residual"] = v2_res
-        row["$(d)_I2"] = i2
-        row["$(d)_I2_approx"] = i2_approx
-        row["$(d)_I2_residual"] = i2_res
-        row["$(d)_VI"] = vi
-        row["$(d)_VI_approx"] = vi_approx
-        row["$(d)_VI_residual"] = vi_res
+        row["dem$(d)_V"] = v
+        row["dem$(d)_I"] = i
+        row["dem$(d)_V2"] = v2
+        row["dem$(d)_V2_approx"] = v2_approx
+        row["dem$(d)_V2_residual"] = v2_res
+        row["dem$(d)_I2"] = i2
+        row["dem$(d)_I2_approx"] = i2_approx
+        row["dem$(d)_I2_residual"] = i2_res
+        row["dem$(d)_VI"] = vi
+        row["dem$(d)_VI_approx"] = vi_approx
+        row["dem$(d)_VI_residual"] = vi_res
     end
 
     row["rmse_V2"] = rmse(v2_residuals)
@@ -757,7 +757,7 @@ function run_single_case(;
     threads::Int = 0,
 )
     build_t = @elapsed result =
-        build_mip_model(optimizer, net, bilinear_config, quad_config, refinement)
+        build_mip_model(optimizer, net, bilinear_config, quad_config)
 
     if build_only
         solve_t = 0.0
