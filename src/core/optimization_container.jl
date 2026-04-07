@@ -354,7 +354,8 @@ temp_set_units_base_system!(sys::PSY.System, base::String) =
 temp_set_units_base_system!(::IS.InfrastructureSystemsContainer, ::String) = nothing
 temp_get_forecast_initial_timestamp(sys::PSY.System) =
     PSY.get_forecast_initial_timestamp(sys)
-temp_get_forecast_initial_timestamp(::IS.InfrastructureSystemsContainer) = Dates.DateTime(1970)
+temp_get_forecast_initial_timestamp(::IS.InfrastructureSystemsContainer) =
+    Dates.DateTime(1970)
 
 function init_optimization_container!(
     container::OptimizationContainer,
