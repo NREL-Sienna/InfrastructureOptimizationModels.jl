@@ -58,6 +58,7 @@ function _add_quadratic_approx!(
     names::Vector{String},
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
+    x_var,
     x_min::Float64,
     x_max::Float64,
     meta::String,
@@ -85,7 +86,8 @@ function _add_quadratic_approx!(
     if config.epigraph_depth > 0
         _tighten_lower_bounds!(
             container, C, names, time_steps,
-            result_expr, x_disc, config.epigraph_depth, meta,
+            result_expr, x_var, x_min, x_max,
+            config.epigraph_depth, meta,
         )
     end
 
@@ -158,6 +160,7 @@ function _add_quadratic_approx!(
     names::Vector{String},
     time_steps::UnitRange{Int},
     x_disc::NMDTDiscretization,
+    x_var,
     x_min::Float64,
     x_max::Float64,
     meta::String,
@@ -184,7 +187,8 @@ function _add_quadratic_approx!(
     if config.epigraph_depth > 0
         _tighten_lower_bounds!(
             container, C, names, time_steps,
-            result_expr, x_disc, config.epigraph_depth, meta,
+            result_expr, x_var, x_min, x_max,
+            config.epigraph_depth, meta,
         )
     end
 

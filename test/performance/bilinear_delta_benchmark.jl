@@ -296,11 +296,11 @@ function build_bilinear(
     )
     V_sq = IOM._add_quadratic_approx!(
         quad_config, container, MockNetworkNode, nodes, time_steps,
-        V_disc, v_min, v_max, "$(tag)_V_sq",
+        V_disc, V_container, v_min, v_max, "$(tag)_V_sq",
     )
     I_sq = IOM._add_quadratic_approx!(
         quad_config, container, MockNetworkNode, nodes, time_steps,
-        I_disc, i_min, i_max, "$(tag)_I_sq",
+        I_disc, I_container, i_min, i_max, "$(tag)_I_sq",
     )
     z = IOM._add_bilinear_approx!(
         bilinear_config, container, MockNetworkNode, nodes, time_steps,
@@ -1332,7 +1332,7 @@ bilinear_methods = (
     ("HybS+sSOS", HybS_sSOS),
     ("HybS+mSOS", HybS_mSOS),
     ("HybS+Saw", HybS_Saw),
-    ("DNMDT", DNMDT_DNMDT),
+    ("DNMDT+T-DNMDT", DNMDT_DNMDT),
 )
 
 function parse_commandline()

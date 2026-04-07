@@ -250,7 +250,9 @@ function _tighten_lower_bounds!(
     names::Vector{String},
     time_steps::UnitRange{Int},
     result_expr,
-    x_disc,
+    x_var,
+    x_min::Float64,
+    x_max::Float64,
     epigraph_depth::Int,
     meta::String;
 ) where {C <: IS.InfrastructureSystemsComponent}
@@ -259,7 +261,7 @@ function _tighten_lower_bounds!(
     epi_expr = _add_quadratic_approx!(
         EpigraphQuadConfig(epigraph_depth),
         container, C, names, time_steps,
-        x_disc.norm_expr, 0.0, 1.0, meta * "_epi",
+        x_var, x_min, x_max, meta * "_epi",
     )
     epi_cons = add_constraints_container!(
         container,
