@@ -1,6 +1,14 @@
 "Expression container for the normalized variable xh = (x − x_min) / (x_max − x_min) ∈ [0,1]."
 struct NormedVariableExpression <: ExpressionType end
 
+"Expression container for quadratic (x²) approximation results."
+struct QuadraticExpression <: ExpressionType end
+
+# --- Quadratic approximation config hierarchy ---
+
+"Abstract supertype for quadratic approximation method configurations."
+abstract type QuadraticApproxConfig end
+
 """
     _normed_variable!(container, C, names, time_steps, x_var, x_min, x_max, meta)
 
@@ -40,8 +48,8 @@ function _normed_variable!(
     )
 
     for name in names, t in time_steps
-        result = result_expr[name, t] = JuMP.AffExpr(-x_min / lx)
-        JuMP.add_to_expression!(result, 1.0 / lx, x_var[name, t])
+        result = result_expr[name, t] = JuMP.AffExpr(0.0)
+        add_linear_to_jump_expression!(result, x_var[name, t], 1.0 / lx, -x_min / lx)
     end
     return result_expr
 end

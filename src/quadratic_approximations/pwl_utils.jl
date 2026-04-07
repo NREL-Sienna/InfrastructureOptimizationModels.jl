@@ -56,4 +56,5 @@ function _get_breakpoints_for_pwl_function(
     return x_bkpts, y_bkpts
 end
 
+"Helper: returns x² (used as the default function for PWL breakpoint generation)."
 _square(x::Float64) = x * x

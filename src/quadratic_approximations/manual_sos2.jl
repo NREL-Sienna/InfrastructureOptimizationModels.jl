@@ -5,12 +5,26 @@
 struct ManualSOS2BinaryVariable <: SparseVariableType end
 "Ensures exactly one segment is active (∑zⱼ = 1) in manual SOS2 quadratic approximation."
 struct ManualSOS2SegmentSelectionConstraint <: ConstraintType end
+"Expression for the segment selection sum Σ z_j in manual SOS2 quadratic approximation."
 struct ManualSOS2SegmentSelectionExpression <: ExpressionType end
 "Links active segment to lambda variables."
 struct ManualSOS2AdjacencyConstraint <: ConstraintType end
 
 """
-    _add_manual_sos2_quadratic_approx!(container, C, names, time_steps, x_var, x_min, x_max, num_segments, meta)
+Config for manual binary-variable SOS2 quadratic approximation.
+
+# Fields
+- `depth::Int`: number of PWL segments (breakpoints = depth + 1)
+- `pwmcc_segments::Int`: number of piecewise McCormick cut partitions; 0 to disable (default 4)
+"""
+struct ManualSOS2QuadConfig <: QuadraticApproxConfig
+    depth::Int
+    pwmcc_segments::Int
+end
+ManualSOS2QuadConfig(depth::Int) = ManualSOS2QuadConfig(depth, 4)
+
+"""
+    _add_quadratic_approx!(config::ManualSOS2QuadConfig, container, C, names, time_steps, x_var, x_min, x_max, meta)
 
 Approximate x² using a piecewise linear function with manually-implemented SOS2 constraints.
 
@@ -20,6 +34,7 @@ and stores affine expressions approximating x² in a `QuadraticExpression`
 expression container.
 
 # Arguments
+- `config::ManualSOS2QuadConfig`: configuration with `depth` (number of PWL segments) and `pwmcc_segments` (PWMCC cut partitions; 0 to disable, default 4)
 - `container::OptimizationContainer`: the optimization container
 - `::Type{C}`: component type
 - `names::Vector{String}`: component names
@@ -27,10 +42,10 @@ expression container.
 - `x_var`: container of variables indexed by (name, t)
 - `x_min::Float64`: lower bound of x domain
 - `x_max::Float64`: upper bound of x domain
-- `num_segments::Int`: number of PWL segments
 - `meta::String`: variable type identifier for the approximation (allows multiple approximations per component type)
 """
-function _add_manual_sos2_quadratic_approx!(
+function _add_quadratic_approx!(
+    config::ManualSOS2QuadConfig,
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -38,13 +53,17 @@ function _add_manual_sos2_quadratic_approx!(
     x_var,
     x_min::Float64,
     x_max::Float64,
-    num_segments::Int,
-    meta::String;
-    add_mccormick::Bool = false,
+    meta::String,
 ) where {C <: IS.InfrastructureSystemsComponent}
+    lx = x_max - x_min
     x_bkpts, x_sq_bkpts =
-        _get_breakpoints_for_pwl_function(x_min, x_max, _square; num_segments)
-    n_points = num_segments + 1
+        _get_breakpoints_for_pwl_function(
+            0.0,
+            1.0,
+            _square;
+            num_segments = config.depth,
+        )
+    n_points = config.depth + 1
     n_bins = n_points - 1
     jump_model = get_jump_model(container)
 
@@ -136,14 +155,14 @@ function _add_manual_sos2_quadratic_approx!(
         # x = Σ λ_i * x_i
         link = link_expr[name, t] = JuMP.AffExpr(0.0)
         for i in eachindex(x_bkpts)
-            JuMP.add_to_expression!(link, lambda[i], x_bkpts[i])
+            add_proportional_to_jump_expression!(link, lambda[i], x_bkpts[i])
         end
-        link_cons[name, t] = JuMP.@constraint(jump_model, x == link)
+        link_cons[name, t] = JuMP.@constraint(jump_model, (x - x_min) / lx == link)
 
         # Σ λ_i = 1
         norm = norm_expr[name, t] = JuMP.AffExpr(0.0)
         for l in lambda
-            JuMP.add_to_expression!(norm, l)
+            add_proportional_to_jump_expression!(norm, l, 1.0)
         end
         norm_cons[name, t] = JuMP.@constraint(jump_model, norm == 1.0)
 
@@ -161,7 +180,7 @@ function _add_manual_sos2_quadratic_approx!(
         # Σ z_j = 1 (segment selection)
         seg = seg_expr[name, t] = JuMP.AffExpr(0.0)
         for z in z_vars
-            JuMP.add_to_expression!(seg, z)
+            add_proportional_to_jump_expression!(seg, z, 1.0)
         end
         seg_cons[name, t] = JuMP.@constraint(jump_model, seg == 1)
 
@@ -180,17 +199,20 @@ function _add_manual_sos2_quadratic_approx!(
         # Build x̂² = Σ λ_i * x_i² as an affine expression
         x_hat_sq = JuMP.AffExpr(0.0)
         for i in 1:n_points
-            JuMP.add_to_expression!(x_hat_sq, x_sq_bkpts[i], lambda[i])
+            add_proportional_to_jump_expression!(x_hat_sq, lambda[i], x_sq_bkpts[i])
         end
-        result_expr[name, t] = x_hat_sq
+        x_sq = JuMP.AffExpr(0.0)
+        add_proportional_to_jump_expression!(x_sq, x_hat_sq, lx * lx)
+        add_proportional_to_jump_expression!(x_sq, x, 2 * x_min)
+        add_constant_to_jump_expression!(x_sq, -x_min * x_min)
+        result_expr[name, t] = x_sq
     end
 
-    if add_mccormick
-        _add_mccormick_envelope!(
+    if config.pwmcc_segments > 0
+        _add_pwmcc_concave_cuts!(
             container, C, names, time_steps,
-            x_var, result_expr,
-            x_min, x_max,
-            meta,
+            x_var, result_expr, x_min, x_max,
+            config.pwmcc_segments, meta * "_pwmcc",
         )
     end
 

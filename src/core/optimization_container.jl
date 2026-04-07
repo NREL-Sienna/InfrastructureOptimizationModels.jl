@@ -348,18 +348,29 @@ function finalize_jump_model!(container::OptimizationContainer, settings::Settin
     return
 end
 
+# Dispatch helpers so init_optimization_container! works with both PSY.System and mock containers.
+temp_set_units_base_system!(sys::PSY.System, base::String) =
+    PSY.set_units_base_system!(sys, base)
+temp_set_units_base_system!(::IS.InfrastructureSystemsContainer, ::String) = nothing
+temp_get_forecast_initial_timestamp(sys::PSY.System) =
+    PSY.get_forecast_initial_timestamp(sys)
+temp_get_forecast_initial_timestamp(::IS.InfrastructureSystemsContainer) =
+    Dates.DateTime(1970)
+
 function init_optimization_container!(
     container::OptimizationContainer,
     network_model::NetworkModel{T},
-    sys::PSY.System,
+    sys::IS.InfrastructureSystemsContainer,
 ) where {T <: AbstractPowerModel}
-    PSY.set_units_base_system!(sys, "SYSTEM_BASE")
+    # PSY.set_units_base_system!(sys, "SYSTEM_BASE")
+    temp_set_units_base_system!(sys, "SYSTEM_BASE")
     # The order of operations matter
     settings = get_settings(container)
 
     if get_initial_time(settings) == UNSET_INI_TIME
         if get_default_time_series_type(container) <: PSY.AbstractDeterministic
-            set_initial_time!(settings, PSY.get_forecast_initial_timestamp(sys))
+            # set_initial_time!(settings, PSY.get_forecast_initial_timestamp(sys))
+            set_initial_time!(settings, temp_get_forecast_initial_timestamp(sys))
         elseif get_default_time_series_type(container) <: PSY.SingleTimeSeries
             ini_time, _ = PSY.check_time_series_consistency(sys, PSY.SingleTimeSeries)
             set_initial_time!(settings, ini_time)
@@ -453,7 +464,10 @@ end
 Execute the optimizer on the container's JuMP model, compute aux/dual variables,
 and return the run status. Called `solve_impl!(container, system)` in PSI.
 """
-function execute_optimizer!(container::OptimizationContainer, system::PSY.System)
+function execute_optimizer!(
+    container::OptimizationContainer,
+    system::IS.InfrastructureSystemsContainer,
+)
     optimizer_stats = get_optimizer_stats(container)
 
     jump_model = get_jump_model(container)
@@ -1294,7 +1308,10 @@ function deserialize_key(container::OptimizationContainer, name::AbstractString)
     return deserialize_key(container.metadata, name)
 end
 
-function calculate_aux_variables!(container::OptimizationContainer, system::PSY.System)
+function calculate_aux_variables!(
+    container::OptimizationContainer,
+    system::IS.InfrastructureSystemsContainer,
+)
     aux_var_keys = keys(get_aux_variables(container))
     pf_aux_var_keys = filter(is_from_power_flow ∘ get_entry_type, aux_var_keys)
     non_pf_aux_var_keys = setdiff(aux_var_keys, pf_aux_var_keys)
@@ -1476,7 +1493,7 @@ end
 
 function calculate_dual_variables!(
     container::OptimizationContainer,
-    sys::PSY.System,
+    sys::IS.InfrastructureSystemsContainer,
     is_milp::Bool,
 )
     isempty(get_duals(container)) && return RunStatus.SUCCESSFULLY_FINALIZED

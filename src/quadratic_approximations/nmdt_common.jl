@@ -28,17 +28,11 @@ Fields:
 - `norm_expr`: affine expression for xh = (x − x_min)/(x_max − x_min) ∈ [0,1]
 - `beta_var`: binary variables β_i ∈ {0,1} indexed by (name, i, t)
 - `delta_var`: residual variables δ ∈ [0, 2^{−depth}] indexed by (name, t)
-- `min`: original lower bound x_min
-- `max`: original upper bound x_max
-- `depth`: number of binary discretization levels L
 """
 struct NMDTDiscretization
     norm_expr::Any
     beta_var::Any
     delta_var::Any
-    min::Float64
-    max::Float64
-    depth::Int
 end
 
 """
@@ -124,7 +118,7 @@ function _discretize!(
                     base_name = "NMDTBinary_$(C)_{$(name), $(i), $(t)}",
                     binary = true
                 )
-            JuMP.add_to_expression!(disc, 2.0^(-i), beta)
+            add_proportional_to_jump_expression!(disc, beta, 2.0^(-i))
         end
         delta =
             delta_var[name, t] = JuMP.@variable(
@@ -133,18 +127,18 @@ function _discretize!(
                 lower_bound = 0.0,
                 upper_bound = 2.0^(-depth)
             )
-        JuMP.add_to_expression!(disc, delta)
+        add_proportional_to_jump_expression!(disc, delta, 1.0)
         disc_cons[name, t] = JuMP.@constraint(
             jump_model,
             xh_expr[name, t] == disc
         )
     end
 
-    return NMDTDiscretization(xh_expr, beta_var, delta_var, x_min, x_max, depth)
+    return NMDTDiscretization(xh_expr, beta_var, delta_var)
 end
 
 """
-    _binary_continuous_product!(container, C, names, time_steps, bin_disc, cont_var, cont_min, cont_max, meta; tighten)
+    _binary_continuous_product!(container, C, names, time_steps, bin_disc, cont_var, cont_min, cont_max, depth, meta; tighten)
 
 Linearize each binary-continuous product β_i·y using McCormick envelopes.
 
@@ -161,6 +155,7 @@ and adds 4 McCormick constraints via `_add_mccormick_envelope!`. Assembles the w
 - `cont_var`: container of continuous variables y indexed by (name, t)
 - `cont_min::Float64`: lower bound of y
 - `cont_max::Float64`: upper bound of y
+- `depth::Int`: number of binary discretization levels
 - `meta::String`: identifier encoding the original variable type being approximated
 - `tighten::Bool`: if true, omit McCormick lower bounds (for use when a tighter bound is applied elsewhere)
 """
@@ -173,10 +168,10 @@ function _binary_continuous_product!(
     cont_var,
     cont_min::Float64,
     cont_max::Float64,
+    depth::Int,
     meta::String;
     tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    depth = bin_disc.depth
     jump_model = get_jump_model(container)
 
     u_var = add_variable_container!(
@@ -223,7 +218,7 @@ function _binary_continuous_product!(
                 cont_min, cont_max, 0.0, 1.0;
                 lower_bounds = !tighten,
             )
-            JuMP.add_to_expression!(result, 2.0^(-i), u_i)
+            add_proportional_to_jump_expression!(result, u_i, 2.0^(-i))
         end
     end
 
@@ -231,11 +226,11 @@ function _binary_continuous_product!(
 end
 
 """
-    _tighten_lower_bounds!(container, C, names, time_steps, result_expr, x_disc, meta)
+    _tighten_lower_bounds!(container, C, names, time_steps, result_expr, x_disc, epigraph_depth, meta)
 
 Add epigraph lower-bound constraints to tighten an NMDT quadratic approximation.
 
-Computes an epigraph Q^{L1} lower bound on xh² using depth `ceil(1.5 * x_disc.depth)`
+Computes an epigraph Q^{L1} lower bound on xh²
 and adds a `NMDTTightenConstraint` enforcing `result_expr[name,t] ≥ epi_expr[name,t]`
 for each (name, t). This improves the lower bound quality of NMDT without adding binaries.
 
@@ -246,6 +241,7 @@ for each (name, t). This improves the lower bound quality of NMDT without adding
 - `time_steps::UnitRange{Int}`: time periods
 - `result_expr`: expression container for the NMDT quadratic result to be tightened
 - `x_disc`: `NMDTDiscretization` for x, providing `norm_expr` and `depth`
+- `epigraph_depth::Int`: depth for the epigraph Q^{L1} lower-bound approximation
 - `meta::String`: identifier encoding the original variable type being approximated
 """
 function _tighten_lower_bounds!(
@@ -255,15 +251,15 @@ function _tighten_lower_bounds!(
     time_steps::UnitRange{Int},
     result_expr,
     x_disc,
+    epigraph_depth::Int,
     meta::String;
 ) where {C <: IS.InfrastructureSystemsComponent}
     jump_model = get_jump_model(container)
 
-    epigraph_depth = max(2, ceil(Int, 1.5 * x_disc.depth))
-    epi_expr = _add_epigraph_quadratic_approx!(
+    epi_expr = _add_quadratic_approx!(
+        EpigraphQuadConfig(epigraph_depth),
         container, C, names, time_steps,
-        x_disc.norm_expr, 0.0, 1.0,
-        epigraph_depth, meta * "_epi",
+        x_disc.norm_expr, 0.0, 1.0, meta * "_epi",
     )
     epi_cons = add_constraints_container!(
         container,
@@ -309,10 +305,11 @@ function _residual_product!(
     x_disc,
     y_var,
     y_max::Float64,
+    depth::Int,
     meta::String;
     tighten::Bool = false,
 ) where {C <: IS.InfrastructureSystemsComponent}
-    x_max = 2.0^(-x_disc.depth)
+    x_max = 2.0^(-depth)
     jump_model = get_jump_model(container)
 
     z_var = add_variable_container!(
@@ -405,19 +402,24 @@ function _assemble_product!(
         result = result_expr[name, t] = JuMP.AffExpr(0.0)
         zh = JuMP.AffExpr(0.0)
         for term in terms
-            JuMP.add_to_expression!(zh, term[name, t])
+            add_proportional_to_jump_expression!(zh, term[name, t], 1.0)
         end
-        JuMP.add_to_expression!(zh, dz_var[name, t])
+        add_proportional_to_jump_expression!(zh, dz_var[name, t], 1.0)
 
-        JuMP.add_to_expression!(result, lx * ly, zh)
-        JuMP.add_to_expression!(result, lx * y_min, xh_expr[name, t])
-        JuMP.add_to_expression!(result, ly * x_min, yh_expr[name, t])
-        JuMP.add_to_expression!(result, x_min * y_min)
+        add_proportional_to_jump_expression!(result, zh, lx * ly)
+        add_proportional_to_jump_expression!(result, xh_expr[name, t], lx * y_min)
+        add_proportional_to_jump_expression!(result, yh_expr[name, t], ly * x_min)
+        add_constant_to_jump_expression!(result, x_min * y_min)
     end
 
     return result_expr
 end
 
+"""
+    _assemble_product!(container, C, names, time_steps, terms, dz_var, x_disc::NMDTDiscretization, y_disc::NMDTDiscretization, x_min, x_max, y_min, y_max, meta; result_type)
+
+Convenience overload: extracts `norm_expr` from both discretizations and delegates to the core `_assemble_product!`.
+"""
 function _assemble_product!(
     container::OptimizationContainer,
     ::Type{C},
@@ -427,17 +429,26 @@ function _assemble_product!(
     dz_var,
     x_disc::NMDTDiscretization,
     y_disc::NMDTDiscretization,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
     meta::String;
     result_type = NMDTResultExpression,
 ) where {C <: IS.InfrastructureSystemsComponent}
     return _assemble_product!(
         container, C, names, time_steps, terms, dz_var,
         x_disc.norm_expr, y_disc.norm_expr,
-        x_disc.min, x_disc.max, y_disc.min, y_disc.max,
+        x_min, x_max, y_min, y_max,
         meta; result_type,
     )
 end
 
+"""
+    _assemble_product!(container, C, names, time_steps, terms, dz_var, x_disc::NMDTDiscretization, yh_expr, x_min, x_max, y_min, y_max, meta; result_type)
+
+Convenience overload: extracts `norm_expr` from x_disc and delegates to the core `_assemble_product!`.
+"""
 function _assemble_product!(
     container::OptimizationContainer,
     ::Type{C},
@@ -447,6 +458,8 @@ function _assemble_product!(
     dz_var,
     x_disc::NMDTDiscretization,
     yh_expr,
+    x_min::Float64,
+    x_max::Float64,
     y_min::Float64,
     y_max::Float64,
     meta::String;
@@ -455,13 +468,13 @@ function _assemble_product!(
     return _assemble_product!(
         container, C, names, time_steps, terms, dz_var,
         x_disc.norm_expr, yh_expr,
-        x_disc.min, x_disc.max, y_min, y_max,
+        x_min, x_max, y_min, y_max,
         meta; result_type,
     )
 end
 
 """
-    _add_dnmdt_approx!(container, C, names, time_steps, bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr, x_disc, y_disc, meta; lambda, result_type)
+    _assemble_dnmdt!(container, C, names, time_steps, bx_yh_expr, by_dx_expr, by_xh_expr, bx_dy_expr, x_disc, y_disc, meta; lambda, result_type)
 
 Core assembler for the DNMDT bilinear approximation of x·y from pre-computed cross products.
 
@@ -488,7 +501,7 @@ container of type `result_type`.
 - `lambda::Float64`: convex combination weight for the two NMDT estimates (default: `DNMDT_LAMBDA` = 0.5)
 - `result_type`: expression type to store results in (default: `NMDTResultExpression`)
 """
-function _add_dnmdt_approx!(
+function _assemble_dnmdt!(
     container::OptimizationContainer,
     ::Type{C},
     names::Vector{String},
@@ -499,6 +512,11 @@ function _add_dnmdt_approx!(
     bx_dy_expr,
     x_disc::NMDTDiscretization,
     y_disc::NMDTDiscretization,
+    x_min::Float64,
+    x_max::Float64,
+    y_min::Float64,
+    y_max::Float64,
+    depth::Int,
     meta::String;
     lambda::Float64 = DNMDT_LAMBDA,
     result_type::Type = NMDTResultExpression,
@@ -515,25 +533,26 @@ function _add_dnmdt_approx!(
 
     dz = _residual_product!(
         container, C, names, time_steps,
-        x_disc, y_disc.delta_var, 2.0^(-y_disc.depth),
-        meta; tighten,
+        x_disc, y_disc.delta_var, 2.0^(-depth),
+        depth, meta; tighten,
     )
     z1_expr = _assemble_product!(
         container, C, names, time_steps,
         [bx_yh_expr, by_dx_expr], dz,
-        x_disc, y_disc,
+        x_disc, y_disc, x_min, x_max, y_min, y_max,
         meta * "_nmdt1",
     )
     z2_expr = _assemble_product!(
         container, C, names, time_steps,
         [by_xh_expr, bx_dy_expr], dz,
-        y_disc, x_disc, meta * "_nmdt2",
+        y_disc, x_disc, y_min, y_max, x_min, x_max,
+        meta * "_nmdt2",
     )
 
     for name in names, t in time_steps
         result = result_expr[name, t] = JuMP.AffExpr(0.0)
-        JuMP.add_to_expression!(result, lambda, z1_expr[name, t])
-        JuMP.add_to_expression!(result, 1.0 - lambda, z2_expr[name, t])
+        add_proportional_to_jump_expression!(result, z1_expr[name, t], lambda)
+        add_proportional_to_jump_expression!(result, z2_expr[name, t], 1.0 - lambda)
     end
 
     return result_expr

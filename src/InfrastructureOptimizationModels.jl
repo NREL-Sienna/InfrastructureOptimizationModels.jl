@@ -558,8 +558,8 @@ include("common_models/interfaces.jl")
 include("common_models/add_variable.jl")
 include("common_models/add_auxiliary_variable.jl")
 include("common_models/add_constraint_dual.jl")
-include("common_models/add_jump_expressions.jl") # helpers only used in POM.
-include("common_models/set_expression.jl") # helpers only used in POM.
+include("common_models/add_jump_expressions.jl")
+include("common_models/set_expression.jl")
 include("common_models/get_time_series.jl")
 # PWL interpolation methods moved to quadratic_approximations/
 include("common_models/constraint_helpers.jl")
@@ -591,18 +591,21 @@ include("objective_function/value_curve_cost.jl")    # ValueCurve → delta PWL
 
 # Quadratic approximations (PWL via SOS2)
 include("quadratic_approximations/common.jl")
+include("quadratic_approximations/no_approx.jl")
 include("quadratic_approximations/pwl_utils.jl")
 include("quadratic_approximations/incremental.jl")
 include("quadratic_approximations/solver_sos2.jl")
 include("quadratic_approximations/manual_sos2.jl")
 include("quadratic_approximations/sawtooth.jl")
 include("quadratic_approximations/epigraph.jl")
-include("nmdt.jl")
+include("quadratic_approximations/nmdt_common.jl")
 include("quadratic_approximations/nmdt.jl")
+include("quadratic_approximations/pwmcc_cuts.jl")
 
 # Bilinear approximations (x·y via Bin2/HybS decomposition)
 include("bilinear_approximations/mccormick.jl")
-include("bilinear_approximations/bilinear.jl")
+include("bilinear_approximations/bin2.jl")
+include("bilinear_approximations/no_approx.jl")
 include("bilinear_approximations/hybs.jl")
 include("bilinear_approximations/nmdt.jl")
 
