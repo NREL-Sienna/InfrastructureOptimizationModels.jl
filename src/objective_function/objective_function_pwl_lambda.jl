@@ -2,11 +2,22 @@
 # PWL Lambda (Convex Combination) Formulation
 #
 # Pure formulation math for the lambda/convex-combination PWL method.
-# Variables δ_i ∈ [0,1], Σ δ_i = on_status, P = Σ δ_i * breakpoint_i,
-# cost = Σ δ_i * y_i.
+# Variables λ_i ∈ [0,1], Σ λ_i = on_status, P = Σ λ_i * P_i,
+# cost = Σ λ_i * C_i.
 #
 # Cost-data-specific mapping (CostCurve/FuelCurve → PiecewiseLinearData)
 # stays in piecewise_linear.jl.
+#
+# Data type relationship:
+#   IS.PiecewiseLinearData  →  this formulation (absolute (P, C) values at breakpoints)
+#   IS.PiecewisePointCurve  =  InputOutputCurve{PiecewiseLinearData}  →  this formulation
+#
+# For convex cost curves the LP relaxation is exact — no extra constraints needed.
+# For non-convex curves (marginal rate decreases at some breakpoint), an SOS2 constraint
+# is automatically added, restricting at most two neighboring λ values to be nonzero.
+# This converts the problem to a MILP.
+# Contrast with the delta formulation (objective_function_pwl_delta.jl) which
+# operates on IS.PiecewiseStepData (slopes) and never needs SOS2.
 ##################################################
 
 ##################################################
@@ -82,7 +93,7 @@ _get_sos_value(
 ##################################################
 
 # This cases bounds the data by 1 - 0
-function _add_pwl_variables!(
+function add_pwl_variables_lambda!(
     container::OptimizationContainer,
     ::Type{T},
     component_name::String,
@@ -271,7 +282,7 @@ end
 ##################################################
 
 # accepts scaled function data.
-function _get_pwl_cost_expression(
+function get_pwl_cost_expression_lambda(
     container::OptimizationContainer,
     ::Type{T},
     name::String,

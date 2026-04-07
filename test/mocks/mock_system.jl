@@ -30,8 +30,21 @@ InfrastructureOptimizationModels.get_base_power(sys::MockSystem) = sys.base_powe
 InfrastructureOptimizationModels.stores_time_series_in_memory(sys::MockSystem) =
     sys.stores_in_memory
 
+function IOM.get_available_components(::NetworkModel, ::Type{T}, sys::MockSystem) where {T}
+    return get_components(T, sys)
+end
+
 function get_components(::Type{T}, sys::MockSystem) where {T}
     return get(sys.components, T, T[])
+end
+
+function get_component(::Type{T}, sys::MockSystem, name::String) where {T}
+    for component in get_components(T, sys)
+        if get_name(component) == name
+            return component
+        end
+    end
+    @error "Component with name '$(name)' not found."
 end
 
 function add_component!(sys::MockSystem, component)
