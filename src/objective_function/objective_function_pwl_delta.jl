@@ -52,7 +52,7 @@ function add_pwl_variables_delta!(
 ) where {V <: SparseVariableType, C <: IS.InfrastructureSystemsComponent}
     # SparseVariableType dispatch automatically creates container with (String, Int, Int) keys
     # axes are (name, pwl_index, time_step).
-    var_container = lazy_container_addition!(container, V(), C)
+    var_container = lazy_container_addition!(container, V, C)
     pwl_vars = Vector{JuMP.VariableRef}(undef, n_points)
     jump_model = get_jump_model(container)
     for i in 1:n_points
@@ -155,14 +155,14 @@ end
 
 _include_min_gen_power_in_constraint(
     ::Type,
-    ::VariableType,
-    ::AbstractDeviceFormulation,
+    ::Type{<:VariableType},
+    ::Type{<:AbstractDeviceFormulation},
 ) = false
 
 _include_constant_min_gen_power_in_constraint(
     ::Type,
-    ::VariableType,
-    ::AbstractDeviceFormulation,
+    ::Type{<:VariableType},
+    ::Type{<:AbstractDeviceFormulation},
 ) = false
 
 ##################################################
@@ -181,8 +181,8 @@ Implement the constraints for PWL Block Offer variables. That is:
 function add_pwl_constraint_delta!(
     container::OptimizationContainer,
     component::T,
-    ::U,
-    ::D,
+    ::Type{U},
+    ::Type{D},
     break_points::Vector{<:JuMPOrFloat},
     pwl_vars::Vector{JuMP.VariableRef},
     period::Int,
@@ -193,15 +193,15 @@ function add_pwl_constraint_delta!(
     variables = get_variable(container, U, T)
     const_container = lazy_container_addition!(
         container,
-        W(),
+        W,
         T,
         axes(variables)...,
     )
     name = get_name(component)
 
-    min_power_offset = if _include_constant_min_gen_power_in_constraint(T, U(), D())
+    min_power_offset = if _include_constant_min_gen_power_in_constraint(T, U, D)
         jump_fixed_value(first(break_points))::Float64
-    elseif _include_min_gen_power_in_constraint(T, U(), D())
+    elseif _include_min_gen_power_in_constraint(T, U, D)
         p1::Float64 = jump_fixed_value(first(break_points))
         on_vars = get_variable(container, OnVariable, T)
         p1 * on_vars[name, period]

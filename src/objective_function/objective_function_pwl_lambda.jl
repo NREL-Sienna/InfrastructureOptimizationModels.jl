@@ -48,7 +48,7 @@ Normalization constraint for PWL cost: sum of delta variables equals on-status.
 """
 struct PiecewiseLinearCostNormalizationConstraint <: ConstraintType end
 
-_sos_status(::Type{<:IS.InfrastructureSystemsComponent}, ::AbstractDeviceFormulation) =
+_sos_status(::Type{<:IS.InfrastructureSystemsComponent}, ::Type{<:AbstractDeviceFormulation}) =
     SOSStatusVariable.NO_VARIABLE
 
 """
@@ -59,7 +59,7 @@ uses_commitment_variables(::Type{<:IS.InfrastructureSystemsComponent}) = false
 uses_commitment_variables(::Type{<:PSY.ThermalGen}) = true
 
 function _sos_status(
-    ::Type{T}, ::AbstractThermalUnitCommitment,
+    ::Type{T}, ::Type{<:AbstractThermalUnitCommitment},
 ) where {T <: IS.InfrastructureSystemsComponent}
     return if uses_commitment_variables(T)
         SOSStatusVariable.VARIABLE
@@ -78,14 +78,14 @@ function _get_sos_value(
     elseif has_container_key(container, OnStatusParameter, T)
         return SOSStatusVariable.PARAMETER
     else
-        return _sos_status(T, V())
+        return _sos_status(T, V)
     end
 end
 
 _get_sos_value(
     ::OptimizationContainer,
     ::Type{<:IS.InfrastructureSystemsComponent},
-    ::AbstractServiceFormulation,
+    ::Type{<:AbstractServiceFormulation},
 ) = SOSStatusVariable.NO_VARIABLE
 
 ##################################################
@@ -100,7 +100,7 @@ function add_pwl_variables_lambda!(
     time_period::Int,
     cost_data::IS.PiecewiseLinearData,
 ) where {T <: IS.InfrastructureSystemsComponent}
-    var_container = lazy_container_addition!(container, PiecewiseLinearCostVariable(), T)
+    var_container = lazy_container_addition!(container, PiecewiseLinearCostVariable, T)
     # length(PiecewiseStepData) gets number of segments, here we want number of points
     pwlvars = Array{JuMP.VariableRef}(undef, length(cost_data) + 1)
     for i in 1:(length(cost_data) + 1)
