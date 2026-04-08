@@ -7,15 +7,15 @@ struct ShutdownCostParameter <: ObjectiveFunctionParameter end
 
 function add_shut_down_cost!(
     container::OptimizationContainer,
-    ::U,
+    ::Type{U},
     devices::IS.FlattenIteratorWrapper{T},
-    ::V,
+    ::Type{V},
 ) where {
     T <: IS.InfrastructureSystemsComponent,
     U <: VariableType,
     V <: AbstractDeviceFormulation,
 }
-    multiplier = objective_function_multiplier(U(), V())
+    multiplier = objective_function_multiplier(U, V)
     for d in devices
         get_must_run(d) && continue
         name = get_name(d)
@@ -46,9 +46,9 @@ end
 
 function add_start_up_cost!(
     container::OptimizationContainer,
-    ::U,
+    ::Type{U},
     devices::IS.FlattenIteratorWrapper{T},
-    ::V,
+    ::Type{V},
 ) where {
     T <: IS.InfrastructureSystemsComponent,
     U <: VariableType,
@@ -56,7 +56,7 @@ function add_start_up_cost!(
 }
     for d in devices
         op_cost_data = get_operation_cost(d)
-        _add_start_up_cost_to_objective!(container, U(), d, op_cost_data, V())
+        _add_start_up_cost_to_objective!(container, U, d, op_cost_data, V)
     end
     return
 end
@@ -65,22 +65,22 @@ end
 # to avoid PSY types here.
 function _add_start_up_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::C,
     op_cost,
-    ::U,
+    ::Type{U},
 ) where {
     T <: VariableType,
     C <: IS.InfrastructureSystemsComponent,
     U <: AbstractDeviceFormulation,
 }
-    multiplier = objective_function_multiplier(T(), U())
+    multiplier = objective_function_multiplier(T, U)
     get_must_run(component) && return
     name = get_name(component)
     add_as_time_variant = is_time_variant(get_start_up(op_cost))
     for t in get_time_steps(container)
         cost_term = get_startup_cost_value(
-            container, T(), component, U(), t, add_as_time_variant)
+            container, T, component, U, t, add_as_time_variant)
         iszero(cost_term) && continue
         rate = cost_term * multiplier
         variable = get_variable(container, T, C)[name, t]
@@ -97,9 +97,9 @@ end
 
 function get_startup_cost_value(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::V,
-    ::U,
+    ::Type{U},
     time_period::Int,
     is_time_variant_::Bool,
 ) where {
@@ -116,5 +116,5 @@ function get_startup_cost_value(
         get_start_up(get_operation_cost(component))
     end
     # possible types for raw_startup_cost: Float, AffExpr, NamedTuple, or StartUpStages. 
-    return start_up_cost(raw_startup_cost, V, T(), U())
+    return start_up_cost(raw_startup_cost, V, T, U)
 end
