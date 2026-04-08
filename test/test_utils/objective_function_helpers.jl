@@ -45,7 +45,7 @@ function add_test_variable!(
     # Create container with proper axes if it doesn't exist
     if !IOM.has_container_key(container, V, C)
         time_steps = IOM.get_time_steps(container)
-        IOM.add_variable_container!(container, V(), C, [name], time_steps)
+        IOM.add_variable_container!(container, V, C, [name], time_steps)
     end
     var_container = IOM.get_variable(container, V, C)
     jump_model = IOM.get_jump_model(container)
@@ -64,7 +64,7 @@ function add_test_expression!(
     names,
     time_steps,
 ) where {E <: IOM.ExpressionType, C}
-    IOM.add_expression_container!(container, E(), C, names, time_steps)
+    IOM.add_expression_container!(container, E, C, names, time_steps)
 end
 
 """
