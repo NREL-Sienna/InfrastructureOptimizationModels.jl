@@ -663,7 +663,7 @@ end
 
 ####################################### Variable Container #################################
 add_variable_container!(
-    container::OptimizationContainer, ::T, ::Type{U}, axs...;
+    container::OptimizationContainer, ::Type{T}, ::Type{U}, axs...;
     sparse = false, meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: VariableType,
@@ -672,7 +672,7 @@ add_variable_container!(
 
 function add_variable_container!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     meta::String,
     axs...;
@@ -691,7 +691,7 @@ end
 
 function add_variable_container!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U};
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
@@ -718,18 +718,9 @@ get_variable(
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 } = _get_entry(container, T, U, meta)
 
-# TODO: deprecate once POM is migrated to pass types (issue #18)
-get_variable(
-    container::OptimizationContainer, ::T, ::Type{U},
-    meta::String = CONTAINER_KEY_EMPTY_META,
-) where {
-    T <: VariableType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-} = _get_entry(container, T, U, meta)
-
 ##################################### AuxVariable Container ################################
 add_aux_variable_container!(
-    container::OptimizationContainer, ::T, ::Type{U}, axs...;
+    container::OptimizationContainer, ::Type{T}, ::Type{U}, axs...;
     sparse = false, meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: AuxVariableType,
@@ -745,15 +736,6 @@ get_aux_variable(container::OptimizationContainer, key::AuxVarKey) =
 
 get_aux_variable(
     container::OptimizationContainer, ::Type{T}, ::Type{U},
-    meta::String = CONTAINER_KEY_EMPTY_META,
-) where {
-    T <: AuxVariableType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-} = _get_entry(container, T, U, meta)
-
-# TODO: deprecate once POM is migrated to pass types (issue #18)
-get_aux_variable(
-    container::OptimizationContainer, ::T, ::Type{U},
     meta::String = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: AuxVariableType,
@@ -794,7 +776,7 @@ end
 
 ##################################### Constraint Container #################################
 add_constraints_container!(
-    container::OptimizationContainer, ::T, ::Type{U}, axs...;
+    container::OptimizationContainer, ::Type{T}, ::Type{U}, axs...;
     sparse = false, meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
@@ -915,15 +897,6 @@ get_parameter(container::OptimizationContainer, key::ParameterKey) =
 
 get_parameter(
     container::OptimizationContainer, ::Type{T}, ::Type{U},
-    meta = CONTAINER_KEY_EMPTY_META,
-) where {
-    T <: ParameterType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-} = _get_entry(container, T, U, meta)
-
-# TODO: deprecate once POM is migrated to pass types (issue #18)
-get_parameter(
-    container::OptimizationContainer, ::T, ::Type{U},
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ParameterType,
@@ -1052,7 +1025,7 @@ end
 ##################################### Expression Container #################################
 function add_expression_container!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     axs...;
     expr_type = GAE,
@@ -1080,15 +1053,6 @@ get_expression(container::OptimizationContainer, key::ExpressionKey) =
 
 get_expression(
     container::OptimizationContainer, ::Type{T}, ::Type{U},
-    meta = CONTAINER_KEY_EMPTY_META,
-) where {
-    T <: ExpressionType,
-    U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
-} = _get_entry(container, T, U, meta)
-
-# TODO: deprecate once POM is migrated to pass types (issue #18)
-get_expression(
-    container::OptimizationContainer, ::T, ::Type{U},
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ExpressionType,
@@ -1369,7 +1333,7 @@ end
 ########################### Helper Functions to get keys ###################################
 # FIXME this 3-arg version is only called from POM. move it?
 @generated function get_optimization_container_key(
-    ::T,
+    ::Type{T},
     ::Type{U},
     meta::String,
 ) where {
@@ -1384,7 +1348,7 @@ end
 # functions, else we'd collapse into one generated function.
 function lazy_container_addition!(
     container::OptimizationContainer,
-    var::T,
+    ::Type{T},
     ::Type{U},
     axs...;
     kwargs...,
@@ -1393,7 +1357,7 @@ function lazy_container_addition!(
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
 }
     if !has_container_key(container, T, U)
-        var_container = add_variable_container!(container, var, U, axs...; kwargs...)
+        var_container = add_variable_container!(container, T, U, axs...; kwargs...)
     else
         var_container = get_variable(container, T, U)
     end
@@ -1402,7 +1366,7 @@ end
 
 function lazy_container_addition!(
     container::OptimizationContainer,
-    constraint::T,
+    ::Type{T},
     ::Type{U},
     axs...;
     kwargs...,
@@ -1413,7 +1377,7 @@ function lazy_container_addition!(
     meta = get(kwargs, :meta, CONTAINER_KEY_EMPTY_META)
     if !has_container_key(container, T, U, meta)
         cons_container =
-            add_constraints_container!(container, constraint, U, axs...; kwargs...)
+            add_constraints_container!(container, T, U, axs...; kwargs...)
     else
         cons_container = get_constraint(container, T, U, meta)
     end
@@ -1422,7 +1386,7 @@ end
 
 function lazy_container_addition!(
     container::OptimizationContainer,
-    expression::T,
+    ::Type{T},
     ::Type{U},
     axs...;
     kwargs...,
@@ -1433,7 +1397,7 @@ function lazy_container_addition!(
     meta = get(kwargs, :meta, CONTAINER_KEY_EMPTY_META)
     if !has_container_key(container, T, U, meta)
         expr_container =
-            add_expression_container!(container, expression, U, axs...; kwargs...)
+            add_expression_container!(container, T, U, axs...; kwargs...)
     else
         expr_container = get_expression(container, T, U, meta)
     end
