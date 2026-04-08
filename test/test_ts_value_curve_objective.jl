@@ -495,7 +495,7 @@ end
 
         # Add OnVariable for the commitment path
         on_var_container = IOM.add_variable_container!(
-            container, IOM.OnVariable(), MockThermalGen, ["gen1"], time_steps)
+            container, IOM.OnVariable, MockThermalGen, ["gen1"], time_steps)
         jump_model = IOM.get_jump_model(container)
         on_var_container["gen1", 1] = JuMP.@variable(
             jump_model, base_name = "On_gen1_1", binary = true)

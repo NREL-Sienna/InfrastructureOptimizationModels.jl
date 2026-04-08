@@ -26,10 +26,10 @@ const NMDT_BILINEAR_META = "NMDTBilinearTest"
         @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
 
         beta = IOM.get_variable(
-            setup.container, IOM.NMDTBinaryVariable(), MockThermalGen, DNMDT_META,
+            setup.container, IOM.NMDTBinaryVariable, MockThermalGen, DNMDT_META,
         )
         dx = IOM.get_variable(
-            setup.container, IOM.NMDTResidualVariable(), MockThermalGen, DNMDT_META,
+            setup.container, IOM.NMDTResidualVariable, MockThermalGen, DNMDT_META,
         )
 
         reconstructed =
@@ -52,7 +52,7 @@ const NMDT_BILINEAR_META = "NMDTBilinearTest"
                     setup.var_container, 0.0, 1.0, DNMDT_META,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.QuadraticExpression(),
+                    setup.container, IOM.QuadraticExpression,
                     MockThermalGen, DNMDT_META,
                 )
 
@@ -83,7 +83,7 @@ const NMDT_BILINEAR_META = "NMDTBilinearTest"
                         setup.var_container, 0.0, 1.0, DNMDT_META,
                     )
                     expr = IOM.get_expression(
-                        setup.container, IOM.QuadraticExpression(),
+                        setup.container, IOM.QuadraticExpression,
                         MockThermalGen, DNMDT_META,
                     )
 
@@ -133,7 +133,7 @@ const NMDT_BILINEAR_META = "NMDTBilinearTest"
             setup.var_container, 0.0, 1.0, DNMDT_META,
         )
         expr = IOM.get_expression(
-            setup.container, IOM.QuadraticExpression(),
+            setup.container, IOM.QuadraticExpression,
             MockThermalGen, DNMDT_META,
         )
 
@@ -158,7 +158,7 @@ end
                     setup.var_container, 0.0, 1.0, DNMDT_META,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.QuadraticExpression(),
+                    setup.container, IOM.QuadraticExpression,
                     MockThermalGen, DNMDT_META,
                 )
 
@@ -195,7 +195,7 @@ end
                 setup.var_container, 0.0, 1.0, DNMDT_META,
             )
             expr = IOM.get_expression(
-                setup.container, IOM.QuadraticExpression(),
+                setup.container, IOM.QuadraticExpression,
                 MockThermalGen, DNMDT_META,
             )
 
@@ -230,7 +230,7 @@ end
                     0.0, 1.0, 0.0, 1.0, DNMDT_META,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.BilinearProductExpression(),
+                    setup.container, IOM.BilinearProductExpression,
                     MockThermalGen, DNMDT_META,
                 )
 
@@ -264,7 +264,7 @@ end
                             0.0, 1.0, 0.0, 1.0, DNMDT_META,
                         )
                         expr = IOM.get_expression(
-                            setup.container, IOM.BilinearProductExpression(),
+                            setup.container, IOM.BilinearProductExpression,
                             MockThermalGen, DNMDT_META,
                         )
 
@@ -299,7 +299,7 @@ end
                     x_min, x_max, y_min, y_max, DNMDT_META,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.BilinearProductExpression(),
+                    setup.container, IOM.BilinearProductExpression,
                     MockThermalGen, DNMDT_META,
                 )
 
@@ -363,7 +363,7 @@ end
             0.0, 4.0, 0.0, 4.0, DNMDT_META,
         )
         expr = IOM.get_expression(
-            setup.container, IOM.BilinearProductExpression(),
+            setup.container, IOM.BilinearProductExpression,
             MockThermalGen, DNMDT_META,
         )
 
@@ -386,7 +386,7 @@ end
             0.0, 1.0, 0.0, 1.0, DNMDT_META,
         )
         expr = IOM.get_expression(
-            setup.container, IOM.BilinearProductExpression(),
+            setup.container, IOM.BilinearProductExpression,
             MockThermalGen, DNMDT_META,
         )
 
@@ -426,7 +426,7 @@ end
                 0.0, 1.0, 0.0, 1.0, DNMDT_META,
             )
             expr_d = IOM.get_expression(
-                setup_d.container, IOM.BilinearProductExpression(),
+                setup_d.container, IOM.BilinearProductExpression,
                 MockThermalGen, DNMDT_META,
             )
 
@@ -448,7 +448,7 @@ end
                 0.0, 1.0, 0.0, 1.0, DNMDT_HYBS_META,
             )
             expr_h = IOM.get_expression(
-                setup_h.container, IOM.BilinearProductExpression(),
+                setup_h.container, IOM.BilinearProductExpression,
                 MockThermalGen, DNMDT_HYBS_META,
             )
 
@@ -492,10 +492,10 @@ end
         @test JuMP.termination_status(setup.jump_model) == JuMP.OPTIMAL
 
         beta = IOM.get_variable(
-            setup.container, IOM.NMDTBinaryVariable(), MockThermalGen, NMDT_META,
+            setup.container, IOM.NMDTBinaryVariable, MockThermalGen, NMDT_META,
         )
         dx = IOM.get_variable(
-            setup.container, IOM.NMDTResidualVariable(), MockThermalGen, NMDT_META,
+            setup.container, IOM.NMDTResidualVariable, MockThermalGen, NMDT_META,
         )
 
         reconstructed =
@@ -518,7 +518,7 @@ end
                     setup.var_container, 0.0, 1.0, NMDT_META,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.QuadraticExpression(),
+                    setup.container, IOM.QuadraticExpression,
                     MockThermalGen, NMDT_META,
                 )
 
@@ -551,7 +551,7 @@ end
                         setup.var_container, 0.0, 1.0, NMDT_META,
                     )
                     expr = IOM.get_expression(
-                        setup.container, IOM.QuadraticExpression(),
+                        setup.container, IOM.QuadraticExpression,
                         MockThermalGen, NMDT_META,
                     )
 
@@ -603,7 +603,7 @@ end
             setup.var_container, 0.0, 1.0, NMDT_META,
         )
         expr = IOM.get_expression(
-            setup.container, IOM.QuadraticExpression(),
+            setup.container, IOM.QuadraticExpression,
             MockThermalGen, NMDT_META,
         )
 
@@ -626,7 +626,7 @@ end
                     setup.var_container, 0.0, 1.0, NMDT_META,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.QuadraticExpression(),
+                    setup.container, IOM.QuadraticExpression,
                     MockThermalGen, NMDT_META,
                 )
 
@@ -672,7 +672,7 @@ end
                             setup.var_container, 0.0, 1.0, NMDT_META,
                         )
                         expr = IOM.get_expression(
-                            setup.container, IOM.QuadraticExpression(),
+                            setup.container, IOM.QuadraticExpression,
                             MockThermalGen, NMDT_META,
                         )
 
@@ -742,7 +742,7 @@ end
                     0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
                 )
                 expr = IOM.get_expression(
-                    setup.container, IOM.BilinearProductExpression(),
+                    setup.container, IOM.BilinearProductExpression,
                     MockThermalGen, NMDT_BILINEAR_META,
                 )
 
@@ -777,7 +777,7 @@ end
                             0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
                         )
                         expr = IOM.get_expression(
-                            setup.container, IOM.BilinearProductExpression(),
+                            setup.container, IOM.BilinearProductExpression,
                             MockThermalGen, NMDT_BILINEAR_META,
                         )
 
@@ -826,7 +826,7 @@ end
             0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
         )
         expr = IOM.get_expression(
-            setup.container, IOM.BilinearProductExpression(),
+            setup.container, IOM.BilinearProductExpression,
             MockThermalGen, NMDT_BILINEAR_META,
         )
 
@@ -847,7 +847,7 @@ end
             0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
         )
         expr = IOM.get_expression(
-            setup.container, IOM.BilinearProductExpression(),
+            setup.container, IOM.BilinearProductExpression,
             MockThermalGen, NMDT_BILINEAR_META,
         )
 
@@ -903,7 +903,7 @@ end
                 0.0, 1.0, 0.0, 1.0, NMDT_BILINEAR_META,
             )
             expr_n = IOM.get_expression(
-                setup_n.container, IOM.BilinearProductExpression(),
+                setup_n.container, IOM.BilinearProductExpression,
                 MockThermalGen, NMDT_BILINEAR_META,
             )
 
@@ -924,7 +924,7 @@ end
                 0.0, 1.0, 0.0, 1.0, DNMDT_META,
             )
             expr_d = IOM.get_expression(
-                setup_d.container, IOM.BilinearProductExpression(),
+                setup_d.container, IOM.BilinearProductExpression,
                 MockThermalGen, DNMDT_META,
             )
 

@@ -48,7 +48,7 @@ function setup_pwl_container_with_variables(
     device_name = get_name(device)
     var_container = InfrastructureOptimizationModels.add_variable_container!(
         container,
-        TestPWLVariable(),
+        TestPWLVariable,
         MockThermalGen,
         [device_name],
         time_steps,
@@ -141,7 +141,7 @@ function setup_pwl_constraint_test(;
     end
     break_points = IS.get_x_coords(pwl_data)
     power_var = IOM.get_variable(
-        container, TestPWLVariable(), MockThermalGen,
+        container, TestPWLVariable, MockThermalGen,
     )[
         device_name,
         first(time_steps),
@@ -174,7 +174,7 @@ end
         # Verify variables are stored in PiecewiseLinearCostVariable container
         pwl_var_container = InfrastructureOptimizationModels.get_variable(
             container,
-            InfrastructureOptimizationModels.PiecewiseLinearCostVariable(),
+            InfrastructureOptimizationModels.PiecewiseLinearCostVariable,
             MockThermalGen,
         )
         @test !isnothing(pwl_var_container)
@@ -201,14 +201,14 @@ end
         # Verify constraint containers exist and contain constraint refs
         const_container = InfrastructureOptimizationModels.get_constraint(
             container,
-            InfrastructureOptimizationModels.PiecewiseLinearCostConstraint(),
+            InfrastructureOptimizationModels.PiecewiseLinearCostConstraint,
             MockThermalGen,
         )
         @test const_container["gen1", 1] isa JuMP.ConstraintRef
 
         norm_container = InfrastructureOptimizationModels.get_constraint(
             container,
-            InfrastructureOptimizationModels.PiecewiseLinearCostNormalizationConstraint(),
+            InfrastructureOptimizationModels.PiecewiseLinearCostNormalizationConstraint,
             MockThermalGen,
         )
         @test norm_container["gen1", 1] isa JuMP.ConstraintRef
@@ -231,7 +231,7 @@ end
         # Verify coefficients match y_coords
         pwl_var_container = InfrastructureOptimizationModels.get_variable(
             container,
-            InfrastructureOptimizationModels.PiecewiseLinearCostVariable(),
+            InfrastructureOptimizationModels.PiecewiseLinearCostVariable,
             MockThermalGen,
         )
         y_coords = IS.get_y_coords(pwl_data)
@@ -256,7 +256,7 @@ end
 
         pwl_var_container = InfrastructureOptimizationModels.get_variable(
             container,
-            InfrastructureOptimizationModels.PiecewiseLinearCostVariable(),
+            InfrastructureOptimizationModels.PiecewiseLinearCostVariable,
             MockThermalGen,
         )
         y_coords = IS.get_y_coords(pwl_data)
@@ -273,7 +273,7 @@ end
         @test !IS.is_convex(pwl_data)
 
         pwl_var_container = IOM.get_variable(
-            container, IOM.PiecewiseLinearCostVariable(), MockThermalGen,
+            container, IOM.PiecewiseLinearCostVariable, MockThermalGen,
         )
         pwl_vars = [pwl_var_container["gen1", i, 1] for i in 1:(length(pwl_data) + 1)]
         IOM.add_pwl_sos2_constraint!(container, MockThermalGen, "gen1", 1, pwl_vars)
@@ -301,7 +301,7 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestPWLVariable(),
+                TestPWLVariable,
                 device,
                 cost_curve,
                 TestPWLFormulation(),
@@ -310,7 +310,7 @@ end
             # Verify PWL variables were created
             pwl_var_container = InfrastructureOptimizationModels.get_variable(
                 container,
-                InfrastructureOptimizationModels.PiecewiseLinearCostVariable(),
+                InfrastructureOptimizationModels.PiecewiseLinearCostVariable,
                 MockThermalGen,
             )
             @test !isnothing(pwl_var_container)
@@ -343,7 +343,7 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestPWLVariable(),
+                TestPWLVariable,
                 device,
                 cost_curve,
                 TestPWLFormulation(),
@@ -355,7 +355,7 @@ end
 
             pwl_var_container = InfrastructureOptimizationModels.get_variable(
                 container,
-                InfrastructureOptimizationModels.PiecewiseLinearCostVariable(),
+                InfrastructureOptimizationModels.PiecewiseLinearCostVariable,
                 MockThermalGen,
             )
             var_y1000 = pwl_var_container["gen1", 2, 1]
@@ -372,7 +372,7 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestPWLVariable(),
+                TestPWLVariable,
                 device,
                 cost_curve,
                 TestPWLFormulation(),
@@ -384,7 +384,7 @@ end
 
             pwl_var_container = InfrastructureOptimizationModels.get_variable(
                 container,
-                InfrastructureOptimizationModels.PiecewiseLinearCostVariable(),
+                InfrastructureOptimizationModels.PiecewiseLinearCostVariable,
                 MockThermalGen,
             )
             var_y2000 = pwl_var_container["gen1", 2, 1]
@@ -406,7 +406,7 @@ end
 
             @test_logs (:warn, r"not compatible with a linear PWL") InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestPWLVariable(),
+                TestPWLVariable,
                 device,
                 cost_curve,
                 TestPWLFormulation(),
@@ -437,7 +437,7 @@ end
 
         InfrastructureOptimizationModels.add_variable_cost_to_objective!(
             container,
-            TestPWLVariable(),
+            TestPWLVariable,
             device,
             cost_curve,
             TestPWLFormulation(),
@@ -450,7 +450,7 @@ end
         # y=400 * 5.0 * 1.0 = $2000, y=900 * 5.0 * 1.0 = $4500
         pwl_var_container = InfrastructureOptimizationModels.get_variable(
             container,
-            InfrastructureOptimizationModels.PiecewiseLinearCostVariable(),
+            InfrastructureOptimizationModels.PiecewiseLinearCostVariable,
             MockThermalGen,
         )
         var_y400 = pwl_var_container["gen1", 2, 1]
@@ -478,7 +478,7 @@ end
 
         InfrastructureOptimizationModels.add_variable_cost_to_objective!(
             container,
-            TestPWLVariable(),
+            TestPWLVariable,
             device,
             cost_curve,
             TestPWLFormulation(),
@@ -489,7 +489,7 @@ end
 
         pwl_var_container = InfrastructureOptimizationModels.get_variable(
             container,
-            InfrastructureOptimizationModels.PiecewiseLinearCostVariable(),
+            InfrastructureOptimizationModels.PiecewiseLinearCostVariable,
             MockThermalGen,
         )
         var_y1000 = pwl_var_container["gen1", 2, 1]
@@ -518,7 +518,7 @@ end
         # Should NOT add SOS2 constraint (no warning expected)
         InfrastructureOptimizationModels.add_variable_cost_to_objective!(
             container,
-            TestPWLVariable(),
+            TestPWLVariable,
             device,
             cost_curve,
             TestPWLFormulation(),
@@ -536,7 +536,7 @@ end
 
         pwl_var_container = InfrastructureOptimizationModels.get_variable(
             container,
-            InfrastructureOptimizationModels.PiecewiseLinearCostVariable(),
+            InfrastructureOptimizationModels.PiecewiseLinearCostVariable,
             MockThermalGen,
         )
         var_y1000 = pwl_var_container["gen1", 2, 1]
@@ -556,7 +556,7 @@ end
         # Should return early without adding to objective
         InfrastructureOptimizationModels.add_variable_cost_to_objective!(
             container,
-            TestPWLVariable(),
+            TestPWLVariable,
             device,
             cost_curve,
             TestPWLFormulation(),
@@ -594,7 +594,7 @@ end
         # Verify linking constraint: power_var + 30 == 30*δ₁ + 60*δ₂ + 100*δ₃
         linking_con = IOM.get_constraint(
             container,
-            IOM.PiecewiseLinearCostConstraint(),
+            IOM.PiecewiseLinearCostConstraint,
             MockThermalGen,
         )[
             "gen1",
@@ -606,7 +606,7 @@ end
         # δ variables have negative coefficients (moved to LHS)
         pwl_vars = IOM.get_variable(
             container,
-            IOM.PiecewiseLinearCostVariable(),
+            IOM.PiecewiseLinearCostVariable,
             MockThermalGen,
         )
         for (i, bp) in enumerate(break_points)
@@ -619,7 +619,7 @@ end
         # Verify normalization constraint: Σ δ_i == 1.0
         norm_con = IOM.get_constraint(
             container,
-            IOM.PiecewiseLinearCostNormalizationConstraint(),
+            IOM.PiecewiseLinearCostNormalizationConstraint,
             MockThermalGen,
         )[
             "gen1",
@@ -645,7 +645,7 @@ end
         # Add OnVariable container with a binary variable
         on_var_container = IOM.add_variable_container!(
             container,
-            IOM.OnVariable(),
+            IOM.OnVariable,
             MockThermalGen,
             ["gen_uc"],
             1:1,
@@ -666,7 +666,7 @@ end
         # Normalization constraint should be: Σ δ_i == on_var
         norm_con = IOM.get_constraint(
             container,
-            IOM.PiecewiseLinearCostNormalizationConstraint(),
+            IOM.PiecewiseLinearCostNormalizationConstraint,
             MockThermalGen,
         )[
             "gen_uc",
@@ -707,7 +707,7 @@ end
         # Normalization constraint RHS should equal the parameter value
         norm_con = IOM.get_constraint(
             container,
-            IOM.PiecewiseLinearCostNormalizationConstraint(),
+            IOM.PiecewiseLinearCostNormalizationConstraint,
             MockThermalGen,
         )[
             "gen_param",
@@ -736,7 +736,7 @@ end
 
             IOM.add_variable_cost_to_objective!(
                 container,
-                TestPWLVariable(),
+                TestPWLVariable,
                 device,
                 cost_curve,
                 TestPWLFormulation(),
@@ -746,7 +746,7 @@ end
             invariant = IOM.get_invariant_terms(obj)
             pwl_var_container = IOM.get_variable(
                 container,
-                IOM.PiecewiseLinearCostVariable(),
+                IOM.PiecewiseLinearCostVariable,
                 MockThermalGen,
             )
 
@@ -775,7 +775,7 @@ end
 
         IOM.add_variable_cost_to_objective!(
             container,
-            TestPWLVariable(),
+            TestPWLVariable,
             device,
             cost_curve,
             TestPWLFormulation(),
@@ -785,7 +785,7 @@ end
         invariant = IOM.get_invariant_terms(obj)
         pwl_var_container = IOM.get_variable(
             container,
-            IOM.PiecewiseLinearCostVariable(),
+            IOM.PiecewiseLinearCostVariable,
             MockThermalGen,
         )
 
@@ -817,7 +817,7 @@ end
 
         IOM.add_variable_cost_to_objective!(
             container,
-            TestPWLVariable(),
+            TestPWLVariable,
             device,
             fuel_curve,
             TestPWLFormulation(),
@@ -827,7 +827,7 @@ end
         invariant = IOM.get_invariant_terms(obj)
         pwl_var_container = IOM.get_variable(
             container,
-            IOM.PiecewiseLinearCostVariable(),
+            IOM.PiecewiseLinearCostVariable,
             MockThermalGen,
         )
 
@@ -869,7 +869,7 @@ end
         # Normalization: Σ δ_i == 1.0 (not a variable)
         norm_con = IOM.get_constraint(
             container,
-            IOM.PiecewiseLinearCostNormalizationConstraint(),
+            IOM.PiecewiseLinearCostNormalizationConstraint,
             MockThermalGen,
         )[
             "gen1",
@@ -881,7 +881,7 @@ end
         # Linking: constant term should be -P_min (since bin=1.0, P_min*1.0 = 20)
         linking_con = IOM.get_constraint(
             container,
-            IOM.PiecewiseLinearCostConstraint(),
+            IOM.PiecewiseLinearCostConstraint,
             MockThermalGen,
         )[
             "gen1",

@@ -90,9 +90,9 @@ function IOM.calculate_aux_variable_value!(
     time_steps = get_time_steps(container)
 
     Isq_container =
-        get_expression(container, IOM.BilinearProductExpression(), MockNetworkNode, "gen")
+        get_expression(container, IOM.BilinearProductExpression, MockNetworkNode, "gen")
     I_container =
-        get_expression(container, IOM.QuadraticExpression(), MockNetworkNode, "gen_I_sq")
+        get_expression(container, IOM.QuadraticExpression, MockNetworkNode, "gen_I_sq")
 
     for name in names, t in time_steps
         Isq = JuMP.value(Isq_container[name, t])
@@ -382,9 +382,9 @@ function build_mip_model(
         TestPowerModel,
     )
 
-    V_container = IOM.get_variable(container, MockVoltageVariable(), MockNetworkNode)
-    I_container = IOM.get_variable(container, MockCurrentVariable(), MockNetworkNode)
-    Pg = IOM.get_variable(container, ActivePowerVariable(), MockNetworkNode)
+    V_container = IOM.get_variable(container, MockVoltageVariable, MockNetworkNode)
+    I_container = IOM.get_variable(container, MockCurrentVariable, MockNetworkNode)
+    Pg = IOM.get_variable(container, ActivePowerVariable, MockNetworkNode)
 
     # --- Bilinear gen: dispatched on config type ---
     z_gen, I_sq = build_gen_bilinear(
@@ -401,7 +401,7 @@ function build_mip_model(
 
     pwl_link_constraints = IOM.add_constraints_container!(
         container,
-        IOM.PiecewiseLinearBlockIncrementalOfferConstraint(),
+        IOM.PiecewiseLinearBlockIncrementalOfferConstraint,
         MockNetworkNode,
         net.gen_nodes,
         time_steps,
@@ -442,7 +442,7 @@ function build_mip_model(
     # --- Generator power: P = V·I − loss ---
     gen_pwr_constraints = IOM.add_constraints_container!(
         container,
-        MockPowerEqualityConstraint(),
+        MockPowerEqualityConstraint,
         MockNetworkNode,
         net.gen_nodes,
         time_steps;
@@ -461,7 +461,7 @@ function build_mip_model(
     # --- Demand: V·I == -d ---
     dem_pwr_constraints = IOM.add_constraints_container!(
         container,
-        MockPowerEqualityConstraint(),
+        MockPowerEqualityConstraint,
         MockNetworkNode,
         net.dem_nodes,
         time_steps;
@@ -476,14 +476,14 @@ function build_mip_model(
     # --- KCL: I_i = Σ g_{ij}(V_i - V_j) ---
     kcl_expressions = IOM.add_expression_container!(
         container,
-        MockKCLExpression(),
+        MockKCLExpression,
         MockNetworkNode,
         net.all_nodes,
         time_steps,
     )
     kcl_constraints = IOM.add_constraints_container!(
         container,
-        MockKCLConstraint(),
+        MockKCLConstraint,
         MockNetworkNode,
         net.all_nodes,
         time_steps,

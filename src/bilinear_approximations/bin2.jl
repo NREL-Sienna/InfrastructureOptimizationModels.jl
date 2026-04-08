@@ -100,7 +100,7 @@ function _add_bilinear_approx!(
 
     p_expr = add_expression_container!(
         container,
-        VariableSumExpression(),
+        VariableSumExpression,
         C,
         names,
         time_steps;
@@ -121,7 +121,7 @@ function _add_bilinear_approx!(
 
     result_expr = add_expression_container!(
         container,
-        BilinearProductExpression(),
+        BilinearProductExpression,
         C,
         names,
         time_steps;

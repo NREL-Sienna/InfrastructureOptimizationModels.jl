@@ -70,7 +70,7 @@ function setup_proportional_test_container(
     device_names = [get_name(d) for d in devices]
     var_container = InfrastructureOptimizationModels.add_variable_container!(
         container,
-        TestProportionalVariable(),
+        TestProportionalVariable,
         MockThermalGen,
         device_names,
         time_steps,
@@ -108,7 +108,7 @@ end
 
         InfrastructureOptimizationModels.add_proportional_cost!(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             devices_iter,
             TestProportionalFormulation(),
         )
@@ -116,7 +116,7 @@ end
         # Verify costs are in invariant expression (not variant)
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen1",
             cost_value;
@@ -126,7 +126,7 @@ end
         # Verify variant expression has no terms
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen1",
             0.0;
@@ -147,7 +147,7 @@ end
 
         InfrastructureOptimizationModels.add_proportional_cost!(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             devices_iter,
             TestProportionalFormulation(),
         )
@@ -155,7 +155,7 @@ end
         # Both invariant and variant should have zero coefficients
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen1",
             0.0;
@@ -183,7 +183,7 @@ end
 
         InfrastructureOptimizationModels.add_proportional_cost!(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             devices_iter,
             TestProportionalFormulation(),
         )
@@ -191,7 +191,7 @@ end
         # Verify each device has correct coefficients
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen1",
             cost1;
@@ -199,7 +199,7 @@ end
         )
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen2",
             cost2;
@@ -222,7 +222,7 @@ end
 
         InfrastructureOptimizationModels.add_proportional_cost_maybe_time_variant!(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             devices_iter,
             TestProportionalFormulation(),
         )
@@ -230,7 +230,7 @@ end
         # Costs should be in invariant expression
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen1",
             cost_value;
@@ -240,7 +240,7 @@ end
         # Variant expression should have zero
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen1",
             0.0;
@@ -263,7 +263,7 @@ end
 
         InfrastructureOptimizationModels.add_proportional_cost_maybe_time_variant!(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             devices_iter,
             TestProportionalFormulation(),
         )
@@ -271,7 +271,7 @@ end
         # Costs should be in variant expression (not invariant)
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen1",
             cost_value;
@@ -281,7 +281,7 @@ end
         # Invariant expression should have zero
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen1",
             0.0;
@@ -309,7 +309,7 @@ end
 
         InfrastructureOptimizationModels.add_proportional_cost_maybe_time_variant!(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             devices_iter,
             TestProportionalFormulation(),
         )
@@ -317,7 +317,7 @@ end
         # device_invariant costs in invariant expression
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen_inv",
             cost_invariant;
@@ -325,7 +325,7 @@ end
         )
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen_inv",
             0.0;
@@ -335,7 +335,7 @@ end
         # device_variant costs in variant expression
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen_var",
             cost_variant;
@@ -343,7 +343,7 @@ end
         )
         @test verify_objective_coefficients(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             MockThermalGen,
             "gen_var",
             0.0;
@@ -365,7 +365,7 @@ end
 
         InfrastructureOptimizationModels.add_proportional_cost_maybe_time_variant!(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             devices_iter,
             TestProportionalFormulation(),
         )
@@ -402,7 +402,7 @@ end
 
         InfrastructureOptimizationModels.add_proportional_cost_maybe_time_variant!(
             container,
-            TestProportionalVariable(),
+            TestProportionalVariable,
             devices_iter,
             TestProportionalFormulation(),
         )
@@ -413,7 +413,7 @@ end
 
         # But should be in the ProductionCostExpression
         expr = IOM.get_expression(
-            container, IOM.ProductionCostExpression(), MockThermalGen)
+            container, IOM.ProductionCostExpression, MockThermalGen)
         for t in time_steps
             @test JuMP.constant(expr["gen1", t]) ≈ cost_value
         end

@@ -72,7 +72,7 @@ function _discretize!(
 
     beta_var = add_variable_container!(
         container,
-        NMDTBinaryVariable(),
+        NMDTBinaryVariable,
         C,
         names,
         1:depth,
@@ -81,7 +81,7 @@ function _discretize!(
     )
     delta_var = add_variable_container!(
         container,
-        NMDTResidualVariable(),
+        NMDTResidualVariable,
         C,
         names,
         time_steps;
@@ -89,7 +89,7 @@ function _discretize!(
     )
     disc_expr = add_expression_container!(
         container,
-        NMDTDiscretizationExpression(),
+        NMDTDiscretizationExpression,
         C,
         names,
         time_steps;
@@ -97,7 +97,7 @@ function _discretize!(
     )
     disc_cons = add_constraints_container!(
         container,
-        NMDTEDiscretizationConstraint(),
+        NMDTEDiscretizationConstraint,
         C,
         names,
         time_steps;
@@ -176,7 +176,7 @@ function _binary_continuous_product!(
 
     u_var = add_variable_container!(
         container,
-        NMDTBinaryContinuousProductVariable(),
+        NMDTBinaryContinuousProductVariable,
         C,
         names,
         1:depth,
@@ -185,7 +185,7 @@ function _binary_continuous_product!(
     )
     u_cons = add_constraints_container!(
         container,
-        NMDTBinaryContinuousProductConstraint(),
+        NMDTBinaryContinuousProductConstraint,
         C,
         names,
         1:depth,
@@ -195,7 +195,7 @@ function _binary_continuous_product!(
     )
     result_expr = add_expression_container!(
         container,
-        NMDTBinaryContinuousProductExpression(),
+        NMDTBinaryContinuousProductExpression,
         C,
         names,
         time_steps;
@@ -263,7 +263,7 @@ function _tighten_lower_bounds!(
     )
     epi_cons = add_constraints_container!(
         container,
-        NMDTTightenConstraint(),
+        NMDTTightenConstraint,
         C,
         names,
         time_steps;
@@ -314,7 +314,7 @@ function _residual_product!(
 
     z_var = add_variable_container!(
         container,
-        NMDTResidualProductVariable(),
+        NMDTResidualProductVariable,
         C,
         names,
         time_steps;
