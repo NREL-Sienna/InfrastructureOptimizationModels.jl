@@ -668,11 +668,13 @@ Build ordered column names for the node data DataFrame.
 """
 function node_data_columns(net::MockNetworkProblem)
     cols = String["method", "rmse_V2", "max_V2", "rmse_I2", "max_I2", "rmse_VI", "max_VI"]
-    for node in [net.gen_nodes; net.dem_nodes]
-        push!(cols, "$(node)_V", "$(node)_I")
-        push!(cols, "$(node)_V2", "$(node)_V2_approx", "$(node)_V2_residual")
-        push!(cols, "$(node)_I2", "$(node)_I2_approx", "$(node)_I2_residual")
-        push!(cols, "$(node)_VI", "$(node)_VI_approx", "$(node)_VI_residual")
+    for (nodes, tag) in [(net.gen_nodes, "gen"); (net.dem_nodes, "dem")]
+        for node in nodes
+            push!(cols, "$(tag)$(node)_V", "$(tag)$(node)_I")
+            push!(cols, "$(tag)$(node)_V2", "$(tag)$(node)_V2_approx", "$(tag)$(node)_V2_residual")
+            push!(cols, "$(tag)$(node)_I2", "$(tag)$(node)_I2_approx", "$(tag)$(node)_I2_residual")
+            push!(cols, "$(tag)$(node)_VI", "$(tag)$(node)_VI_approx", "$(tag)$(node)_VI_residual")
+        end
     end
     return cols
 end
