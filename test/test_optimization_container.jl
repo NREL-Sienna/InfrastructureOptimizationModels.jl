@@ -67,7 +67,7 @@ struct MockExpressionType <: ISOPT.ExpressionType end
 
         var_container = PSI.add_variable_container!(
             container,
-            PSI.ActivePowerVariable(),
+            PSI.ActivePowerVariable,
             MockComponentType,
             device_names,
             time_steps,

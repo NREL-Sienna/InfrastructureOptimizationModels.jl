@@ -104,7 +104,7 @@ function _add_bilinear_approx!(
 
     p1_expr = add_expression_container!(
         container,
-        VariableSumExpression(),
+        VariableSumExpression,
         C,
         names,
         time_steps;
@@ -112,7 +112,7 @@ function _add_bilinear_approx!(
     )
     p2_expr = add_expression_container!(
         container,
-        VariableDifferenceExpression(),
+        VariableDifferenceExpression,
         C,
         names,
         time_steps;
@@ -150,7 +150,7 @@ function _add_bilinear_approx!(
     # --- Create z variable and two-sided HybS bounds ---
     z_var = add_variable_container!(
         container,
-        BilinearProductVariable(),
+        BilinearProductVariable,
         C,
         names,
         time_steps;
@@ -158,7 +158,7 @@ function _add_bilinear_approx!(
     )
     hybrid_cons = add_constraints_container!(
         container,
-        HybSBoundConstraint(),
+        HybSBoundConstraint,
         C,
         names,
         1:2,
@@ -168,7 +168,7 @@ function _add_bilinear_approx!(
     )
     result_expr = add_expression_container!(
         container,
-        BilinearProductExpression(),
+        BilinearProductExpression,
         C,
         names,
         time_steps;

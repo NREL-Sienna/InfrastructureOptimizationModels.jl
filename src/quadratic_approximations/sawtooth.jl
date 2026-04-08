@@ -75,7 +75,7 @@ function _add_quadratic_approx!(
     alpha_levels = 1:(config.depth)
     g_var = add_variable_container!(
         container,
-        SawtoothAuxVariable(),
+        SawtoothAuxVariable,
         C,
         names,
         g_levels,
@@ -84,7 +84,7 @@ function _add_quadratic_approx!(
     )
     alpha_var = add_variable_container!(
         container,
-        SawtoothBinaryVariable(),
+        SawtoothBinaryVariable,
         C,
         names,
         alpha_levels,
@@ -93,7 +93,7 @@ function _add_quadratic_approx!(
     )
     mip_cons = add_constraints_container!(
         container,
-        SawtoothMIPConstraint(),
+        SawtoothMIPConstraint,
         C,
         names,
         1:4,
@@ -103,7 +103,7 @@ function _add_quadratic_approx!(
     )
     link_cons = add_constraints_container!(
         container,
-        SawtoothLinkingConstraint(),
+        SawtoothLinkingConstraint,
         C,
         names,
         time_steps;
@@ -111,7 +111,7 @@ function _add_quadratic_approx!(
     )
     result_expr = add_expression_container!(
         container,
-        QuadraticExpression(),
+        QuadraticExpression,
         C,
         names,
         time_steps;
@@ -126,7 +126,7 @@ function _add_quadratic_approx!(
         )
         z_var = add_variable_container!(
             container,
-            SawtoothTightenedVariable(),
+            SawtoothTightenedVariable,
             C,
             names,
             time_steps;
@@ -134,7 +134,7 @@ function _add_quadratic_approx!(
         )
         tight_cons = add_constraints_container!(
             container,
-            SawtoothTightenedConstraint(),
+            SawtoothTightenedConstraint,
             C,
             names,
             1:2,

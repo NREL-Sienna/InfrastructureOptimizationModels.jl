@@ -72,10 +72,10 @@ function _add_quadratic_approx!(
 
     # Create all containers upfront
     lambda_var =
-        add_variable_container!(container, QuadraticVariable(), C; meta)
+        add_variable_container!(container, QuadraticVariable, C; meta)
     link_cons = add_constraints_container!(
         container,
-        SOS2LinkingConstraint(),
+        SOS2LinkingConstraint,
         C,
         names,
         time_steps;
@@ -83,7 +83,7 @@ function _add_quadratic_approx!(
     )
     link_expr = add_expression_container!(
         container,
-        SOS2LinkingExpression(),
+        SOS2LinkingExpression,
         C,
         names,
         time_steps;
@@ -91,7 +91,7 @@ function _add_quadratic_approx!(
     )
     norm_cons = add_constraints_container!(
         container,
-        SOS2NormConstraint(),
+        SOS2NormConstraint,
         C,
         names,
         time_steps;
@@ -99,7 +99,7 @@ function _add_quadratic_approx!(
     )
     norm_expr = add_expression_container!(
         container,
-        SOS2NormExpression(),
+        SOS2NormExpression,
         C,
         names,
         time_steps;
@@ -107,7 +107,7 @@ function _add_quadratic_approx!(
     )
     sos_cons = add_constraints_container!(
         container,
-        SolverSOS2Constraint(),
+        SolverSOS2Constraint,
         C,
         names,
         time_steps;
@@ -115,7 +115,7 @@ function _add_quadratic_approx!(
     )
     result_expr = add_expression_container!(
         container,
-        QuadraticExpression(),
+        QuadraticExpression,
         C,
         names,
         time_steps;

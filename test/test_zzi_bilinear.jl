@@ -70,7 +70,7 @@ const ZZI_META = "ZZITest"
 
             expr = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 ZZI_META,
             )
@@ -116,7 +116,7 @@ const ZZI_META = "ZZITest"
 
             z_expr = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 ZZI_META,
             )[
@@ -157,7 +157,7 @@ const ZZI_META = "ZZITest"
 
             z_expr = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 ZZI_META,
             )[
@@ -200,7 +200,7 @@ const ZZI_META = "ZZITest"
 
                 z_expr = IOM.get_expression(
                     setup.container,
-                    IOM.BilinearProductExpression(),
+                    IOM.BilinearProductExpression,
                     MockThermalGen,
                     ZZI_META,
                 )[
@@ -240,7 +240,7 @@ const ZZI_META = "ZZITest"
 
             expr = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 ZZI_META,
             )
@@ -311,7 +311,7 @@ const ZZI_META = "ZZITest"
 
             z_expr = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 ZZI_META,
             )[
@@ -354,7 +354,7 @@ const ZZI_META = "ZZITest"
 
             expr = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 ZZI_META,
             )
@@ -401,7 +401,7 @@ const ZZI_META = "ZZITest"
 
             z_expr = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 ZZI_META,
             )[
@@ -447,7 +447,7 @@ const ZZI_META = "ZZITest"
 
             z_expr = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 ZZI_META,
             )[

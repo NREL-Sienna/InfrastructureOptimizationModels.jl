@@ -39,7 +39,7 @@ function _add_bilinear_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     result_expr = add_expression_container!(
         container,
-        BilinearProductExpression(),
+        BilinearProductExpression,
         C,
         names,
         time_steps;

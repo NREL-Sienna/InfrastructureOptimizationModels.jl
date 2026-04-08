@@ -118,7 +118,7 @@ end
         PSI.get_initial_conditions_data(PSI.get_optimization_container(model))
     @test !PSI.has_initial_condition_value(
         initial_conditions_data,
-        ActivePowerVariable(),
+        ActivePowerVariable,
         HydroTurbine,
     )
     @test run!(model) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
@@ -142,7 +142,7 @@ end
         PSI.get_initial_conditions_data(PSI.get_optimization_container(model))
     @test PSI.has_initial_condition_value(
         initial_conditions_data,
-        OnVariable(),
+        OnVariable,
         HydroTurbine,
     )
     @test run!(model) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
