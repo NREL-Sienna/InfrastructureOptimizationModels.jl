@@ -98,7 +98,7 @@ function _add_bound_range_constraints_impl!(
     jump_model = get_jump_model(container)
 
     con = add_constraints_container!(
-        container, T(), V, device_names, time_steps; meta = constraint_meta(dir))
+        container, T, V, device_names, time_steps; meta = constraint_meta(dir))
 
     for device in devices, t in time_steps
         ci_name = PSY.get_name(device)
@@ -212,7 +212,7 @@ function _add_semicontinuous_bound_range_constraints_impl!(
     names = PSY.get_name.(devices)
     jump_model = get_jump_model(container)
     con = add_constraints_container!(
-        container, T(), V, names, time_steps; meta = constraint_meta(dir))
+        container, T, V, names, time_steps; meta = constraint_meta(dir))
     varbin = get_variable(container, OnVariable, V)
 
     for device in devices, t in time_steps
@@ -238,7 +238,7 @@ function _add_semicontinuous_bound_range_constraints_impl!(
     names = PSY.get_name.(devices)
     jump_model = get_jump_model(container)
     con = add_constraints_container!(
-        container, T(), V, names, time_steps; meta = constraint_meta(dir))
+        container, T, V, names, time_steps; meta = constraint_meta(dir))
     varbin = get_variable(container, OnVariable, V)
 
     for device in devices
@@ -274,7 +274,7 @@ function add_reserve_bound_range_constraints!(
     jump_model = get_jump_model(container)
 
     con = add_constraints_container!(
-        container, T(), V, names, time_steps; meta = constraint_meta(dir))
+        container, T, V, names, time_steps; meta = constraint_meta(dir))
     varbin = get_variable(container, ReservationVariable, V)
 
     for device in devices, t in time_steps
@@ -307,7 +307,7 @@ function add_parameterized_bound_range_constraints(
 }
     array = get_expression(container, U, V)
     _add_parameterized_bound_range_constraints_impl!(
-        container, T, dir, array, P(), devices, model)
+        container, T, dir, array, P, devices, model)
     return
 end
 
@@ -330,7 +330,7 @@ function add_parameterized_bound_range_constraints(
 }
     array = get_variable(container, U, V)
     _add_parameterized_bound_range_constraints_impl!(
-        container, T, dir, array, P(), devices, model)
+        container, T, dir, array, P, devices, model)
     return
 end
 
@@ -403,7 +403,7 @@ function _add_parameterized_bound_range_constraints_impl!(
     ::Type{T},
     dir::BoundDirection,
     array,
-    param::P,
+    ::Type{P},
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
 ) where {
@@ -423,10 +423,10 @@ function _add_parameterized_bound_range_constraints_impl!(
     end
 
     constraint = add_constraints_container!(
-        container, T(), V, names, time_steps; meta = constraint_meta(dir))
+        container, T, V, names, time_steps; meta = constraint_meta(dir))
 
     _bound_range_with_parameter!(
-        container, dir, constraint, array, param, devices, model)
+        container, dir, constraint, array, P, devices, model)
     return
 end
 
@@ -435,7 +435,7 @@ function _add_parameterized_bound_range_constraints_impl!(
     ::Type{T},
     dir::BoundDirection,
     array,
-    param::P,
+    ::Type{P},
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
 ) where {
@@ -447,10 +447,10 @@ function _add_parameterized_bound_range_constraints_impl!(
     time_steps = get_time_steps(container)
     names = PSY.get_name.(devices)
     constraint = add_constraints_container!(
-        container, T(), V, names, time_steps; meta = constraint_meta(dir))
+        container, T, V, names, time_steps; meta = constraint_meta(dir))
 
     _bound_range_with_parameter!(
-        container, dir, constraint, array, param, devices, model)
+        container, dir, constraint, array, P, devices, model)
     return
 end
 
@@ -460,7 +460,7 @@ function _bound_range_with_parameter!(
     dir::BoundDirection,
     constraint_container::JuMPConstraintArray,
     lhs_array,
-    param::P,
+    ::Type{P},
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     ::DeviceModel{V, W},
 ) where {
@@ -468,8 +468,8 @@ function _bound_range_with_parameter!(
     V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
 }
-    param_array = get_parameter_array(container, param, V)
-    param_multiplier = get_parameter_multiplier_array(container, P(), V)
+    param_array = get_parameter_array(container, P, V)
+    param_multiplier = get_parameter_multiplier_array(container, P, V)
     jump_model = get_jump_model(container)
     time_steps = axes(constraint_container)[2]
     for device in devices, t in time_steps
@@ -491,7 +491,7 @@ function _bound_range_with_parameter!(
     dir::BoundDirection,
     constraint_container::JuMPConstraintArray,
     lhs_array,
-    param::P,
+    ::Type{P},
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     ::DeviceModel{V, W},
 ) where {
@@ -499,7 +499,7 @@ function _bound_range_with_parameter!(
     V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
 }
-    param_array = get_parameter_array(container, param, V)
+    param_array = get_parameter_array(container, P, V)
     jump_model = get_jump_model(container)
     time_steps = axes(constraint_container)[2]
     for device in devices, t in time_steps
@@ -518,7 +518,7 @@ function _bound_range_with_parameter!(
     dir::BoundDirection,
     constraint_container::JuMPConstraintArray,
     lhs_array,
-    param::P,
+    ::Type{P},
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
 ) where {
@@ -526,7 +526,7 @@ function _bound_range_with_parameter!(
     V <: IS.InfrastructureSystemsComponent,
     W <: AbstractDeviceFormulation,
 }
-    param_container = get_parameter(container, param, V)
+    param_container = get_parameter(container, P, V)
     mult = get_multiplier_array(param_container)
     jump_model = get_jump_model(container)
     time_steps = axes(constraint_container)[2]
@@ -553,7 +553,7 @@ function lower_bound_range_with_parameter!(
     container::OptimizationContainer,
     constraint_container::JuMPConstraintArray,
     lhs_array,
-    param::P,
+    ::Type{P},
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
 ) where {
@@ -562,7 +562,7 @@ function lower_bound_range_with_parameter!(
     W <: AbstractDeviceFormulation,
 }
     _bound_range_with_parameter!(
-        container, LowerBound(), constraint_container, lhs_array, param, devices, model)
+        container, LowerBound(), constraint_container, lhs_array, P, devices, model)
     return
 end
 
@@ -570,7 +570,7 @@ function upper_bound_range_with_parameter!(
     container::OptimizationContainer,
     constraint_container::JuMPConstraintArray,
     lhs_array,
-    param::P,
+    ::Type{P},
     devices::Union{Vector{V}, IS.FlattenIteratorWrapper{V}},
     model::DeviceModel{V, W},
 ) where {
@@ -579,6 +579,6 @@ function upper_bound_range_with_parameter!(
     W <: AbstractDeviceFormulation,
 }
     _bound_range_with_parameter!(
-        container, UpperBound(), constraint_container, lhs_array, param, devices, model)
+        container, UpperBound(), constraint_container, lhs_array, P, devices, model)
     return
 end
