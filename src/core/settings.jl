@@ -22,6 +22,17 @@ struct Settings
     ext::Dict{String, Any}
 end
 
+_wrap_optimizer(::Nothing) = nothing
+_wrap_optimizer(opt::MOI.OptimizerWithAttributes) = opt
+_wrap_optimizer(opt::DataType) = MOI.OptimizerWithAttributes(opt)
+function _wrap_optimizer(opt)
+    throw(
+        ArgumentError(
+            "optimizer must be nothing, a DataType, or MOI.OptimizerWithAttributes; got $(typeof(opt))",
+        ),
+    )
+end
+
 function Settings(
     sys;
     initial_time::Dates.DateTime = UNSET_INI_TIME,
@@ -51,19 +62,7 @@ function Settings(
         time_series_cache_size = 0
     end
 
-    if optimizer === nothing
-        optimizer_ = nothing
-    elseif optimizer isa DataType
-        optimizer_ = MOI.OptimizerWithAttributes(optimizer)
-    elseif optimizer isa MOI.OptimizerWithAttributes
-        optimizer_ = optimizer
-    else
-        throw(
-            ArgumentError(
-                "optimizer must be nothing, a DataType, or MOI.OptimizerWithAttributes; got $(typeof(optimizer))",
-            ),
-        )
-    end
+    optimizer_ = _wrap_optimizer(optimizer)
 
     return Settings(
         Ref(IS.time_period_conversion(horizon)),

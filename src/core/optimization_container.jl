@@ -1224,16 +1224,21 @@ function get_initial_conditions_parameter(
     return get_initial_conditions_parameter(get_initial_conditions_data(container), type, T)
 end
 
+# When adding a QuadExpr to an AffExpr, += is needed because the AffExpr must be
+# promoted to QuadExpr (reallocation). add_to_expression! cannot promote in-place.
 function add_to_objective_invariant_expression!(
     container::OptimizationContainer,
-    cost_expr::T,
-) where {T <: JuMP.AbstractJuMPScalar}
-    obj = container.objective_function
-    if obj.invariant_terms isa JuMP.GenericAffExpr && T <: JuMP.GenericQuadExpr
-        container.objective_function.invariant_terms += cost_expr
-    else
-        JuMP.add_to_expression!(obj.invariant_terms, cost_expr)
-    end
+    cost_expr::JuMP.GenericQuadExpr,
+)
+    container.objective_function.invariant_terms += cost_expr
+    return
+end
+
+function add_to_objective_invariant_expression!(
+    container::OptimizationContainer,
+    cost_expr::JuMP.AbstractJuMPScalar,
+)
+    JuMP.add_to_expression!(container.objective_function.invariant_terms, cost_expr)
     return
 end
 
