@@ -446,19 +446,28 @@ end
 """
 Returns the correct container specification for the selected type of JuMP Model
 """
-function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: JuMP.AbstractJuMPScalar, N}
+function sparse_container_spec(
+    ::Type{T},
+    axs::Vararg{Any, N},
+) where {T <: JuMP.AbstractJuMPScalar, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), T}(indexes .=> zero(T))
     return SparseAxisArray(contents)
 end
 
-function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: JuMP.VariableRef, N}
+function sparse_container_spec(
+    ::Type{T},
+    axs::Vararg{Any, N},
+) where {T <: JuMP.VariableRef, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), Union{Nothing, T}}(indexes .=> nothing)
     return SparseAxisArray(contents)
 end
 
-function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: JuMP.ConstraintRef, N}
+function sparse_container_spec(
+    ::Type{T},
+    axs::Vararg{Any, N},
+) where {T <: JuMP.ConstraintRef, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), Union{Nothing, T}}(indexes .=> nothing)
     return SparseAxisArray(contents)
@@ -565,26 +574,28 @@ function supports_milp(jump_model::JuMP.Model)
     return MOI.supports_constraint(optimizer_backend, MOI.VariableIndex, MOI.ZeroOne)
 end
 
-function _get_solver_time(jump_model::JuMP.Model)
-    solver_solve_time = NaN
+function _probe_solver_time!(jump_model::JuMP.Model)
+    try
+        solver_solve_time = MOI.get(jump_model, MOI.SolveTimeSec())
+        jump_model.ext[:try_supports_solvetime] = (trycatch = false, supports = true)
+        return solver_solve_time
+    catch
+        @debug "SolveTimeSec() property not supported by the Solver"
+        jump_model.ext[:try_supports_solvetime] = (trycatch = false, supports = false)
+        return NaN
+    end
+end
 
+function _get_solver_time(jump_model::JuMP.Model)
     try_s =
         get!(jump_model.ext, :try_supports_solvetime, (trycatch = true, supports = true))
     if try_s.trycatch
-        try
-            solver_solve_time = MOI.get(jump_model, MOI.SolveTimeSec())
-            jump_model.ext[:try_supports_solvetime] = (trycatch = false, supports = true)
-        catch
-            @debug "SolveTimeSec() property not supported by the Solver"
-            jump_model.ext[:try_supports_solvetime] = (trycatch = false, supports = false)
-        end
+        return _probe_solver_time!(jump_model)
+    elseif try_s.supports
+        return MOI.get(jump_model, MOI.SolveTimeSec())
     else
-        if try_s.supports
-            solver_solve_time = MOI.get(jump_model, MOI.SolveTimeSec())
-        end
+        return NaN
     end
-
-    return solver_solve_time
 end
 
 function write_optimizer_stats!(optimizer_stats::OptimizerStats, jump_model::JuMP.Model)

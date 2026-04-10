@@ -1,12 +1,12 @@
 struct PrimalValuesCache
-    variables_cache::Dict{VariableKey, AbstractArray}
-    expressions_cache::Dict{ExpressionKey, AbstractArray}
+    variables_cache::Dict{VariableKey, JuMPArray}
+    expressions_cache::Dict{ExpressionKey, JuMPArray}
 end
 
 function PrimalValuesCache()
     return PrimalValuesCache(
-        Dict{VariableKey, AbstractArray}(),
-        Dict{ExpressionKey, AbstractArray}(),
+        Dict{VariableKey, JuMPArray}(),
+        Dict{ExpressionKey, JuMPArray}(),
     )
 end
 
@@ -15,11 +15,11 @@ function Base.isempty(pvc::PrimalValuesCache)
 end
 
 mutable struct ObjectiveFunction
-    invariant_terms::JuMP.AbstractJuMPScalar
+    invariant_terms::JuMPScalarExpr
     variant_terms::GAE
     synchronized::Bool
     sense::MOI.OptimizationSense
-    function ObjectiveFunction(invariant_terms::JuMP.AbstractJuMPScalar,
+    function ObjectiveFunction(invariant_terms::JuMPScalarExpr,
         variant_terms::GAE,
         synchronized::Bool,
         sense::MOI.OptimizationSense = MOI.MIN_SENSE)
@@ -64,12 +64,12 @@ mutable struct OptimizationContainer <: AbstractOptimizationContainer
     JuMPmodel::JuMP.Model
     time_steps::UnitRange{Int}
     settings::Settings
-    variables::OrderedDict{VariableKey, AbstractArray}
-    aux_variables::OrderedDict{AuxVarKey, AbstractArray}
-    duals::OrderedDict{ConstraintKey, AbstractArray}
-    constraints::OrderedDict{ConstraintKey, AbstractArray}
+    variables::OrderedDict{VariableKey, JuMPArray}
+    aux_variables::OrderedDict{AuxVarKey, JuMPArray}
+    duals::OrderedDict{ConstraintKey, JuMPArray}
+    constraints::OrderedDict{ConstraintKey, JuMPArray}
     objective_function::ObjectiveFunction
-    expressions::OrderedDict{ExpressionKey, AbstractArray}
+    expressions::OrderedDict{ExpressionKey, JuMPArray}
     parameters::OrderedDict{ParameterKey, ParameterContainer}
     primal_values_cache::PrimalValuesCache
     initial_conditions::OrderedDict{InitialConditionKey, Vector{<:InitialCondition}}
@@ -79,6 +79,8 @@ mutable struct OptimizationContainer <: AbstractOptimizationContainer
     model_base_power::Float64
     optimizer_stats::OptimizerStats
     built_for_recurrent_solves::Bool
+    pf_aux_var_keys::Vector{AuxVarKey}
+    non_pf_aux_var_keys::Vector{AuxVarKey}
     metadata::OptimizationContainerMetadata
     default_time_series_type::Type
     power_flow_evaluation_data::Vector{<:AbstractPowerFlowEvaluationData}
@@ -106,12 +108,12 @@ function OptimizationContainer(
         jump_model === nothing ? JuMP.Model() : jump_model,
         1:1,
         settings,
-        OrderedDict{VariableKey, AbstractArray}(),
-        OrderedDict{AuxVarKey, AbstractArray}(),
-        OrderedDict{ConstraintKey, AbstractArray}(),
-        OrderedDict{ConstraintKey, AbstractArray}(),
+        OrderedDict{VariableKey, JuMPArray}(),
+        OrderedDict{AuxVarKey, JuMPArray}(),
+        OrderedDict{ConstraintKey, JuMPArray}(),
+        OrderedDict{ConstraintKey, JuMPArray}(),
         ObjectiveFunction(),
-        OrderedDict{ExpressionKey, AbstractArray}(),
+        OrderedDict{ExpressionKey, JuMPArray}(),
         OrderedDict{ParameterKey, ParameterContainer}(),
         PrimalValuesCache(),
         OrderedDict{InitialConditionKey, Vector{InitialCondition}}(),
@@ -121,6 +123,8 @@ function OptimizationContainer(
         get_base_power(sys),
         OptimizerStats(),
         false,
+        AuxVarKey[],
+        AuxVarKey[],
         OptimizationContainerMetadata(),
         T,
         AbstractPowerFlowEvaluationData[],
@@ -351,6 +355,8 @@ function reset_optimization_model!(container::OptimizationContainer)
     for field in [:variables, :aux_variables, :constraints, :expressions, :duals]
         empty!(getfield(container, field))
     end
+    empty!(container.pf_aux_var_keys)
+    empty!(container.non_pf_aux_var_keys)
     container.initial_conditions_data = InitialConditionsData()
     container.objective_function = ObjectiveFunction()
     container.primal_values_cache = PrimalValuesCache()
@@ -643,12 +649,13 @@ Key-constructing overload: builds the key from (T, U, meta) then delegates.
     ::Type{U},
     ::Type{E},
     sparse::Bool,
-    axs...;
+    axs::Vararg{Any, N};
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
     E,
+    N,
 }
     K = key_for_type(T)
     return :(return _add_container!(opt_container, $K(T, U, meta), E, sparse, axs...))
@@ -678,7 +685,7 @@ function add_variable_container!(
 end
 
 function _get_pwl_variables_container()
-    contents = Dict{Tuple{String, Int, Int}, Any}()
+    contents = Dict{Tuple{String, Int, Int}, JuMP.VariableRef}()
     return SparseAxisArray(contents)
 end
 
@@ -1217,16 +1224,21 @@ function get_initial_conditions_parameter(
     return get_initial_conditions_parameter(get_initial_conditions_data(container), type, T)
 end
 
+# When adding a QuadExpr to an AffExpr, += is needed because the AffExpr must be
+# promoted to QuadExpr (reallocation). add_to_expression! cannot promote in-place.
 function add_to_objective_invariant_expression!(
     container::OptimizationContainer,
-    cost_expr::T,
-) where {T <: JuMP.AbstractJuMPScalar}
-    T_cf = typeof(container.objective_function.invariant_terms)
-    if T_cf <: JuMP.GenericAffExpr && T <: JuMP.GenericQuadExpr
-        container.objective_function.invariant_terms += cost_expr
-    else
-        JuMP.add_to_expression!(container.objective_function.invariant_terms, cost_expr)
-    end
+    cost_expr::JuMP.GenericQuadExpr,
+)
+    container.objective_function.invariant_terms += cost_expr
+    return
+end
+
+function add_to_objective_invariant_expression!(
+    container::OptimizationContainer,
+    cost_expr::JuMP.AbstractJuMPScalar,
+)
+    JuMP.add_to_expression!(container.objective_function.invariant_terms, cost_expr)
     return
 end
 
@@ -1250,13 +1262,23 @@ function deserialize_key(container::OptimizationContainer, name::AbstractString)
     return deserialize_key(container.metadata, name)
 end
 
+function _cache_aux_variable_key_partitions!(container::OptimizationContainer)
+    aux_var_keys = keys(get_aux_variables(container))
+    pf_keys = filter(is_from_power_flow ∘ get_entry_type, aux_var_keys)
+    container.pf_aux_var_keys = collect(pf_keys)
+    container.non_pf_aux_var_keys = collect(setdiff(aux_var_keys, pf_keys))
+    return
+end
+
 function calculate_aux_variables!(
     container::OptimizationContainer,
     system::IS.InfrastructureSystemsContainer,
 )
-    aux_var_keys = keys(get_aux_variables(container))
-    pf_aux_var_keys = filter(is_from_power_flow ∘ get_entry_type, aux_var_keys)
-    non_pf_aux_var_keys = setdiff(aux_var_keys, pf_aux_var_keys)
+    if isempty(container.pf_aux_var_keys) && isempty(container.non_pf_aux_var_keys)
+        _cache_aux_variable_key_partitions!(container)
+    end
+    pf_aux_var_keys = container.pf_aux_var_keys
+    non_pf_aux_var_keys = container.non_pf_aux_var_keys
     # We should only have power flow aux vars if we have power flow evaluators
     @assert isempty(pf_aux_var_keys) || !isempty(get_power_flow_evaluation_data(container))
 

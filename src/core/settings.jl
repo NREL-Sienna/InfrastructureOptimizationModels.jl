@@ -4,7 +4,7 @@ struct Settings
     time_series_cache_size::Int
     warm_start::Base.RefValue{Bool}
     initial_time::Base.RefValue{Dates.DateTime}
-    optimizer::Any  # Union{Nothing, MOI.OptimizerWithAttributes} or duck-typed optimizer
+    optimizer::Union{Nothing, MOI.OptimizerWithAttributes}
     direct_mode_optimizer::Bool
     optimizer_solve_log_print::Bool
     detailed_optimizer_stats::Bool
@@ -20,6 +20,17 @@ struct Settings
     store_variable_names::Bool
     check_numerical_bounds::Bool
     ext::Dict{String, Any}
+end
+
+_wrap_optimizer(::Nothing) = nothing
+_wrap_optimizer(opt::MOI.OptimizerWithAttributes) = opt
+_wrap_optimizer(opt::DataType) = MOI.OptimizerWithAttributes(opt)
+function _wrap_optimizer(opt)
+    throw(
+        ArgumentError(
+            "optimizer must be nothing, a DataType, or MOI.OptimizerWithAttributes; got $(typeof(opt))",
+        ),
+    )
 end
 
 function Settings(
@@ -51,12 +62,7 @@ function Settings(
         time_series_cache_size = 0
     end
 
-    # Handle optimizer: wrap DataType in OptimizerWithAttributes, pass through others (duck-typing)
-    if isa(optimizer, DataType)
-        optimizer_ = MOI.OptimizerWithAttributes(optimizer)
-    else
-        optimizer_ = optimizer  # nothing, OptimizerWithAttributes, or duck-typed optimizer
-    end
+    optimizer_ = _wrap_optimizer(optimizer)
 
     return Settings(
         Ref(IS.time_period_conversion(horizon)),

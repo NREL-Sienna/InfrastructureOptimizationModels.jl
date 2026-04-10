@@ -60,18 +60,18 @@ get_ic_type(
 Stores data to populate initial conditions before the build call
 """
 mutable struct InitialConditionsData
-    duals::Dict{ConstraintKey, AbstractArray}
-    parameters::Dict{ParameterKey, AbstractArray}
-    variables::Dict{VariableKey, AbstractArray}
-    aux_variables::Dict{AuxVarKey, AbstractArray}
+    duals::Dict{ConstraintKey, JuMPArray}
+    parameters::Dict{ParameterKey, JuMPArray}
+    variables::Dict{VariableKey, JuMPArray}
+    aux_variables::Dict{AuxVarKey, JuMPArray}
 end
 
 function InitialConditionsData()
     return InitialConditionsData(
-        Dict{ConstraintKey, AbstractArray}(),
-        Dict{ParameterKey, AbstractArray}(),
-        Dict{VariableKey, AbstractArray}(),
-        Dict{AuxVarKey, AbstractArray}(),
+        Dict{ConstraintKey, JuMPArray}(),
+        Dict{ParameterKey, JuMPArray}(),
+        Dict{VariableKey, JuMPArray}(),
+        Dict{AuxVarKey, JuMPArray}(),
     )
 end
 

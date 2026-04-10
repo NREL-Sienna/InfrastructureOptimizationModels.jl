@@ -8,8 +8,10 @@ mutable struct EmulationModelStore{T <: AbstractDataset} <: AbstractModelStore
     optimizer_stats::OrderedDict{Int, OptimizerStats}
 end
 
+get_data_field(store::EmulationModelStore, ::Val{S}) where {S} =
+    getfield(store.data_container, S)
 get_data_field(store::EmulationModelStore, type::Symbol) =
-    getfield(store.data_container, type)
+    get_data_field(store, Val(type))
 
 function EmulationModelStore()
     return EmulationModelStore(
