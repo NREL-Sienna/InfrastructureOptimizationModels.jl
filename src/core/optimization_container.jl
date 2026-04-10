@@ -620,7 +620,7 @@ end
     T <: OptimizationKeyType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
     E,
-    N
+    N,
 }
     field = QuoteNode(field_for_type(T))
     return quote
