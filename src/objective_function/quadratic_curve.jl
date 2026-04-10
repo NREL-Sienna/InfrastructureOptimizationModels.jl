@@ -1,7 +1,7 @@
 # Add quadratic cost term to objective and expression
 function _add_quadraticcurve_variable_term_to_model!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::V,
     proportional_term_per_unit::Float64,
     quadratic_term_per_unit::Float64,
@@ -36,8 +36,8 @@ end
 # Dispatch for vector proportional/quadratic terms
 function _add_quadraticcurve_variable_cost!(
     container::OptimizationContainer,
-    ::T,
-    ::U,
+    ::Type{T},
+    ::Type{U},
     component::IS.InfrastructureSystemsComponent,
     proportional_term_per_unit::Vector{Float64},
     quadratic_term_per_unit::Vector{Float64},
@@ -53,7 +53,7 @@ function _add_quadraticcurve_variable_cost!(
         )
         _add_quadraticcurve_variable_term_to_model!(
             container,
-            T(),
+            T,
             component,
             proportional_term_per_unit[t],
             quadratic_term_per_unit[t],
@@ -66,8 +66,8 @@ end
 # Dispatch for scalar proportional/quadratic terms
 function _add_quadraticcurve_variable_cost!(
     container::OptimizationContainer,
-    ::T,
-    ::U,
+    ::Type{T},
+    ::Type{U},
     component::IS.InfrastructureSystemsComponent,
     proportional_term_per_unit::Float64,
     quadratic_term_per_unit::Float64,
@@ -82,7 +82,7 @@ function _add_quadraticcurve_variable_cost!(
     for t in get_time_steps(container)
         _add_quadraticcurve_variable_term_to_model!(
             container,
-            T(),
+            T,
             component,
             proportional_term_per_unit,
             quadratic_term_per_unit,
@@ -132,12 +132,12 @@ linear cost term `sum(variable)*cost_data[2]`
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::IS.InfrastructureSystemsComponent,
     cost_function::IS.CostCurve{IS.QuadraticCurve},
-    ::U,
+    ::Type{U},
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
-    multiplier = objective_function_multiplier(T(), U())
+    multiplier = objective_function_multiplier(T, U)
     base_power = get_model_base_power(container)
     device_base_power = get_base_power(component)
     value_curve = get_value_curve(cost_function)
@@ -159,8 +159,8 @@ function add_variable_cost_to_objective!(
     )
     _add_quadraticcurve_variable_cost!(
         container,
-        T(),
-        U(),
+        T,
+        U,
         component,
         multiplier * proportional_term_per_unit,
         multiplier * quadratic_term_per_unit,
@@ -170,8 +170,8 @@ end
 
 function _add_fuel_quadratic_variable_cost!(
     container::OptimizationContainer,
-    ::T,
-    ::U,
+    ::Type{T},
+    ::Type{U},
     component::IS.InfrastructureSystemsComponent,
     proportional_fuel_curve::Float64,
     quadratic_fuel_curve::Float64,
@@ -179,8 +179,8 @@ function _add_fuel_quadratic_variable_cost!(
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     _add_quadraticcurve_variable_cost!(
         container,
-        T(),
-        U(),
+        T,
+        U,
         component,
         proportional_fuel_curve * fuel_cost,
         quadratic_fuel_curve * fuel_cost,
@@ -189,14 +189,14 @@ end
 
 function _add_fuel_quadratic_variable_cost!(
     container::OptimizationContainer,
-    ::T,
-    ::AbstractDeviceFormulation,
+    ::Type{T},
+    ::Type{<:AbstractDeviceFormulation},
     component::IS.InfrastructureSystemsComponent,
     proportional_fuel_curve::Float64,
     quadratic_fuel_curve::Float64,
     fuel_cost::IS.TimeSeriesKey,
 ) where {T <: VariableType}
-    _add_time_varying_fuel_variable_cost!(container, T(), component, fuel_cost)
+    _add_time_varying_fuel_variable_cost!(container, T, component, fuel_cost)
 end
 
 @doc raw"""
@@ -222,12 +222,12 @@ linear cost term `sum(variable)*cost_data[2]`
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::IS.InfrastructureSystemsComponent,
     cost_function::IS.FuelCurve{IS.QuadraticCurve},
-    ::U,
+    ::Type{U},
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
-    multiplier = objective_function_multiplier(T(), U())
+    multiplier = objective_function_multiplier(T, U)
     base_power = get_model_base_power(container)
     device_base_power = get_base_power(component)
     value_curve = IS.get_value_curve(cost_function)
@@ -251,8 +251,8 @@ function add_variable_cost_to_objective!(
     # Multiplier is not necessary here. There is no negative cost for fuel curves.
     _add_fuel_quadratic_variable_cost!(
         container,
-        T(),
-        U(),
+        T,
+        U,
         component,
         multiplier * proportional_term_per_unit,
         multiplier * quadratic_term_per_unit,

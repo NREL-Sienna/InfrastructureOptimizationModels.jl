@@ -3,15 +3,15 @@
 ##################################################
 
 _get_pwl_cost_multiplier(::IS.FuelCurve{IS.PiecewisePointCurve},
-    ::VariableType,
-    ::AbstractDeviceFormulation,
+    ::Type{<:VariableType},
+    ::Type{<:AbstractDeviceFormulation},
 ) = 1.0
 
 _get_pwl_cost_multiplier(::IS.CostCurve{IS.PiecewisePointCurve},
-    ::U,
-    ::V,
+    ::Type{U},
+    ::Type{V},
 ) where {U <: VariableType, V <: AbstractDeviceFormulation} =
-    objective_function_multiplier(U(), V())
+    objective_function_multiplier(U, V)
 
 # FuelCurve/CostCurve: scale for units, then call function data version
 function get_pwl_cost_expression_lambda(
@@ -22,8 +22,8 @@ function get_pwl_cost_expression_lambda(
         IS.FuelCurve{IS.PiecewisePointCurve},
         IS.CostCurve{IS.PiecewisePointCurve},
     },
-    ::U,
-    ::V,
+    ::Type{U},
+    ::Type{V},
 ) where {
     T <: IS.InfrastructureSystemsComponent,
     U <: VariableType,
@@ -42,7 +42,7 @@ function get_pwl_cost_expression_lambda(
     )
     resolution = get_resolution(container)
     dt = Dates.value(resolution) / MILLISECONDS_IN_HOUR
-    multiplier = _get_pwl_cost_multiplier(cost_function, U(), V())
+    multiplier = _get_pwl_cost_multiplier(cost_function, U, V)
     name = get_name(component)
     fuel_consumption_expression = get_pwl_cost_expression_lambda(
         container,
@@ -83,8 +83,8 @@ function add_pwl_term_lambda!(
         IS.CostCurve{IS.PiecewisePointCurve},
         IS.FuelCurve{IS.PiecewisePointCurve},
     },
-    ::U,
-    ::V,
+    ::Type{U},
+    ::Type{V},
 ) where {
     T <: IS.InfrastructureSystemsComponent,
     U <: VariableType,
@@ -141,7 +141,7 @@ function add_pwl_term_lambda!(
             add_pwl_sos2_constraint!(container, T, name, t, pwl_vars)
         end
         pwl_cost =
-            get_pwl_cost_expression_lambda(container, component, t, cost_function, U(), V())
+            get_pwl_cost_expression_lambda(container, component, t, cost_function, U, V)
         pwl_cost_expressions[t] = pwl_cost
     end
     return pwl_cost_expressions
@@ -161,10 +161,10 @@ Creates piecewise linear cost function using a sum of variables and expression w
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::C,
     cost_function::IS.CostCurve{IS.PiecewisePointCurve},
-    ::U,
+    ::Type{U},
 ) where {
     T <: VariableType,
     C <: IS.InfrastructureSystemsComponent,
@@ -173,7 +173,7 @@ function add_variable_cost_to_objective!(
     component_name = get_name(component)
     @debug "PWL Variable Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     pwl_cost_expressions =
-        add_pwl_term_lambda!(container, component, cost_function, T(), U())
+        add_pwl_term_lambda!(container, component, cost_function, T, U)
     isnothing(pwl_cost_expressions) && return
     for t in get_time_steps(container)
         add_cost_to_expression!(
@@ -199,10 +199,10 @@ Creates piecewise linear cost function using a sum of variables and expression w
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::V,
     cost_function::IS.FuelCurve{IS.PiecewisePointCurve},
-    ::U,
+    ::Type{U},
 ) where {
     T <: VariableType,
     V <: IS.InfrastructureSystemsComponent,
@@ -211,7 +211,7 @@ function add_variable_cost_to_objective!(
     component_name = get_name(component)
     @debug "PWL Variable Cost" _group = LOG_GROUP_COST_FUNCTIONS component_name
     pwl_fuel_consumption_expressions =
-        add_pwl_term_lambda!(container, component, cost_function, T(), U())
+        add_pwl_term_lambda!(container, component, cost_function, T, U)
     isnothing(pwl_fuel_consumption_expressions) && return
 
     # IS getter: simply returns the field of the FuelCurve struct
@@ -267,10 +267,10 @@ Creates piecewise linear cost function using a sum of variables and expression w
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::IS.InfrastructureSystemsComponent,
     cost_function::V,
-    ::U,
+    ::Type{U},
 ) where {
     T <: VariableType,
     V <: Union{
@@ -288,10 +288,10 @@ function add_variable_cost_to_objective!(
     # Call method for PiecewisePointCurve
     add_variable_cost_to_objective!(
         container,
-        T(),
+        T,
         component,
         pointbased_cost_function,
-        U(),
+        U,
     )
     return
 end
@@ -313,10 +313,10 @@ Creates piecewise linear fuel cost function using a sum of variables and express
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::IS.InfrastructureSystemsComponent,
     cost_function::V,
-    ::U,
+    ::Type{U},
 ) where {
     T <: VariableType,
     V <: Union{
@@ -339,10 +339,10 @@ function add_variable_cost_to_objective!(
     # Call method for PiecewisePointCurve
     add_variable_cost_to_objective!(
         container,
-        T(),
+        T,
         component,
         pointbased_cost_function,
-        U(),
+        U,
     )
     return
 end

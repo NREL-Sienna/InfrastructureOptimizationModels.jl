@@ -19,7 +19,7 @@ const HYBS_BILINEAR_META = "BilinearTest"
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.EpigraphExpression(),
+            IOM.EpigraphExpression,
             MockThermalGen,
             HYBS_META,
         )
@@ -49,7 +49,7 @@ const HYBS_BILINEAR_META = "BilinearTest"
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.EpigraphExpression(),
+            IOM.EpigraphExpression,
             MockThermalGen,
             HYBS_META,
         )
@@ -83,7 +83,7 @@ const HYBS_BILINEAR_META = "BilinearTest"
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.EpigraphExpression(),
+            IOM.EpigraphExpression,
             MockThermalGen,
             HYBS_META,
         )
@@ -114,7 +114,7 @@ const HYBS_BILINEAR_META = "BilinearTest"
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.EpigraphExpression(),
+            IOM.EpigraphExpression,
             MockThermalGen,
             HYBS_META,
         )
@@ -145,7 +145,7 @@ const HYBS_BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.EpigraphExpression(),
+                IOM.EpigraphExpression,
                 MockThermalGen,
                 HYBS_META,
             )
@@ -186,7 +186,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.BilinearProductExpression(),
+            IOM.BilinearProductExpression,
             MockThermalGen,
             HYBS_META,
         )
@@ -223,7 +223,7 @@ end
                 )
                 expr_container = IOM.get_expression(
                     setup.container,
-                    IOM.BilinearProductExpression(),
+                    IOM.BilinearProductExpression,
                     MockThermalGen,
                     HYBS_META,
                 )
@@ -266,7 +266,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.BilinearProductExpression(),
+            IOM.BilinearProductExpression,
             MockThermalGen,
             HYBS_META,
         )
@@ -306,7 +306,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.BilinearProductExpression(),
+            IOM.BilinearProductExpression,
             MockThermalGen,
             HYBS_META,
         )
@@ -346,7 +346,7 @@ end
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 HYBS_META,
             )
@@ -389,7 +389,7 @@ end
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 HYBS_META,
             )
@@ -425,7 +425,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.BilinearProductExpression(),
+            IOM.BilinearProductExpression,
             MockThermalGen,
             HYBS_META,
         )
@@ -460,7 +460,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.BilinearProductExpression(),
+            IOM.BilinearProductExpression,
             MockThermalGen,
             HYBS_META,
         )

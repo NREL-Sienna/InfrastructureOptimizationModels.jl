@@ -97,14 +97,14 @@ end
         container = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestShutDownVariable(),
+            TestShutDownVariable,
         )
 
         devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_shut_down_cost!(
             container,
-            TestShutDownVariable(),
+            TestShutDownVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
@@ -112,7 +112,7 @@ end
         # Verify shutdown costs are in invariant expression (time-invariant case)
         @test verify_objective_coefficients(
             container,
-            TestShutDownVariable(),
+            TestShutDownVariable,
             MockThermalGen,
             "gen1",
             shutdown_cost;
@@ -132,14 +132,14 @@ end
         container = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestShutDownVariable(),
+            TestShutDownVariable,
         )
 
         devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_shut_down_cost!(
             container,
-            TestShutDownVariable(),
+            TestShutDownVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
@@ -155,14 +155,14 @@ end
         container = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestShutDownVariable(),
+            TestShutDownVariable,
         )
 
         devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_shut_down_cost!(
             container,
-            TestShutDownVariable(),
+            TestShutDownVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
@@ -179,14 +179,14 @@ end
         container = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestStartVariable(),
+            TestStartVariable,
         )
 
         devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_start_up_cost!(
             container,
-            TestStartVariable(),
+            TestStartVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
@@ -194,7 +194,7 @@ end
         # Verify startup costs are in invariant expression (time-invariant case)
         @test verify_objective_coefficients(
             container,
-            TestStartVariable(),
+            TestStartVariable,
             MockThermalGen,
             "gen1",
             startup_cost;
@@ -214,14 +214,14 @@ end
         container = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestStartVariable(),
+            TestStartVariable,
         )
 
         devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_start_up_cost!(
             container,
-            TestStartVariable(),
+            TestStartVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
@@ -237,14 +237,14 @@ end
         container = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestStartVariable(),
+            TestStartVariable,
         )
 
         devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_start_up_cost!(
             container,
-            TestStartVariable(),
+            TestStartVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
@@ -274,20 +274,20 @@ end
         container_sd = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestShutDownVariable(),
+            TestShutDownVariable,
         )
         devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_shut_down_cost!(
             container_sd,
-            TestShutDownVariable(),
+            TestShutDownVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
 
         @test verify_objective_coefficients(
             container_sd,
-            TestShutDownVariable(),
+            TestShutDownVariable,
             MockThermalGen,
             "gen1",
             shutdown1;
@@ -295,7 +295,7 @@ end
         )
         @test verify_objective_coefficients(
             container_sd,
-            TestShutDownVariable(),
+            TestShutDownVariable,
             MockThermalGen,
             "gen2",
             shutdown2;
@@ -306,20 +306,20 @@ end
         container_su = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestStartVariable(),
+            TestStartVariable,
         )
         devices_iter = make_mock_device_iterator(devices)
 
         IOM.add_start_up_cost!(
             container_su,
-            TestStartVariable(),
+            TestStartVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
 
         @test verify_objective_coefficients(
             container_su,
-            TestStartVariable(),
+            TestStartVariable,
             MockThermalGen,
             "gen1",
             startup1;
@@ -327,7 +327,7 @@ end
         )
         @test verify_objective_coefficients(
             container_su,
-            TestStartVariable(),
+            TestStartVariable,
             MockThermalGen,
             "gen2",
             startup2;
@@ -343,7 +343,7 @@ end
         container = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestShutDownVariable(),
+            TestShutDownVariable,
         )
 
         # Set up ShutdownCostParameter with known values
@@ -361,7 +361,7 @@ end
 
         IOM.add_shut_down_cost!(
             container,
-            TestShutDownVariable(),
+            TestShutDownVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
@@ -369,7 +369,7 @@ end
         # Time-variant costs go into variant expression
         @test verify_objective_coefficients(
             container,
-            TestShutDownVariable(),
+            TestShutDownVariable,
             MockThermalGen,
             "gen1",
             shutdown_values[1, :];
@@ -385,7 +385,7 @@ end
         container = setup_startup_shutdown_test_container(
             time_steps,
             devices,
-            TestStartVariable(),
+            TestStartVariable,
         )
 
         # Set up StartupCostParameter with known values
@@ -403,7 +403,7 @@ end
 
         IOM.add_start_up_cost!(
             container,
-            TestStartVariable(),
+            TestStartVariable,
             devices_iter,
             TestDeviceFormulation(),
         )
@@ -411,7 +411,7 @@ end
         # Time-variant costs go into variant expression
         @test verify_objective_coefficients(
             container,
-            TestStartVariable(),
+            TestStartVariable,
             MockThermalGen,
             "gen1",
             startup_values[1, :];

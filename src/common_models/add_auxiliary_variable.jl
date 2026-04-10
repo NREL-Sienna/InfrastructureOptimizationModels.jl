@@ -11,11 +11,10 @@ function add_variables!(
     U <: Union{Vector{D}, IS.FlattenIteratorWrapper{D}},
 } where {D <: IS.InfrastructureSystemsComponent}
     @assert !isempty(devices)
-    var_type = T()
     time_steps = get_time_steps(container)
     add_aux_variable_container!(
         container,
-        var_type,
+        T,
         D,
         PSY.get_name.(devices),
         time_steps,
