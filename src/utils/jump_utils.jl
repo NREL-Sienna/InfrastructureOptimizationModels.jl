@@ -446,19 +446,28 @@ end
 """
 Returns the correct container specification for the selected type of JuMP Model
 """
-function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: JuMP.AbstractJuMPScalar, N}
+function sparse_container_spec(
+    ::Type{T},
+    axs::Vararg{Any, N},
+) where {T <: JuMP.AbstractJuMPScalar, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), T}(indexes .=> zero(T))
     return SparseAxisArray(contents)
 end
 
-function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: JuMP.VariableRef, N}
+function sparse_container_spec(
+    ::Type{T},
+    axs::Vararg{Any, N},
+) where {T <: JuMP.VariableRef, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), Union{Nothing, T}}(indexes .=> nothing)
     return SparseAxisArray(contents)
 end
 
-function sparse_container_spec(::Type{T}, axs::Vararg{Any, N}) where {T <: JuMP.ConstraintRef, N}
+function sparse_container_spec(
+    ::Type{T},
+    axs::Vararg{Any, N},
+) where {T <: JuMP.ConstraintRef, N}
     indexes = Base.Iterators.product(axs...)
     contents = Dict{eltype(indexes), Union{Nothing, T}}(indexes .=> nothing)
     return SparseAxisArray(contents)
