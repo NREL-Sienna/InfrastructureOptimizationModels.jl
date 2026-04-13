@@ -5,6 +5,11 @@ struct StartupCostParameter <: ObjectiveFunctionParameter end
 "Parameter to define shutdown cost time series"
 struct ShutdownCostParameter <: ObjectiveFunctionParameter end
 
+# Extract the scalar shutdown cost from either a Float64 (ThermalGenerationCost) or
+# a LinearCurve (MarketBidCost) whose proportional term is the cost.
+_shutdown_cost_value(x::Float64) = x
+_shutdown_cost_value(x::IS.LinearCurve) = IS.get_proportional_term(x)
+
 function add_shut_down_cost!(
     container::OptimizationContainer,
     ::U,
@@ -27,7 +32,7 @@ function add_shut_down_cost!(
                     get_parameter_multiplier_array(container, ShutdownCostParameter, T)
                 param[name, t] * mult[name, t]
             else
-                get_shut_down(get_operation_cost(d))
+                _shutdown_cost_value(get_shut_down(get_operation_cost(d)))
             end
             iszero(cost_term) && continue
             rate = cost_term * multiplier
@@ -115,6 +120,6 @@ function get_startup_cost_value(
     else
         get_start_up(get_operation_cost(component))
     end
-    # possible types for raw_startup_cost: Float, AffExpr, NamedTuple, or StartUpStages. 
+    # possible types for raw_startup_cost: Float, AffExpr, NamedTuple, or StartUpStages.
     return start_up_cost(raw_startup_cost, V, T(), U())
 end
