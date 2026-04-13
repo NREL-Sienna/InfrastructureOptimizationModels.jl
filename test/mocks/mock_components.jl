@@ -39,20 +39,23 @@ MockOperationCost(proportional_term::Float64, is_time_variant::Bool, fuel_cost::
 IOM.get_start_up(c::MockOperationCost) = c.start_up
 IOM.get_shut_down(c::MockOperationCost) = c.shut_down
 
-"Time-series mock cost — startup/shutdown come from parameter arrays, not fields."
-struct MockTimeSeriesOperationCost <: IS.DeviceParameter
-    proportional_term::Float64
-    fuel_cost::Float64
-end
-
-MockTimeSeriesOperationCost() = MockTimeSeriesOperationCost(0.0, 0.0)
+"""
+Time-series mock cost, paralleling PSY.MarketBidTimeSeriesCost. Has no fields because all
+cost data (startup, shutdown, offer curves) lives in parameter containers populated
+externally — by POM in real use, or by `add_test_parameter!` in the tests.
+"""
+struct MockTimeSeriesOperationCost <: IS.DeviceParameter end
 
 # Startup/shutdown values aren't stored on the cost object; they live in parameter containers.
 # Return sentinel values that would error if accidentally used as costs.
 IOM.get_start_up(::MockTimeSeriesOperationCost) =
-    error("MockTimeSeriesOperationCost: start_up should be read from parameters, not the cost object")
+    error(
+        "MockTimeSeriesOperationCost: start_up should be read from parameters, not the cost object",
+    )
 IOM.get_shut_down(::MockTimeSeriesOperationCost) =
-    error("MockTimeSeriesOperationCost: shut_down should be read from parameters, not the cost object")
+    error(
+        "MockTimeSeriesOperationCost: shut_down should be read from parameters, not the cost object",
+    )
 
 # Abstract mock device type for testing rejection of abstract types in DeviceModel
 # Subtypes IS.InfrastructureSystemsComponent so they work with DeviceModel and container keys

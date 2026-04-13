@@ -81,9 +81,13 @@ get_offer_curves(::DecrementalOffer, device::PSY.StaticInjection) =
 get_offer_curves(::IncrementalOffer, device::PSY.StaticInjection) =
     get_output_offer_curves(PSY.get_operation_cost(device))
 get_initial_input(::DecrementalOffer, device::PSY.StaticInjection) =
-    IS.get_initial_input(PSY.get_value_curve(get_input_offer_curves(PSY.get_operation_cost(device))))
+    IS.get_initial_input(
+        PSY.get_value_curve(get_input_offer_curves(PSY.get_operation_cost(device))),
+    )
 get_initial_input(::IncrementalOffer, device::PSY.StaticInjection) =
-    IS.get_initial_input(PSY.get_value_curve(get_output_offer_curves(PSY.get_operation_cost(device))))
+    IS.get_initial_input(
+        PSY.get_value_curve(get_output_offer_curves(PSY.get_operation_cost(device))),
+    )
 
 # direction and cost curve (needed for VOM code path):
 get_offer_curves(::DecrementalOffer, op_cost::PSY.OfferCurveCost) =
@@ -298,15 +302,8 @@ function validate_occ_component(::ShutdownCostParameter, device::PSY.StaticInjec
     end
 end
 
-validate_occ_component(
-    ::IncrementalCostAtMinParameter,
-    device::PSY.StaticInjection,
-) = nothing  # consistency guaranteed by the static/TS type split
-
-validate_occ_component(
-    ::DecrementalCostAtMinParameter,
-    device::PSY.StaticInjection,
-) = nothing  # consistency guaranteed by the static/TS type split
+# Consistency of initial_input vs offer curves is guaranteed by the static/TS type split
+validate_occ_component(::AbstractCostAtMinParameter, ::PSY.StaticInjection) = nothing
 
 validate_occ_component(
     ::IncrementalPiecewiseLinearBreakpointParameter,
@@ -410,9 +407,10 @@ function _get_pwl_data(
     component::T,
     time::Int,
 ) where {T <: PSY.Component}
+    name = PSY.get_name(component)
     cost_data = get_offer_curves(dir, component)
     breakpoint_cost_component, slope_cost_component, unit_system =
-        _get_raw_pwl_data(dir, container, component, cost_data, time)
+        _get_raw_pwl_data(dir, container, T, name, cost_data, time)
 
     breakpoints, slopes = get_piecewise_curve_per_system_unit(
         breakpoint_cost_component,
@@ -428,26 +426,26 @@ end
 function _get_raw_pwl_data(
     ::OfferDirection,
     ::OptimizationContainer,
-    ::T,
+    ::Type{<:PSY.Component},
+    ::String,
     cost_data::PSY.CostCurve{PSY.PiecewiseIncrementalCurve},
     ::Int,
-) where {T <: PSY.Component}
+)
     cost_component = PSY.get_function_data(PSY.get_value_curve(cost_data))
     return PSY.get_x_coords(cost_component),
     PSY.get_y_coords(cost_component),
     PSY.get_power_units(cost_data)
 end
 
-# time-series curve: read from parameter arrays (already initialized)
+# time-series curve: read from parameter arrays
 function _get_raw_pwl_data(
     dir::OfferDirection,
     container::OptimizationContainer,
-    component::T,
+    ::Type{T},
+    name::String,
     ::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve},
     time::Int,
 ) where {T <: PSY.Component}
-    name = PSY.get_name(component)
-
     SlopeParam = _slope_param(dir)
     slope_param_arr = get_parameter_array(container, SlopeParam, T)
     slope_param_mult = get_parameter_multiplier_array(container, SlopeParam, T)
