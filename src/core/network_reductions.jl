@@ -147,27 +147,15 @@ end
 
 """
 Find the first device within a reduction entry that has the given time series.
-Handles BranchesParallel, BranchesSeries, and plain ACTransmission entries.
-This replicates PNM.get_device_with_time_series which is available in PNM v0.19+.
+Delegates to PNM, which handles BranchesParallel, BranchesSeries,
+ThreeWindingTransformerWinding, and plain ACTransmission entries.
 """
 function get_device_with_time_series(
     branch::PSY.ACTransmission,
     ::Type{V},
     ts_name::String,
 ) where {V <: PSY.TimeSeriesData}
-    if branch isa PNM.BranchesParallel || branch isa PNM.BranchesSeries
-        for b in branch
-            result = get_device_with_time_series(b, V, ts_name)
-            if result !== nothing
-                return result
-            end
-        end
-        return nothing
-    end
-    if IS.has_time_series(branch, V, ts_name)
-        return branch
-    end
-    return nothing
+    return PNM.get_device_with_time_series(branch, V, ts_name)
 end
 
 function get_branch_argument_parameter_axes(
