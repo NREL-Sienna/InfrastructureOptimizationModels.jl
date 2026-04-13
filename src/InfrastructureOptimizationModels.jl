@@ -349,6 +349,7 @@ export add_reserve_bound_range_constraints!
 export add_semicontinuous_range_constraints!, add_semicontinuous_ramp_constraints!
 # Cost helpers
 export add_shut_down_cost!, add_start_up_cost!
+export add_pwl_term_delta!, add_pwl_constraint_delta!
 export add_pwl_term_lambda!, _get_sos_value, _onvar_cost
 export uses_commitment_variables
 export add_cost_to_expression!
