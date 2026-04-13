@@ -102,17 +102,21 @@ _get_parameter_field(::Type{<:IncrementalCostAtMinParameter}, op_cost) =
 _get_parameter_field(::Type{<:DecrementalCostAtMinParameter}, op_cost) =
     PSY.get_decremental_initial_input(op_cost)
 _get_parameter_field(
-    ::Type{<:Union{
-        IncrementalPiecewiseLinearSlopeParameter,
-        IncrementalPiecewiseLinearBreakpointParameter,
-    }},
+    ::Type{
+        <:Union{
+            IncrementalPiecewiseLinearSlopeParameter,
+            IncrementalPiecewiseLinearBreakpointParameter,
+        },
+    },
     op_cost,
 ) = get_output_offer_curves(op_cost)
 _get_parameter_field(
-    ::Type{<:Union{
-        DecrementalPiecewiseLinearSlopeParameter,
-        DecrementalPiecewiseLinearBreakpointParameter,
-    }},
+    ::Type{
+        <:Union{
+            DecrementalPiecewiseLinearSlopeParameter,
+            DecrementalPiecewiseLinearBreakpointParameter,
+        },
+    },
     op_cost,
 ) = get_input_offer_curves(op_cost)
 
@@ -363,7 +367,10 @@ function validate_occ_component(::Type{<:StartupCostParameter}, device::PSY.Stat
     return
 end
 
-function validate_occ_component(::Type{<:ShutdownCostParameter}, device::PSY.StaticInjection)
+function validate_occ_component(
+    ::Type{<:ShutdownCostParameter},
+    device::PSY.StaticInjection,
+)
     shutdown = PSY.get_shut_down(PSY.get_operation_cost(device))
     _validate_eltype(Float64, device, shutdown, " for shutdown cost")
 end

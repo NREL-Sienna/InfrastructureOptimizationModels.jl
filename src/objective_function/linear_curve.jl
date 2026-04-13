@@ -50,8 +50,8 @@ function add_variable_cost_to_objective!(
     ::Type{T},
     component::IS.InfrastructureSystemsComponent,
     cost_function::IS.FuelCurve{IS.LinearCurve},
-    ::Type{U},
-) where {T <: VariableType, U <: AbstractDeviceFormulation}
+    ::Type{<:AbstractDeviceFormulation},
+) where {T <: VariableType}
     value_curve = IS.get_value_curve(cost_function)
     power_units = IS.get_power_units(cost_function)
     proportional_term = IS.get_proportional_term(IS.get_function_data(value_curve))
