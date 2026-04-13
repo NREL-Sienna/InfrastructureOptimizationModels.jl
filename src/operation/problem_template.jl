@@ -85,10 +85,7 @@ function get_model(template::AbstractProblemTemplate)
     )
 end
 
-function set_network_model!(
-    template::AbstractProblemTemplate,
-    args::Vararg{Any, N},
-) where {N}
+function set_network_model!(template::AbstractProblemTemplate, args...)
     throw(
         ArgumentError(
             "set_network_model! is not implemented for $(typeof(template)). " *
@@ -98,10 +95,7 @@ function set_network_model!(
     )
 end
 
-function set_hvdc_network_model!(
-    template::AbstractProblemTemplate,
-    args::Vararg{Any, N},
-) where {N}
+function set_hvdc_network_model!(template::AbstractProblemTemplate, args...)
     throw(
         ArgumentError(
             "set_hvdc_network_model! is not implemented for $(typeof(template)). " *
@@ -111,10 +105,7 @@ function set_hvdc_network_model!(
     )
 end
 
-function set_device_model!(
-    template::AbstractProblemTemplate,
-    args::Vararg{Any, N},
-) where {N}
+function set_device_model!(template::AbstractProblemTemplate, args...)
     throw(
         ArgumentError(
             "set_device_model! is not implemented for $(typeof(template)). " *
@@ -124,10 +115,7 @@ function set_device_model!(
     )
 end
 
-function set_service_model!(
-    template::AbstractProblemTemplate,
-    args::Vararg{Any, N},
-) where {N}
+function set_service_model!(template::AbstractProblemTemplate, args...)
     throw(
         ArgumentError(
             "set_service_model! is not implemented for $(typeof(template)). " *
@@ -137,10 +125,7 @@ function set_service_model!(
     )
 end
 
-function finalize_template!(
-    template::AbstractProblemTemplate,
-    args::Vararg{Any, N},
-) where {N}
+function finalize_template!(template::AbstractProblemTemplate, args...)
     throw(
         ArgumentError(
             "finalize_template! is not implemented for $(typeof(template)). " *

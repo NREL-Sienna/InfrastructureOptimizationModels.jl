@@ -4,7 +4,7 @@
 
 abstract type ParameterAttributes end
 
-struct NoAttributes end
+struct NoAttributes <: ParameterAttributes end
 
 struct TimeSeriesAttributes{T <: IS.TimeSeriesData} <: ParameterAttributes
     name::String
@@ -94,8 +94,8 @@ end
 # Parameter Container - holds parameter arrays and their attributes
 #################################################################################
 
-struct ParameterContainer{T <: AbstractArray, U <: AbstractArray}
-    attributes::ParameterAttributes
+struct ParameterContainer{T <: AbstractArray, U <: AbstractArray, A <: ParameterAttributes}
+    attributes::A
     parameter_array::T
     multiplier_array::U
 end
@@ -260,8 +260,8 @@ function set_parameter!(
     container::ParameterContainer,
     jump_model::JuMP.Model,
     parameter::Union{ValidDataParamEltypes, AbstractVector{<:ValidDataParamEltypes}},
-    ixs::Vararg{Any, N},
-) where {N}
+    ixs...,
+)
     param_array = get_parameter_array(container)
     _set_parameter!(param_array, jump_model, parameter, ixs)
     return

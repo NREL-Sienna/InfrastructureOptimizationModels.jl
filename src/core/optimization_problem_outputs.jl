@@ -525,9 +525,9 @@ Accepts a vector of keys for the return of the values.
 """
 function read_variable(
     res::OptimizationProblemOutputs,
-    args::Vararg{Any, N};
+    args...;
     kwargs...,
-) where {N}
+)
     key = VariableKey(args...)
     return read_variable(res, key; kwargs...)
 end
@@ -615,9 +615,9 @@ Accepts a vector of keys for the return of the values.
 """
 function read_dual(
     res::OptimizationProblemOutputs,
-    args::Vararg{Any, N};
+    args...;
     kwargs...,
-) where {N}
+)
     key = ConstraintKey(args...)
     return read_dual(res, key; kwargs...)
 end
@@ -704,9 +704,9 @@ Accepts a vector of keys for the return of the values.
 """
 function read_parameter(
     res::OptimizationProblemOutputs,
-    args::Vararg{Any, N};
+    args...;
     kwargs...,
-) where {N}
+)
     key = ParameterKey(args...)
     return read_parameter(res, key; kwargs...)
 end
@@ -795,9 +795,9 @@ Accepts a vector of keys for the return of the values.
 """
 function read_aux_variable(
     res::OptimizationProblemOutputs,
-    args::Vararg{Any, N};
+    args...;
     kwargs...,
-) where {N}
+)
     key = AuxVarKey(args...)
     return read_aux_variable(res, key; kwargs...)
 end
@@ -887,9 +887,9 @@ Accepts a vector of keys for the return of the values.
 """
 function read_expression(
     res::OptimizationProblemOutputs,
-    args::Vararg{Any, N};
+    args...;
     kwargs...,
-) where {N}
+)
     key = ExpressionKey(args...)
     return read_expression(res, key; kwargs...)
 end

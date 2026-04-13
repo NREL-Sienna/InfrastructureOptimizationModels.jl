@@ -1,5 +1,5 @@
 """
-Mock optimizer for testing Settings.
-With duck-typing in Settings, this doesn't need to be an MOI subtype.
+Mock optimizer factory for testing Settings.
+Used as a callable factory with MOI.OptimizerWithAttributes.
 """
-struct MockOptimizer end
+struct MockMOIOptimizer end

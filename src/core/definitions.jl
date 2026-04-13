@@ -75,6 +75,15 @@ const JuMPVariableTensor{N} = DenseAxisArray{
 const JuMPFloatMatrix = DenseAxisArray{Float64, 2}
 const JuMPFloatArray = DenseAxisArray{Float64}
 const JuMPVariableArray = DenseAxisArray{JuMP.VariableRef}
+# Concrete union for optimization container dict values. Enables union-splitting
+# and avoids runtime dispatch on every container access.
+const JuMPArray = Union{JuMP.Containers.DenseAxisArray, JuMP.Containers.SparseAxisArray}
+# Concrete union for objective function scalar expressions. Enables union-splitting
+# instead of dynamic dispatch through JuMP.AbstractJuMPScalar.
+const JuMPScalarExpr = Union{
+    JuMP.GenericAffExpr{Float64, JuMP.VariableRef},
+    JuMP.GenericQuadExpr{Float64, JuMP.VariableRef},
+}
 const JumpSupportedLiterals =
     Union{Number, Vector{<:Tuple{Number, Number}}, Tuple{Vararg{Number}}}
 

@@ -51,10 +51,8 @@ function Base.empty!(store::T) where {T <: AbstractModelStore}
     end
 end
 
-# FIXME getproperty allows for more customization than getfield, but we're not actually
-# using that flexibility anywhere downstream...
-# PERF symbols likely resolve at runtime. Would be better to do type and @generated.
-get_data_field(store::AbstractModelStore, type::Symbol) = getproperty(store, type)
+get_data_field(store::AbstractModelStore, ::Val{S}) where {S} = getfield(store, S)
+get_data_field(store::AbstractModelStore, type::Symbol) = get_data_field(store, Val(type))
 
 function Base.isempty(store::T) where {T <: AbstractModelStore}
     for (name, type) in zip(fieldnames(T), fieldtypes(T))

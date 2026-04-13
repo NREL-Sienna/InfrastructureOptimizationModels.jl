@@ -216,14 +216,17 @@ function add_linear_ramp_constraints!(
     on_param = get_parameter(container, OnStatusParameter, V)
     on_status = on_param.parameter_array  # on_status[name, t] ∈ {0,1} (fixed)
 
+    ic_power_by_name = Dict(
+        get_component_name(ic) => get_value(ic) for ic in initial_conditions_power
+    )
+
     for dev in ramp_devices
         name = PSY.get_name(dev)
         ramp_limits = PSY.get_ramp_limits(dev)
         power_limits = PSY.get_active_power_limits(dev)
 
         # --- t = 1: Use ic_power to determine starting ramp condition
-        ic_idx = findfirst(ic -> get_component_name(ic) == name, initial_conditions_power)
-        ic_power = get_value(initial_conditions_power[ic_idx])
+        ic_power = ic_power_by_name[name]
         ycur = on_status[name, 1]
         slack = _get_ramp_slack_vars(container, model, name, 1)
         big_m = power_limits.max * (1 - ycur)
