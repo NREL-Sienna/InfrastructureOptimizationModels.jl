@@ -391,7 +391,7 @@ function _assemble_product!(
 
     result_expr = add_expression_container!(
         container,
-        result_type(),
+        result_type,
         C,
         names,
         time_steps;
@@ -524,7 +524,7 @@ function _assemble_dnmdt!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     result_expr = add_expression_container!(
         container,
-        result_type(),
+        result_type,
         C,
         names,
         time_steps;

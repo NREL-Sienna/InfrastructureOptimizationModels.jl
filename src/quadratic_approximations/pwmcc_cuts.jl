@@ -79,9 +79,9 @@ function _add_pwmcc_concave_cuts!(
     sq_brk_r = [brk[k + 1]^2 for k in 1:K]
 
     # Create containers
-    delta_var = add_variable_container!(container, PiecewiseMcCormickBinary(), C; meta)
+    delta_var = add_variable_container!(container, PiecewiseMcCormickBinary, C; meta)
     vd_var =
-        add_variable_container!(container, PiecewiseMcCormickDisaggregated(), C; meta)
+        add_variable_container!(container, PiecewiseMcCormickDisaggregated, C; meta)
 
     selector_cons = add_constraints_container!(
         container,

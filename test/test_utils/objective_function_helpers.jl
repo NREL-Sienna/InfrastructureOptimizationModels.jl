@@ -210,14 +210,14 @@ Returns 0.0 if the variable is not present.
 """
 function get_objective_coefficient(
     container::PSI.OptimizationContainer,
-    var_type::PSI.VariableType,
+    ::Type{V},
     ::Type{T},
     name::String,
     t::Int,
 ) where {T}
     obj = PSI.get_objective_expression(container)
     invariant = PSI.get_invariant_terms(obj)
-    var = PSI.get_variable(container, var_type, T)[name, t]
+    var = PSI.get_variable(container, V, T)[name, t]
     return JuMP.coefficient(invariant, var)
 end
 
@@ -227,14 +227,14 @@ Returns 0.0 if the variable is not present.
 """
 function get_objective_variant_coefficient(
     container::PSI.OptimizationContainer,
-    var_type::PSI.VariableType,
+    ::Type{V},
     ::Type{T},
     name::String,
     t::Int,
 ) where {T}
     obj = PSI.get_objective_expression(container)
     variant = PSI.get_variant_terms(obj)
-    var = PSI.get_variable(container, var_type, T)[name, t]
+    var = PSI.get_variable(container, V, T)[name, t]
     return JuMP.coefficient(variant, var)
 end
 
@@ -255,7 +255,7 @@ Returns true if all coefficients match within tolerance.
 """
 function verify_objective_coefficients(
     container::PSI.OptimizationContainer,
-    var_type::PSI.VariableType,
+    ::Type{V},
     ::Type{T},
     name::String,
     expected::Union{Float64, Vector{Float64}};
@@ -267,7 +267,7 @@ function verify_objective_coefficients(
 
     for t in time_steps
         exp_val = expected isa Vector ? expected[t] : expected
-        actual = get_coef(container, var_type, T, name, t)
+        actual = get_coef(container, V, T, name, t)
         if !isapprox(actual, exp_val; atol = atol)
             @warn "Coefficient mismatch at t=$t: expected $exp_val, got $actual"
             return false
@@ -298,14 +298,14 @@ Returns 0.0 if the variable is not present in quadratic terms.
 """
 function get_objective_quadratic_coefficient(
     container::PSI.OptimizationContainer,
-    var_type::PSI.VariableType,
+    ::Type{V},
     ::Type{T},
     name::String,
     t::Int,
 ) where {T}
     obj = PSI.get_objective_expression(container)
     invariant = PSI.get_invariant_terms(obj)
-    var = PSI.get_variable(container, var_type, T)[name, t]
+    var = PSI.get_variable(container, V, T)[name, t]
     # JuMP.coefficient(expr, var, var) gets the coefficient of var^2
     return JuMP.coefficient(invariant, var, var)
 end
@@ -327,7 +327,7 @@ Returns true if all coefficients match within tolerance.
 """
 function verify_quadratic_objective_coefficients(
     container::PSI.OptimizationContainer,
-    var_type::PSI.VariableType,
+    ::Type{V},
     ::Type{T},
     name::String,
     expected_linear::Union{Float64, Vector{Float64}},
@@ -341,8 +341,8 @@ function verify_quadratic_objective_coefficients(
         exp_quad =
             expected_quadratic isa Vector ? expected_quadratic[t] : expected_quadratic
 
-        actual_lin = get_objective_coefficient(container, var_type, T, name, t)
-        actual_quad = get_objective_quadratic_coefficient(container, var_type, T, name, t)
+        actual_lin = get_objective_coefficient(container, V, T, name, t)
+        actual_quad = get_objective_quadratic_coefficient(container, V, T, name, t)
 
         if !isapprox(actual_lin, exp_lin; atol = atol)
             @warn "Linear coefficient mismatch at t=$t: expected $exp_lin, got $actual_lin"
