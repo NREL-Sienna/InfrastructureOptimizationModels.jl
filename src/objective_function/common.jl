@@ -25,7 +25,8 @@ end
 
 # TODO export this.
 # set to -1.0 for loads in POM
-objective_function_multiplier(::Type{<:VariableType}, ::Type{<:AbstractDeviceFormulation}) = 1.0
+objective_function_multiplier(::Type{<:VariableType}, ::Type{<:AbstractDeviceFormulation}) =
+    1.0
 
 ##################################
 #### ActivePowerVariable Cost ####

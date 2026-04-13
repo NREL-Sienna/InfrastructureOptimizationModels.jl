@@ -265,84 +265,29 @@ Creates piecewise linear cost function using a sum of variables and expression w
   - component_name::String: The component_name of the variable container
   - cost_function::Union{IS.CostCurve{IS.PiecewiseIncrementalCurve}, IS.CostCurve{IS.PiecewiseAverageCurve}}: container for piecewise linear cost
 """
+_rebuild_with_value_curve(c::IS.CostCurve, vc) =
+    IS.CostCurve(; value_curve = vc, power_units = IS.get_power_units(c))
+_rebuild_with_value_curve(c::IS.FuelCurve, vc) = IS.FuelCurve(;
+    value_curve = vc,
+    power_units = IS.get_power_units(c),
+    fuel_cost = IS.get_fuel_cost(c),
+)
+
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::Type{T},
     component::IS.InfrastructureSystemsComponent,
-    cost_function::V,
-    ::Type{U},
-) where {
-    T <: VariableType,
-    V <: Union{
+    cost_function::Union{
         IS.CostCurve{IS.PiecewiseIncrementalCurve},
         IS.CostCurve{IS.PiecewiseAverageCurve},
-    },
-    U <: AbstractDeviceFormulation,
-}
-    # Create new PiecewisePointCurve
-    value_curve = IS.get_value_curve(cost_function)
-    power_units = IS.get_power_units(cost_function)
-    pointbased_value_curve = IS.InputOutputCurve(value_curve)
-    pointbased_cost_function =
-        IS.CostCurve(; value_curve = pointbased_value_curve, power_units = power_units)
-    # Call method for PiecewisePointCurve
-    add_variable_cost_to_objective!(
-        container,
-        T,
-        component,
-        pointbased_cost_function,
-        U,
-    )
-    return
-end
-
-##################################################
-###### FuelCurve: PiecewiseIncrementalCurve ######
-######### and PiecewiseAverageCurve ##############
-##################################################
-
-"""
-Creates piecewise linear fuel cost function using a sum of variables and expression with sign and time step included.
-
-# Arguments
-
-  - container::OptimizationContainer : the optimization_container model built in InfrastructureOptimizationModels
-  - var_key::VariableKey: The variable name
-  - component_name::String: The component_name of the variable container
-  - cost_function::Union{IS.FuelCurve{IS.PiecewiseIncrementalCurve}, IS.FuelCurve{IS.PiecewiseAverageCurve}}: container for piecewise linear cost
-"""
-function add_variable_cost_to_objective!(
-    container::OptimizationContainer,
-    ::Type{T},
-    component::IS.InfrastructureSystemsComponent,
-    cost_function::V,
-    ::Type{U},
-) where {
-    T <: VariableType,
-    V <: Union{
         IS.FuelCurve{IS.PiecewiseIncrementalCurve},
         IS.FuelCurve{IS.PiecewiseAverageCurve},
     },
-    U <: AbstractDeviceFormulation,
-}
-    # Create new PiecewisePointCurve
-    value_curve = IS.get_value_curve(cost_function)
-    power_units = IS.get_power_units(cost_function)
-    fuel_cost = IS.get_fuel_cost(cost_function)
-    pointbased_value_curve = IS.InputOutputCurve(value_curve)
+    ::Type{U},
+) where {T <: VariableType, U <: AbstractDeviceFormulation}
+    pointbased_value_curve = IS.InputOutputCurve(IS.get_value_curve(cost_function))
     pointbased_cost_function =
-        IS.FuelCurve(;
-            value_curve = pointbased_value_curve,
-            power_units = power_units,
-            fuel_cost = fuel_cost,
-        )
-    # Call method for PiecewisePointCurve
-    add_variable_cost_to_objective!(
-        container,
-        T,
-        component,
-        pointbased_cost_function,
-        U,
-    )
+        _rebuild_with_value_curve(cost_function, pointbased_value_curve)
+    add_variable_cost_to_objective!(container, T, component, pointbased_cost_function, U)
     return
 end

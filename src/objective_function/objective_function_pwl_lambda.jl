@@ -48,7 +48,10 @@ Normalization constraint for PWL cost: sum of delta variables equals on-status.
 """
 struct PiecewiseLinearCostNormalizationConstraint <: ConstraintType end
 
-_sos_status(::Type{<:IS.InfrastructureSystemsComponent}, ::Type{<:AbstractDeviceFormulation}) =
+_sos_status(
+    ::Type{<:IS.InfrastructureSystemsComponent},
+    ::Type{<:AbstractDeviceFormulation},
+) =
     SOSStatusVariable.NO_VARIABLE
 
 """
@@ -141,16 +144,6 @@ function _determine_bin_lhs(
         @assert false
     end
 end
-
-# Migration note for POM:
-# Old call: _add_pwl_constraint!(container, component, U(), break_points, sos_val, t)
-# New call for standard form:
-#   power_var = get_variable(container, U(), T)[name, t]
-#   _add_pwl_constraint_standard!(container, component, break_points, sos_val, t, power_var)
-# New call for compact form (PowerAboveMinimumVariable):
-#   power_var = get_variable(container, U(), T)[name, t]
-#   P_min = get_active_power_limits(component).min
-#   _add_pwl_constraint_compact!(container, component, break_points, sos_val, t, power_var, P_min)
 
 """
 Implement the standard constraints for PWL variables. That is:
