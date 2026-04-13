@@ -104,8 +104,17 @@ function make_5_bus_with_ie_ts(
     im_key = add_time_series!(sys, source, im_ts)
     ex_key = add_time_series!(sys, source, ex_ts)
 
-    set_import_offer_curves!(oc, im_key)
-    set_export_offer_curves!(oc, ex_key)
+    # Build ImportExportTimeSeriesCost with TS-backed curves
+    im_ts_curve = make_import_export_ts_curve(im_key)
+    ex_ts_curve = make_import_export_ts_curve(ex_key)
+    ts_cost = ImportExportTimeSeriesCost(;
+        import_offer_curves = im_ts_curve,
+        export_offer_curves = ex_ts_curve,
+        energy_import_weekly_limit = get_energy_import_weekly_limit(oc),
+        energy_export_weekly_limit = get_energy_export_weekly_limit(oc),
+        ancillary_service_offers = get_ancillary_service_offers(oc),
+    )
+    set_operation_cost!(source, ts_cost)
 
     return sys
 end
@@ -206,13 +215,14 @@ function cost_due_to_time_varying_iec(
         @assert all(power_in_df.DateTime .== power_out_df.DateTime)
 
         @assert any([
-            get_operation_cost(comp) isa ImportExportCost for
+            get_operation_cost(comp) isa
+            Union{ImportExportCost, ImportExportTimeSeriesCost} for
             comp in get_components(T, sys)
         ])
         for gen_name in gen_names
             comp = get_component(T, sys, gen_name)
             cost = PSY.get_operation_cost(comp)
-            (cost isa ImportExportCost) || continue
+            (cost isa Union{ImportExportCost, ImportExportTimeSeriesCost}) || continue
             step_df[!, gen_name] .= 0.0
             # imports = addition of power = power flowing out of the device
             # exports = reduction of power = power flowing into the device
@@ -221,7 +231,7 @@ function cost_due_to_time_varying_iec(
                 (-1.0, power_in_df, PSY.get_export_offer_curves),
             )
                 offer_curves = getter(cost)
-                if PSI.is_time_variant(offer_curves)
+                if IS.is_time_series_backed(offer_curves)
                     vc_ts = getter(comp, cost; start_time = step_dt)
                     @assert all(unique(power_df.DateTime) .== TimeSeries.timestamp(vc_ts))
                     step_df[!, gen_name] .+=

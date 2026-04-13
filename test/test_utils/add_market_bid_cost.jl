@@ -14,9 +14,9 @@ function add_mbc_inner!(
         error("At least one of incr_curve or decr_curve must be provided")
     end
     mbc = MarketBidCost(;
-        no_load_cost = 0.0,
+        no_load_cost = LinearCurve(0.0),
         start_up = (hot = 0.0, warm = 0.0, cold = 0.0),
-        shut_down = 0.0,
+        shut_down = LinearCurve(0.0),
     )
     if !isnothing(decr_curve)
         set_decremental_offer_curves!(mbc, CostCurve(decr_curve))
@@ -82,7 +82,9 @@ function get_deterministic_ts(sys::PSY.System)
 end
 
 """
-Extend the MarketBidCost objects attached to the selected components such that they're determined by a time series.
+Convert the static `MarketBidCost` on each selected component to a
+`MarketBidTimeSeriesCost` whose offer curves, initial inputs, no-load cost, and
+shut-down cost are backed by time series.
 
 # Arguments:
 
@@ -112,9 +114,10 @@ function extend_mbc!(
     do_override_min_x::Bool = false,
 )
     @assert !isempty(get_components(active_components, sys)) "No components selected"
-    # incremental_initial_input is cost at minimum generation, NOT cost at zero generation
     for comp in get_components(active_components, sys)
         op_cost = get_operation_cost(comp)
+        @assert op_cost isa MarketBidCost
+
         if do_override_min_x && :active_power_limits in fieldnames(typeof(comp))
             min_power = with_units_base(sys, UnitSystem.NATURAL_UNITS) do
                 get_active_power_limits(comp).min
@@ -123,29 +126,15 @@ function extend_mbc!(
             min_power = nothing
         end
 
-        @assert op_cost isa MarketBidCost
-        for (getter, setter_initial, setter_curves, incr_or_decr) in (
-            (
-                get_incremental_offer_curves,
-                set_incremental_initial_input!,
-                set_incremental_offer_curves!,
-                "incremental",
-            ),
-            (
-                get_decremental_offer_curves,
-                set_decremental_initial_input!,
-                set_decremental_offer_curves!,
-                "decremental",
-            ),
+        # Build TS-backed offer curves for each direction
+        ts_curves = Dict{String, CostCurve{TimeSeriesPiecewiseIncrementalCurve}}()
+        for (getter, incr_or_decr) in (
+            (get_incremental_offer_curves, "incremental"),
+            (get_decremental_offer_curves, "decremental"),
         )
             cost_curve = getter(op_cost)
-            isnothing(cost_curve) && continue
-
             baseline = get_value_curve(cost_curve)::PiecewiseIncrementalCurve
-            baseline_initial = get_initial_input(baseline)
-            if zero_cost_at_min
-                baseline_initial = 0.0
-            end
+            baseline_initial = zero_cost_at_min ? 0.0 : get_initial_input(baseline)
             baseline_pwl = get_function_data(baseline)
             if do_override_min_x && isnothing(min_power)
                 min_power = first(get_x_coords(baseline_pwl))
@@ -153,7 +142,7 @@ function extend_mbc!(
 
             !isnothing(modify_baseline_pwl) &&
                 (baseline_pwl = modify_baseline_pwl(baseline_pwl))
-            # primes for easier attribution
+
             incr_initial = initial_varies ? (0.11, 0.05) : (0.0, 0.0)
             incr_x = breakpoints_vary ? (0.02, 0.07, 0.03) : (0.0, 0.0, 0.0)
             incr_y = slopes_vary ? (0.02, 0.07, 0.03) : (0.0, 0.0, 0.0)
@@ -183,9 +172,30 @@ function extend_mbc!(
             )
             initial_key = add_time_series!(sys, comp, my_initial_ts)
             curve_key = add_time_series!(sys, comp, my_pwl_ts)
-            setter_initial(op_cost, initial_key)
-            setter_curves(op_cost, curve_key)
+
+            ts_curves[incr_or_decr] =
+                make_market_bid_ts_curve(curve_key, initial_key)
         end
+
+        # Build constant TS for no_load_cost and shut_down (wrapped as TimeSeriesLinearCurve)
+        baseline_no_load = IS.get_proportional_term(get_no_load_cost(op_cost))
+        no_load_ts = make_deterministic_ts(sys, "no_load_cost", baseline_no_load, 0.0, 0.0)
+        no_load_key = add_time_series!(sys, comp, no_load_ts)
+
+        baseline_shut_down = IS.get_proportional_term(get_shut_down(op_cost))
+        shut_down_ts =
+            make_deterministic_ts(sys, "shut_down", baseline_shut_down, 0.0, 0.0)
+        shut_down_key = add_time_series!(sys, comp, shut_down_ts)
+
+        new_cost = MarketBidTimeSeriesCost(;
+            no_load_cost = TimeSeriesLinearCurve(no_load_key),
+            start_up = get_start_up(op_cost),
+            shut_down = TimeSeriesLinearCurve(shut_down_key),
+            incremental_offer_curves = ts_curves["incremental"],
+            decremental_offer_curves = ts_curves["decremental"],
+            ancillary_service_offers = get_ancillary_service_offers(op_cost),
+        )
+        set_operation_cost!(comp, new_cost)
     end
 end
 

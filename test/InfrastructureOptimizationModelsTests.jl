@@ -171,6 +171,8 @@ function run_tests()
                 @info "Starting integration tests..."
                 # --- operation/ subfolder ---
                 include(joinpath(TEST_DIR, "test_model_store.jl"))
+                # --- objective_function/ subfolder ---
+                include(joinpath(TEST_DIR, "test_offer_curve_cost.jl"))
             end
         end
 

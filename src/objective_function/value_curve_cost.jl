@@ -23,34 +23,55 @@
 #################################################################################
 
 ####################### get_{output/input}_offer_curves #########################
-# these 1-argument getters turn into straight getfield calls
-get_output_offer_curves(cost::PSY.ImportExportCost) = PSY.get_import_offer_curves(cost)
-get_output_offer_curves(cost::PSY.MarketBidCost) = PSY.get_incremental_offer_curves(cost)
-get_input_offer_curves(cost::PSY.ImportExportCost) = PSY.get_export_offer_curves(cost)
-get_input_offer_curves(cost::PSY.MarketBidCost) = PSY.get_decremental_offer_curves(cost)
+# 1-argument getters: straight getfield calls (same PSY getter for static and TS variants)
+get_output_offer_curves(cost::IEC_TYPES) = PSY.get_import_offer_curves(cost)
+get_output_offer_curves(cost::MBC_TYPES) = PSY.get_incremental_offer_curves(cost)
+get_input_offer_curves(cost::IEC_TYPES) = PSY.get_export_offer_curves(cost)
+get_input_offer_curves(cost::MBC_TYPES) = PSY.get_decremental_offer_curves(cost)
 
-# these 2-argument getters return either a TimeArray of curves or a single curve, 
-# depending on whether the cost is time varying or not.
+# 2-argument getters: resolve time series if needed, return static curve(s).
+# Static types: delegate to 1-arg getter (no resolution needed).
 get_output_offer_curves(
-    component::PSY.Component,
+    ::PSY.Component,
     cost::PSY.ImportExportCost;
     kwargs...,
-) = PSY.get_import_offer_curves(component, cost; kwargs...)
+) = PSY.get_import_offer_curves(cost)
 get_output_offer_curves(
-    component::PSY.Component,
+    ::PSY.Component,
     cost::PSY.MarketBidCost;
     kwargs...,
-) = PSY.get_incremental_offer_curves(component, cost; kwargs...)
+) = PSY.get_incremental_offer_curves(cost)
 get_input_offer_curves(
-    component::PSY.Component,
+    ::PSY.Component,
     cost::PSY.ImportExportCost;
     kwargs...,
-) = PSY.get_export_offer_curves(component, cost; kwargs...)
+) = PSY.get_export_offer_curves(cost)
 get_input_offer_curves(
-    component::PSY.Component,
+    ::PSY.Component,
     cost::PSY.MarketBidCost;
     kwargs...,
-) = PSY.get_decremental_offer_curves(component, cost; kwargs...)
+) = PSY.get_decremental_offer_curves(cost)
+# TS types: resolve via PSY's 2-arg getters.
+get_output_offer_curves(
+    component::PSY.Component,
+    cost::PSY.ImportExportTimeSeriesCost;
+    kwargs...,
+) = PSY.get_import_variable_cost(component, cost; kwargs...)
+get_output_offer_curves(
+    component::PSY.Component,
+    cost::PSY.MarketBidTimeSeriesCost;
+    kwargs...,
+) = PSY.get_incremental_variable_cost(component, cost; kwargs...)
+get_input_offer_curves(
+    component::PSY.Component,
+    cost::PSY.ImportExportTimeSeriesCost;
+    kwargs...,
+) = PSY.get_export_variable_cost(component, cost; kwargs...)
+get_input_offer_curves(
+    component::PSY.Component,
+    cost::PSY.MarketBidTimeSeriesCost;
+    kwargs...,
+) = PSY.get_decremental_variable_cost(component, cost; kwargs...)
 
 ######################### get_offer_curves(direction, ...) ##############################
 
@@ -60,9 +81,9 @@ get_offer_curves(::DecrementalOffer, device::PSY.StaticInjection) =
 get_offer_curves(::IncrementalOffer, device::PSY.StaticInjection) =
     get_output_offer_curves(PSY.get_operation_cost(device))
 get_initial_input(::DecrementalOffer, device::PSY.StaticInjection) =
-    PSY.get_decremental_initial_input(PSY.get_operation_cost(device))
+    IS.get_initial_input(PSY.get_value_curve(get_input_offer_curves(PSY.get_operation_cost(device))))
 get_initial_input(::IncrementalOffer, device::PSY.StaticInjection) =
-    PSY.get_incremental_initial_input(PSY.get_operation_cost(device))
+    IS.get_initial_input(PSY.get_value_curve(get_output_offer_curves(PSY.get_operation_cost(device))))
 
 # direction and cost curve (needed for VOM code path):
 get_offer_curves(::DecrementalOffer, op_cost::PSY.OfferCurveCost) =
@@ -98,9 +119,9 @@ _objective_sign(::DecrementalOffer) = OBJECTIVE_FUNCTION_NEGATIVE
 _get_parameter_field(::StartupCostParameter, op_cost) = PSY.get_start_up(op_cost)
 _get_parameter_field(::ShutdownCostParameter, op_cost) = PSY.get_shut_down(op_cost)
 _get_parameter_field(::IncrementalCostAtMinParameter, op_cost) =
-    PSY.get_incremental_initial_input(op_cost)
+    IS.get_initial_input(PSY.get_value_curve(get_output_offer_curves(op_cost)))
 _get_parameter_field(::DecrementalCostAtMinParameter, op_cost) =
-    PSY.get_decremental_initial_input(op_cost)
+    IS.get_initial_input(PSY.get_value_curve(get_input_offer_curves(op_cost)))
 _get_parameter_field(
     ::Union{
         IncrementalPiecewiseLinearSlopeParameter,
@@ -122,41 +143,19 @@ _get_parameter_field(
 #################################################################################
 
 _has_market_bid_cost(device::PSY.StaticInjection) =
-    PSY.get_operation_cost(device) isa PSY.MarketBidCost
+    PSY.get_operation_cost(device) isa MBC_TYPES
 
 _has_import_export_cost(device::PSY.Source) =
-    PSY.get_operation_cost(device) isa PSY.ImportExportCost
+    PSY.get_operation_cost(device) isa IEC_TYPES
 _has_import_export_cost(::PSY.StaticInjection) = false
 
 _has_offer_curve_cost(device::PSY.Component) =
     _has_market_bid_cost(device) || _has_import_export_cost(device)
 
-_has_parameter_time_series(::StartupCostParameter, device::PSY.StaticInjection) =
-    is_time_variant(PSY.get_start_up(PSY.get_operation_cost(device)))
-
-_has_parameter_time_series(::ShutdownCostParameter, device::PSY.StaticInjection) =
-    is_time_variant(PSY.get_shut_down(PSY.get_operation_cost(device)))
-
-_has_parameter_time_series(
-    ::T,
-    device::PSY.StaticInjection,
-) where {T <: AbstractCostAtMinParameter} =
-    _has_offer_curve_cost(device) &&
-    is_time_variant(_get_parameter_field(T(), PSY.get_operation_cost(device)))
-
-_has_parameter_time_series(
-    ::T,
-    device::PSY.StaticInjection,
-) where {T <: AbstractPiecewiseLinearSlopeParameter} =
-    _has_offer_curve_cost(device) &&
-    is_time_variant(_get_parameter_field(T(), PSY.get_operation_cost(device)))
-
-_has_parameter_time_series(
-    ::T,
-    device::PSY.StaticInjection,
-) where {T <: AbstractPiecewiseLinearBreakpointParameter} =
-    _has_offer_curve_cost(device) &&
-    is_time_variant(_get_parameter_field(T(), PSY.get_operation_cost(device)))
+# With the static/TS type split, time-series parameters are determined by cost type:
+# TS cost types always have time-series parameters; static types never do.
+_has_parameter_time_series(::ParameterType, device::PSY.StaticInjection) =
+    PSY.get_operation_cost(device) isa TS_OFFER_CURVE_COST_TYPES
 
 #################################################################################
 # Section 5: _consider_parameter (generic versions)
@@ -200,35 +199,6 @@ _consider_parameter(
 # (ThermalMultiStart, RenewableDispatch, Storage) are in POM.
 #################################################################################
 
-function validate_initial_input_time_series(
-    device::PSY.StaticInjection,
-    dir::OfferDirection,
-)
-    initial_input = get_initial_input(dir, device)
-    initial_is_ts = is_time_variant(initial_input)
-    variable_is_ts = is_time_variant(get_offer_curves(dir, device))
-    label = string(dir)
-
-    (initial_is_ts && !variable_is_ts) &&
-        @warn "In `MarketBidCost` for $(get_name(device)), found time series for `$(label)_initial_input` but non-time-series `$(label)_offer_curves`; will ignore `initial_input` of `$(label)_offer_curves`"
-    (variable_is_ts && !initial_is_ts) &&
-        throw(
-            ArgumentError(
-                "In `MarketBidCost` for $(get_name(device)), if providing time series for `$(label)_offer_curves`, must also provide time series for `$(label)_initial_input`",
-            ),
-        )
-
-    if !variable_is_ts && !initial_is_ts
-        _validate_eltype(
-            Union{Float64, Nothing}, device, initial_input, " $(label)_initial_input",
-        )
-    else
-        _validate_eltype(
-            Float64, device, initial_input, " $(label)_initial_input",
-        )
-    end
-end
-
 curvity_check(::IncrementalOffer, x) = PSY.is_convex(x)
 curvity_check(::DecrementalOffer, x) = PSY.is_concave(x)
 expected_curvity(::IncrementalOffer) = "convex"
@@ -236,97 +206,51 @@ expected_curvity(::DecrementalOffer) = "concave"
 
 function validate_occ_breakpoints_slopes(device::PSY.StaticInjection, dir::OfferDirection)
     offer_curves = get_offer_curves(dir, device)
-    device_name = get_name(device)
-    is_ts = is_time_variant(offer_curves)
-    expected_type = if is_ts
-        IS.PiecewiseStepData
-    else
-        PSY.CostCurve{PSY.PiecewiseIncrementalCurve}
-    end
-    p1 = nothing
-    apply_maybe_across_time_series(device, offer_curves) do x
-        _validate_eltype(expected_type, device, x, " $(string(dir)) offer curves")
-        cost_curve_name = nameof(typeof(PSY.get_operation_cost(device)))
-        curvity_check(dir, x) ||
-            throw(
-                ArgumentError(
-                    "$(uppercasefirst(string(dir))) $cost_curve_name for component $(device_name) is non-$(expected_curvity(dir))",
-                ),
-            )
-
-        p1 = _validate_occ_subtype(
-            PSY.get_operation_cost(device),
-            dir,
-            is_ts,
-            x,
-            device_name,
-            p1,
-        )
-    end
+    _validate_occ_curves(device, dir, offer_curves)
 end
 
-function _validate_occ_subtype(
-    ::PSY.MarketBidCost,
+# Static: validate convexity/concavity and cost-type-specific constraints
+function _validate_occ_curves(
+    device::PSY.StaticInjection,
     dir::OfferDirection,
-    is_ts,
-    curve::PSY.PiecewiseStepData,
-    device_name::String,
-    p1::Union{Nothing, Float64},
+    cost_curve::PSY.CostCurve{PSY.PiecewiseIncrementalCurve},
 )
-    @assert is_ts
-    my_p1 = first(PSY.get_x_coords(curve))
-    if isnothing(p1)
-        p1 = my_p1
-    elseif !isapprox(p1, my_p1)
+    device_name = get_name(device)
+    cost_curve_name = nameof(typeof(PSY.get_operation_cost(device)))
+    curvity_check(dir, cost_curve) ||
         throw(
             ArgumentError(
-                "Inconsistent minimum breakpoint values in time series MarketBidCost for $(device_name) offer curves. For time-variable MarketBidCost, all first x-coordinates must be equal across the entire time series.",
+                "$(uppercasefirst(string(dir))) $cost_curve_name for component $(device_name) is non-$(expected_curvity(dir))",
             ),
         )
-    end
-    return p1
+    _validate_occ_subtype(PSY.get_operation_cost(device), dir, cost_curve, device_name)
 end
 
-_validate_occ_subtype(
-    ::PSY.MarketBidCost,
-    dir::OfferDirection,
-    is_ts,
-    ::PSY.CostCurve,
-    args...,
-) =
-    @assert !is_ts
+# TS-backed: validated at parameter population time, not here
+_validate_occ_curves(::PSY.StaticInjection, ::OfferDirection,
+    ::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve}) = nothing
+
+_validate_occ_subtype(::PSY.MarketBidCost, ::OfferDirection, ::PSY.CostCurve, args...) =
+    nothing
 
 function _validate_occ_subtype(
-    cost::PSY.ImportExportCost,
-    dir::OfferDirection,
-    is_ts,
+    ::PSY.ImportExportCost,
+    ::OfferDirection,
     curve::PSY.CostCurve,
     args...,
 )
-    @assert !is_ts
     !iszero(PSY.get_vom_cost(curve)) && throw(
         ArgumentError(
             "For ImportExportCost, VOM cost must be zero.",
         ),
     )
-    vc = PSY.get_value_curve(curve)
     !iszero(PSY.get_initial_input(curve)) && throw(
         ArgumentError(
             "For ImportExportCost, initial input must be zero.",
         ),
     )
-    _validate_occ_subtype(cost, dir, true, PSY.get_function_data(vc))
-end
-
-function _validate_occ_subtype(
-    ::PSY.ImportExportCost,
-    dir::OfferDirection,
-    is_ts,
-    curve::PSY.PiecewiseStepData,
-    args...,
-)
-    @assert is_ts
-    if !iszero(first(PSY.get_x_coords(curve)))
+    fd = PSY.get_function_data(PSY.get_value_curve(curve))
+    if !iszero(first(PSY.get_x_coords(fd)))
         throw(
             ArgumentError(
                 "For ImportExportCost, the first breakpoint must be zero.",
@@ -339,44 +263,50 @@ end
 # Device-specific overloads (ThermalMultiStart, RenewableDispatch, Storage) are in POM.
 
 function validate_occ_component(::StartupCostParameter, device::PSY.StaticInjection)
-    startup = PSY.get_start_up(PSY.get_operation_cost(device))
-    contains_multistart = false
-    apply_maybe_across_time_series(device, startup) do x
-        if x isa Float64
-            return
-        elseif x isa Union{NTuple{3, Float64}, StartUpStages}
-            contains_multistart = true
-        else
-            location =
-                is_time_variant(startup) ? " in time series $(get_name(startup))" : ""
-            throw(
-                ArgumentError(
-                    "Expected Float64 or NTuple{3, Float64} or StartUpStages startup cost but got $(typeof(x))$location for $(get_name(device))",
-                ),
-            )
-        end
-    end
-    if contains_multistart
-        location = is_time_variant(startup) ? " in time series $(get_name(startup))" : ""
-        @warn "Multi-start costs detected$location for non-multi-start unit $(get_name(device)), will take the maximum"
+    op_cost = PSY.get_operation_cost(device)
+    # TS types are validated at parameter population time
+    op_cost isa PSY.MarketBidTimeSeriesCost && return
+    startup = PSY.get_start_up(op_cost)
+    if startup isa Union{NTuple{3, Float64}, StartUpStages}
+        @warn "Multi-start costs detected for non-multi-start unit $(get_name(device)), will take the maximum"
+    elseif !(startup isa Float64)
+        throw(
+            ArgumentError(
+                "Expected Float64 or StartUpStages startup cost but got $(typeof(startup)) for $(get_name(device))",
+            ),
+        )
     end
     return
 end
 
 function validate_occ_component(::ShutdownCostParameter, device::PSY.StaticInjection)
-    shutdown = PSY.get_shut_down(PSY.get_operation_cost(device))
-    _validate_eltype(Float64, device, shutdown, " for shutdown cost")
+    op_cost = PSY.get_operation_cost(device)
+    # TS types are validated at parameter population time
+    op_cost isa PSY.MarketBidTimeSeriesCost && return
+    # Static MBC: shut_down is LinearCurve; ThermalGenerationCost: shut_down is Float64
+    shutdown = PSY.get_shut_down(op_cost)
+    if shutdown isa IS.LinearCurve
+        return  # valid
+    elseif shutdown isa Float64
+        return  # valid (e.g. ThermalGenerationCost)
+    else
+        throw(
+            ArgumentError(
+                "Expected Float64 or LinearCurve shutdown cost but got $(typeof(shutdown)) for $(get_name(device))",
+            ),
+        )
+    end
 end
 
 validate_occ_component(
     ::IncrementalCostAtMinParameter,
     device::PSY.StaticInjection,
-) = validate_initial_input_time_series(device, IncrementalOffer())
+) = nothing  # consistency guaranteed by the static/TS type split
 
 validate_occ_component(
     ::DecrementalCostAtMinParameter,
     device::PSY.StaticInjection,
-) = validate_initial_input_time_series(device, DecrementalOffer())
+) = nothing  # consistency guaranteed by the static/TS type split
 
 validate_occ_component(
     ::IncrementalPiecewiseLinearBreakpointParameter,
@@ -481,35 +411,8 @@ function _get_pwl_data(
     time::Int,
 ) where {T <: PSY.Component}
     cost_data = get_offer_curves(dir, component)
-
-    if is_time_variant(cost_data)
-        name = PSY.get_name(component)
-
-        SlopeParam = _slope_param(dir)
-        slope_param_arr = get_parameter_array(container, SlopeParam, T)
-        slope_param_mult = get_parameter_multiplier_array(container, SlopeParam, T)
-        @assert size(slope_param_arr) == size(slope_param_mult)
-        slope_cost_component =
-            slope_param_arr[name, :, time] .* slope_param_mult[name, :, time]
-        slope_cost_component = slope_cost_component.data
-
-        BreakpointParam = _breakpoint_param(dir)
-        breakpoint_param_container = get_parameter(container, BreakpointParam, T)
-        breakpoint_param_arr = get_parameter_column_refs(breakpoint_param_container, name)
-        breakpoint_param_mult = get_multiplier_array(breakpoint_param_container)
-        @assert size(breakpoint_param_arr) == size(breakpoint_param_mult[name, :, :])
-        breakpoint_cost_component =
-            breakpoint_param_arr[:, time] .* breakpoint_param_mult[name, :, time]
-        breakpoint_cost_component = breakpoint_cost_component.data
-
-        @assert_op length(slope_cost_component) == length(breakpoint_cost_component) - 1
-        unit_system = PSY.UnitSystem.NATURAL_UNITS
-    else
-        cost_component = PSY.get_function_data(PSY.get_value_curve(cost_data))
-        breakpoint_cost_component = PSY.get_x_coords(cost_component)
-        slope_cost_component = PSY.get_y_coords(cost_component)
-        unit_system = PSY.get_power_units(cost_data)
-    end
+    breakpoint_cost_component, slope_cost_component, unit_system =
+        _get_raw_pwl_data(dir, container, component, cost_data, time)
 
     breakpoints, slopes = get_piecewise_curve_per_system_unit(
         breakpoint_cost_component,
@@ -518,8 +421,52 @@ function _get_pwl_data(
         get_model_base_power(container),
         PSY.get_base_power(component),
     )
-
     return breakpoints, slopes
+end
+
+# static curve: read directly from the cost curve
+function _get_raw_pwl_data(
+    ::OfferDirection,
+    ::OptimizationContainer,
+    ::T,
+    cost_data::PSY.CostCurve{PSY.PiecewiseIncrementalCurve},
+    ::Int,
+) where {T <: PSY.Component}
+    cost_component = PSY.get_function_data(PSY.get_value_curve(cost_data))
+    return PSY.get_x_coords(cost_component),
+    PSY.get_y_coords(cost_component),
+    PSY.get_power_units(cost_data)
+end
+
+# time-series curve: read from parameter arrays (already initialized)
+function _get_raw_pwl_data(
+    dir::OfferDirection,
+    container::OptimizationContainer,
+    component::T,
+    ::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve},
+    time::Int,
+) where {T <: PSY.Component}
+    name = PSY.get_name(component)
+
+    SlopeParam = _slope_param(dir)
+    slope_param_arr = get_parameter_array(container, SlopeParam, T)
+    slope_param_mult = get_parameter_multiplier_array(container, SlopeParam, T)
+    @assert size(slope_param_arr) == size(slope_param_mult)
+    slope_cost_component =
+        slope_param_arr[name, :, time] .* slope_param_mult[name, :, time]
+    slope_cost_component = slope_cost_component.data
+
+    BreakpointParam = _breakpoint_param(dir)
+    breakpoint_param_container = get_parameter(container, BreakpointParam, T)
+    breakpoint_param_arr = get_parameter_column_refs(breakpoint_param_container, name)
+    breakpoint_param_mult = get_multiplier_array(breakpoint_param_container)
+    @assert size(breakpoint_param_arr) == size(breakpoint_param_mult[name, :, :])
+    breakpoint_cost_component =
+        breakpoint_param_arr[:, time] .* breakpoint_param_mult[name, :, time]
+    breakpoint_cost_component = breakpoint_cost_component.data
+
+    @assert_op length(slope_cost_component) == length(breakpoint_cost_component) - 1
+    return breakpoint_cost_component, slope_cost_component, PSY.UnitSystem.NATURAL_UNITS
 end
 
 #################################################################################

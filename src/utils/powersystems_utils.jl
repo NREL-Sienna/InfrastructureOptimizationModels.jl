@@ -376,6 +376,8 @@ function _get_piecewise_curve_per_system_unit(
 end
 
 is_time_variant(::IS.TimeSeriesKey) = true
+is_time_variant(x::IS.ProductionVariableCostCurve) = IS.is_time_series_backed(x)
+is_time_variant(x::IS.ValueCurve) = IS.is_time_series_backed(x)
 is_time_variant(::Any) = false
 
 function create_temporary_cost_function_in_system_per_unit(

@@ -102,7 +102,7 @@ function tweak_system!(sys::System, load_pow_mult, therm_pow_mult, therm_price_m
     # replace with type of component?
     for therm in get_components(ThermalStandard, sys)
         op_cost = get_operation_cost(therm)
-        op_cost isa MarketBidCost && continue
+        op_cost isa Union{MarketBidCost, MarketBidTimeSeriesCost} && continue
         with_units_base(sys, UnitSystem.DEVICE_BASE) do
             old_limits = get_active_power_limits(therm)
             new_limits = (min = old_limits.min, max = old_limits.max * therm_pow_mult)
@@ -130,22 +130,14 @@ tweak_for_startup_shutdown!(sys::System) = tweak_system!(sys::System, 0.8, 1.0, 
 
 tweak_for_decremental_initial!(sys::PSY.System) = tweak_system!(sys, 1.0, 1.2, 0.5)
 
-"""Transfer the market bid cost from old_comp to new_comp, copying any time series in the process."""
+"""Transfer the market bid cost from old_comp to new_comp."""
 function transfer_mbc!(
     new_comp::PSY.Device,
     old_comp::PSY.Device,
-    new_sys::PSY.System,
+    ::PSY.System,
 )
     mbc = deepcopy(get_operation_cost(old_comp))
-    @assert mbc isa PSY.MarketBidCost
-    for field in fieldnames(PSY.MarketBidCost)
-        val = getfield(mbc, field)
-        if val isa IS.TimeSeriesKey
-            ts = PSY.get_time_series(old_comp, val)
-            new_ts_key = add_time_series!(new_sys, new_comp, deepcopy(ts))
-            setfield!(mbc, field, new_ts_key)
-        end
-    end
+    @assert mbc isa PSY.MarketBidCost  # static MBC has no embedded TS keys to transfer
     set_operation_cost!(new_comp, mbc)
     return
 end
@@ -153,53 +145,50 @@ end
 function zero_out_startup_shutdown_costs!(comp::PSY.Device)
     op_cost = get_operation_cost(comp)::MarketBidCost
     set_start_up!(op_cost, (hot = 0.0, warm = 0.0, cold = 0.0))
-    set_shut_down!(op_cost, 0.0)
+    set_shut_down!(op_cost, LinearCurve(0.0))
 end
 
 """Set everything except the incremental_offer_curves to zero on the MarketBidCost attached to the unit."""
 function zero_out_non_incremental_curve!(sys::PSY.System, unit::PSY.Component)
     cost = deepcopy(get_operation_cost(unit)::MarketBidCost)
-    set_no_load_cost!(cost, 0.0)
+    set_no_load_cost!(cost, LinearCurve(0.0))
     set_start_up!(cost, (hot = 0.0, warm = 0.0, cold = 0.0))
-    set_shut_down!(cost, 0.0)
+    set_shut_down!(cost, LinearCurve(0.0))
     # set minimum generation cost (but not min gen power) to zero.
-    if get_incremental_offer_curves(cost) isa IS.TimeSeriesKey
-        zero_ts = make_deterministic_ts(sys, "initial_input", 0.0, 0.0, 0.0)
-        zero_ts_key = add_time_series!(sys, unit, zero_ts)
-        set_incremental_initial_input!(cost, zero_ts_key)
-    else
-        base_curve = get_value_curve(get_incremental_offer_curves(cost))
-        x_coords = get_x_coords(base_curve)
-        slopes = get_slopes(base_curve)
-        new_curve = PiecewiseIncrementalCurve(0.0, x_coords, slopes)
-        set_incremental_offer_curves!(cost, CostCurve(new_curve))
-    end
+    base_curve = get_value_curve(get_incremental_offer_curves(cost))
+    x_coords = get_x_coords(base_curve)
+    slopes = get_slopes(base_curve)
+    new_curve = PiecewiseIncrementalCurve(0.0, x_coords, slopes)
+    set_incremental_offer_curves!(cost, CostCurve(new_curve))
     set_operation_cost!(unit, cost)
 end
 
-"Set the no_load_cost to `nothing` and the initial_input to the old no_load_cost. Not designed for time series"
+"Move the no_load_cost into the initial_input of the incremental offer curve. Not designed for time series."
 function no_load_to_initial_input!(comp::Generator)
     cost = get_operation_cost(comp)::MarketBidCost
-    no_load = PSY.get_no_load_cost(cost)
+    no_load = IS.get_proportional_term(PSY.get_no_load_cost(cost))
     old_fd = get_function_data(
         get_value_curve(get_incremental_offer_curves(get_operation_cost(comp))),
     )::IS.PiecewiseStepData
     new_vc = PiecewiseIncrementalCurve(old_fd, no_load, nothing)
     set_incremental_offer_curves!(get_operation_cost(comp), CostCurve(new_vc))
-    set_no_load_cost!(get_operation_cost(comp), nothing)
+    set_no_load_cost!(get_operation_cost(comp), LinearCurve(0.0))
     return
 end
 
 no_load_to_initial_input!(
     sys::PSY.System,
-    sel = make_selector(x -> get_operation_cost(x) isa MarketBidCost, Generator),
+    sel = make_selector(
+        x -> get_operation_cost(x) isa Union{MarketBidCost, MarketBidTimeSeriesCost},
+        Generator,
+    ),
 ) = no_load_to_initial_input!.(get_components(sel, sys))
 
 "Set all MBC thermal unit min active powers to their min breakpoints"
 function adjust_min_power!(sys)
     for comp in get_components(Union{ThermalStandard, ThermalMultiStart}, sys)
         op_cost = get_operation_cost(comp)
-        op_cost isa MarketBidCost || continue
+        op_cost isa Union{MarketBidCost, MarketBidTimeSeriesCost} || continue
         cost_curve = get_incremental_offer_curves(op_cost)::CostCurve
         baseline = get_value_curve(cost_curve)::PiecewiseIncrementalCurve
         x_coords = get_x_coords(get_function_data(baseline))
@@ -210,15 +199,16 @@ function adjust_min_power!(sys)
 end
 
 """
-Add startup and shutdown time series to a certain component. `with_increments`: whether the
-elements should be increasing over time or constant. Version A: designed for
-`c_fixed_market_bid_cost`.
+Convert a component's MarketBidCost to MarketBidTimeSeriesCost with startup and shutdown
+time series. `with_increments`: whether the elements should be increasing over time or
+constant. Version A: designed for `c_fixed_market_bid_cost`.
 """
 function add_startup_shutdown_ts_a!(sys::System, with_increments::Bool)
     res_incr = with_increments ? 0.05 : 0.0
     interval_incr = with_increments ? 0.01 : 0.0
     unit1 = get_component(ThermalStandard, sys, "Test Unit1")
-    @assert get_operation_cost(unit1) isa MarketBidCost
+    op_cost = get_operation_cost(unit1)
+    @assert op_cost isa Union{MarketBidCost, MarketBidTimeSeriesCost}
     startup_ts_1 = make_deterministic_ts(
         sys,
         "start_up",
@@ -226,24 +216,29 @@ function add_startup_shutdown_ts_a!(sys::System, with_increments::Bool)
         res_incr,
         interval_incr,
     )
-    set_start_up!(sys, unit1, startup_ts_1)
     shutdown_ts_1 =
         make_deterministic_ts(sys, "shut_down", 0.5, res_incr, interval_incr)
-    set_shut_down!(sys, unit1, shutdown_ts_1)
+    _convert_to_ts_mbc!(sys, unit1, op_cost, startup_ts_1, shutdown_ts_1)
     return startup_ts_1, shutdown_ts_1
 end
 
 """
-Add startup and shutdown time series to a certain component. `with_increments`: whether the
-elements should be increasing over time or constant. Version B: designed for `c_sys5_pglib`.
+Convert a component's MarketBidCost to MarketBidTimeSeriesCost with startup and shutdown
+time series. `with_increments`: whether the elements should be increasing over time or
+constant. Version B: designed for `c_sys5_pglib`.
 """
 function add_startup_shutdown_ts_b!(sys::System, with_increments::Bool)
     res_incr = with_increments ? 0.05 : 0.0
     interval_incr = with_increments ? 0.01 : 0.0
     unit1 = get_component(ThermalMultiStart, sys, "115_STEAM_1")
-    base_startup = Tuple(get_start_up(get_operation_cost(unit1)))
-    base_shutdown = get_shut_down(get_operation_cost(unit1))
-    @assert get_operation_cost(unit1) isa MarketBidCost
+    op_cost = get_operation_cost(unit1)
+    @assert op_cost isa Union{MarketBidCost, MarketBidTimeSeriesCost}
+    base_startup = Tuple(get_start_up(op_cost))
+    base_shutdown = if op_cost isa MarketBidCost
+        IS.get_proportional_term(get_shut_down(op_cost))
+    else
+        get_shut_down(op_cost)  # already TS or scalar
+    end
     startup_ts_1 = make_deterministic_ts(
         sys,
         "start_up",
@@ -251,7 +246,6 @@ function add_startup_shutdown_ts_b!(sys::System, with_increments::Bool)
         res_incr,
         interval_incr,
     )
-    set_start_up!(sys, unit1, startup_ts_1)
     shutdown_ts_1 =
         make_deterministic_ts(
             sys,
@@ -260,8 +254,90 @@ function add_startup_shutdown_ts_b!(sys::System, with_increments::Bool)
             res_incr,
             interval_incr,
         )
-    set_shut_down!(sys, unit1, shutdown_ts_1)
+    _convert_to_ts_mbc!(sys, unit1, op_cost, startup_ts_1, shutdown_ts_1)
     return startup_ts_1, shutdown_ts_1
+end
+
+"""
+Helper: convert a static MarketBidCost to MarketBidTimeSeriesCost, attaching the given
+startup and shutdown time series. If already a MarketBidTimeSeriesCost, update in place.
+Offer curves are converted to TS-backed with constant values; no_load_cost gets a constant TS.
+"""
+function _convert_to_ts_mbc!(
+    sys::System,
+    comp::PSY.Device,
+    op_cost::MarketBidCost,
+    startup_ts::Deterministic,
+    shutdown_ts::Deterministic,
+)
+    startup_key = add_time_series!(sys, comp, startup_ts)
+    shutdown_key = add_time_series!(sys, comp, shutdown_ts)
+
+    # Convert offer curves to TS-backed with constant values
+    local incr_curve, decr_curve
+    for (getter, incr_or_decr) in (
+        (get_incremental_offer_curves, "incremental"),
+        (get_decremental_offer_curves, "decremental"),
+    )
+        cost_curve = getter(op_cost)
+        baseline = get_value_curve(cost_curve)::PiecewiseIncrementalCurve
+        baseline_pwl = get_function_data(baseline)
+        baseline_initial = get_initial_input(baseline)
+
+        curve_ts = make_deterministic_ts(
+            sys,
+            "variable_cost $(incr_or_decr)",
+            baseline_pwl,
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 0.0),
+        )
+        curve_key = add_time_series!(sys, comp, curve_ts)
+
+        if !isnothing(baseline_initial)
+            initial_ts = make_deterministic_ts(
+                sys, "initial_input $(incr_or_decr)", baseline_initial, 0.0, 0.0)
+            initial_key = add_time_series!(sys, comp, initial_ts)
+        else
+            initial_key = nothing
+        end
+
+        if incr_or_decr == "incremental"
+            incr_curve = make_market_bid_ts_curve(curve_key, initial_key)
+        else
+            decr_curve = make_market_bid_ts_curve(curve_key, initial_key)
+        end
+    end
+
+    # no_load_cost as constant TS
+    baseline_no_load = IS.get_proportional_term(get_no_load_cost(op_cost))
+    no_load_ts = make_deterministic_ts(sys, "no_load_cost", baseline_no_load, 0.0, 0.0)
+    no_load_key = add_time_series!(sys, comp, no_load_ts)
+
+    new_cost = MarketBidTimeSeriesCost(;
+        no_load_cost = TimeSeriesLinearCurve(no_load_key),
+        start_up = startup_key,
+        shut_down = TimeSeriesLinearCurve(shutdown_key),
+        incremental_offer_curves = incr_curve,
+        decremental_offer_curves = decr_curve,
+        ancillary_service_offers = get_ancillary_service_offers(op_cost),
+    )
+    set_operation_cost!(comp, new_cost)
+    return
+end
+
+function _convert_to_ts_mbc!(
+    sys::System,
+    comp::PSY.Device,
+    op_cost::MarketBidTimeSeriesCost,
+    startup_ts::Deterministic,
+    shutdown_ts::Deterministic,
+)
+    # Already a TS cost — just update startup/shutdown
+    startup_key = add_time_series!(sys, comp, startup_ts)
+    shutdown_key = add_time_series!(sys, comp, shutdown_ts)
+    set_start_up!(op_cost, startup_key)
+    set_shut_down!(op_cost, TimeSeriesLinearCurve(shutdown_key))
+    return
 end
 
 # functions for building the systems: calls the above
@@ -352,7 +428,7 @@ function remove_thermal_mbcs!(sys::PSY.System)
         new_op_cost = ThermalGenerationCost(;
             variable = get_incremental_offer_curves(old_cost),
             start_up = get_start_up(old_cost),
-            shut_down = get_shut_down(old_cost),
+            shut_down = IS.get_proportional_term(get_shut_down(old_cost)),
             fixed = 0.0,
         )
         set_operation_cost!(comp, new_op_cost)
@@ -462,9 +538,9 @@ function create_multistart_sys(
     set_operation_cost!(
         ms_comp,
         MarketBidCost(;
-            no_load_cost = nothing,
+            no_load_cost = LinearCurve(0.0),
             start_up = (hot = 300.0, warm = 450.0, cold = 500.0),
-            shut_down = 100.0,
+            shut_down = LinearCurve(100.0),
             incremental_offer_curves = CostCurve(new_ic),
         ),
     )
