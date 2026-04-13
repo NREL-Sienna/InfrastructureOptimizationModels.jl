@@ -198,6 +198,9 @@ export init_optimization_container!
 export get_initial_conditions
 export serialize_outputs
 export serialize_optimization_model
+export serialize_system_to_json
+export write_system_to_hdf5!
+export HDF_MODEL_STORE_FILENAME
 
 export get_device_models
 export get_branch_models

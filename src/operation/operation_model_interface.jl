@@ -348,3 +348,37 @@ function serialize_optimization_model(model::OperationModel, save_path::String)
     )
     return
 end
+
+const HDF_MODEL_STORE_FILENAME = "model_store.h5"
+
+"""
+Convert the model's system to JSON, returning the UUID and JSON text.
+Designed to be called from a background thread via `Threads.@spawn`.
+"""
+function serialize_system_to_json(model::OperationModel)
+    sys = get_system(model)
+    uuid = string(IS.get_uuid(sys))
+    json_text = PSY.to_json(sys)
+    return (uuid, json_text)
+end
+
+"""
+Write pre-serialized system JSON into an HDF5 file in the model's output directory.
+Creates the file `HDF_MODEL_STORE_FILENAME` if it does not exist.
+"""
+function write_system_to_hdf5!(model::OperationModel, uuid::String, json_text::String)
+    output_dir = get_output_dir(model)
+    hdf5_path = joinpath(output_dir, HDF_MODEL_STORE_FILENAME)
+    mode = isfile(hdf5_path) ? "r+" : "w"
+    HDF5.h5open(hdf5_path, mode) do file
+        if !haskey(file, "system")
+            HDF5.create_group(file, "system")
+        end
+        systems_group = file["system"]
+        if !haskey(systems_group, uuid)
+            systems_group[uuid] = json_text
+        end
+    end
+    @info "Serialized system to HDF5" hdf5_path uuid
+    return
+end
