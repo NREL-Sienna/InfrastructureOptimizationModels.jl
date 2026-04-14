@@ -6,15 +6,14 @@ const HYBS_BILINEAR_META = "BilinearTest"
         setup = _setup_qa_test(["dev1"], 1:1)
         depth = 3
 
-        IOM._add_quadratic_approx!(
+        IOM.add_quadratic_approx!(
             IOM.EpigraphQuadConfig(depth),
             setup.container,
             MockThermalGen,
             ["dev1"],
             1:1,
             setup.var_container,
-            0.0,
-            4.0,
+            [(min = 0.0, max = 4.0)],
             HYBS_META,
         )
         expr_container = IOM.get_expression(
@@ -36,15 +35,14 @@ const HYBS_BILINEAR_META = "BilinearTest"
         x_var = setup.var_container["dev1", 1]
         JuMP.fix(x_var, 0.35; force = true)
 
-        IOM._add_quadratic_approx!(
+        IOM.add_quadratic_approx!(
             IOM.EpigraphQuadConfig(4),
             setup.container,
             MockThermalGen,
             ["dev1"],
             1:1,
             setup.var_container,
-            0.0,
-            1.0,
+            [(min = 0.0, max = 1.0)],
             HYBS_META,
         )
         expr_container = IOM.get_expression(
@@ -70,15 +68,14 @@ const HYBS_BILINEAR_META = "BilinearTest"
         x_var = setup.var_container["dev1", 1]
         JuMP.fix(x_var, 1.3; force = true)
 
-        IOM._add_quadratic_approx!(
+        IOM.add_quadratic_approx!(
             IOM.EpigraphQuadConfig(4),
             setup.container,
             MockThermalGen,
             ["dev1"],
             1:1,
             setup.var_container,
-            0.0,
-            2.0,
+            [(min = 0.0, max = 2.0)],
             HYBS_META,
         )
         expr_container = IOM.get_expression(
@@ -101,15 +98,14 @@ const HYBS_BILINEAR_META = "BilinearTest"
 
     @testset "Multiple time steps" begin
         setup = _setup_qa_test(["dev1"], 1:3)
-        IOM._add_quadratic_approx!(
+        IOM.add_quadratic_approx!(
             IOM.EpigraphQuadConfig(2),
             setup.container,
             MockThermalGen,
             ["dev1"],
             1:3,
             setup.var_container,
-            0.0,
-            4.0,
+            [(min = 0.0, max = 4.0)],
             HYBS_META,
         )
         expr_container = IOM.get_expression(
@@ -132,15 +128,14 @@ const HYBS_BILINEAR_META = "BilinearTest"
             x_var = setup.var_container["dev1", 1]
             JuMP.fix(x_var, 0.35; force = true)
 
-            IOM._add_quadratic_approx!(
+            IOM.add_quadratic_approx!(
                 IOM.EpigraphQuadConfig(depth),
                 setup.container,
                 MockThermalGen,
                 ["dev1"],
                 1:1,
                 setup.var_container,
-                0.0,
-                1.0,
+                [(min = 0.0, max = 1.0)],
                 HYBS_META,
             )
             expr_container = IOM.get_expression(
@@ -170,7 +165,7 @@ end
         setup = _setup_bilinear_test(["dev1"], 1:1)
         depth = 2
 
-        IOM._add_bilinear_approx!(
+        IOM.add_bilinear_approx!(
             IOM.HybSConfig(IOM.SawtoothQuadConfig(depth), depth),
             setup.container,
             MockThermalGen,
@@ -178,10 +173,8 @@ end
             1:1,
             setup.x_var_container,
             setup.y_var_container,
-            0.0,
-            4.0,
-            0.0,
-            4.0,
+            [(min = 0.0, max = 4.0)],
+            [(min = 0.0, max = 4.0)],
             HYBS_META,
         )
         expr_container = IOM.get_expression(
@@ -207,7 +200,7 @@ end
                 JuMP.fix(setup.x_var_container["dev1", 1], x0; force = true)
                 JuMP.fix(setup.y_var_container["dev1", 1], y0; force = true)
 
-                IOM._add_bilinear_approx!(
+                IOM.add_bilinear_approx!(
                     IOM.HybSConfig(IOM.SawtoothQuadConfig(2), 2),
                     setup.container,
                     MockThermalGen,
@@ -215,10 +208,8 @@ end
                     1:1,
                     setup.x_var_container,
                     setup.y_var_container,
-                    0.0,
-                    1.0,
-                    0.0,
-                    1.0,
+                    [(min = 0.0, max = 1.0)],
+                    [(min = 0.0, max = 1.0)],
                     HYBS_META,
                 )
                 expr_container = IOM.get_expression(
@@ -250,7 +241,7 @@ end
         JuMP.fix(x_var, 2.0; force = true)
         JuMP.fix(y_var, 3.0; force = true)
 
-        IOM._add_bilinear_approx!(
+        IOM.add_bilinear_approx!(
             IOM.HybSConfig(IOM.SawtoothQuadConfig(3), 3),
             setup.container,
             MockThermalGen,
@@ -258,10 +249,8 @@ end
             1:1,
             setup.x_var_container,
             setup.y_var_container,
-            0.0,
-            4.0,
-            0.0,
-            4.0,
+            [(min = 0.0, max = 4.0)],
+            [(min = 0.0, max = 4.0)],
             HYBS_META,
         )
         expr_container = IOM.get_expression(
@@ -290,7 +279,7 @@ end
 
         w = JuMP.@variable(setup.jump_model, base_name = "w")
 
-        IOM._add_bilinear_approx!(
+        IOM.add_bilinear_approx!(
             IOM.HybSConfig(IOM.SawtoothQuadConfig(3), 3),
             setup.container,
             MockThermalGen,
@@ -298,10 +287,8 @@ end
             1:1,
             setup.x_var_container,
             setup.y_var_container,
-            0.0,
-            4.0,
-            0.0,
-            4.0,
+            [(min = 0.0, max = 4.0)],
+            [(min = 0.0, max = 4.0)],
             HYBS_META,
         )
         expr_container = IOM.get_expression(
@@ -330,7 +317,7 @@ end
             JuMP.fix(setup.x_var_container["dev1", 1], 0.4; force = true)
             JuMP.fix(setup.y_var_container["dev1", 1], 0.7; force = true)
 
-            IOM._add_bilinear_approx!(
+            IOM.add_bilinear_approx!(
                 IOM.HybSConfig(IOM.SawtoothQuadConfig(depth), depth),
                 setup.container,
                 MockThermalGen,
@@ -338,10 +325,8 @@ end
                 1:1,
                 setup.x_var_container,
                 setup.y_var_container,
-                0.0,
-                1.0,
-                0.0,
-                1.0,
+                [(min = 0.0, max = 1.0)],
+                [(min = 0.0, max = 1.0)],
                 HYBS_META,
             )
             expr_container = IOM.get_expression(
@@ -373,7 +358,7 @@ end
             JuMP.fix(setup.x_var_container["dev1", 1], 3.5; force = true)
             JuMP.fix(setup.y_var_container["dev1", 1], 2.1; force = true)
 
-            IOM._add_bilinear_approx!(
+            IOM.add_bilinear_approx!(
                 IOM.HybSConfig(IOM.SawtoothQuadConfig(3), 3),
                 setup.container,
                 MockThermalGen,
@@ -381,10 +366,8 @@ end
                 1:1,
                 setup.x_var_container,
                 setup.y_var_container,
-                2.0,
-                5.0,
-                1.0,
-                3.0,
+                [(min = 2.0, max = 5.0)],
+                [(min = 1.0, max = 3.0)],
                 HYBS_META,
             )
             expr_container = IOM.get_expression(
@@ -409,7 +392,7 @@ end
 
     @testset "Multiple time steps" begin
         setup = _setup_bilinear_test(["dev1"], 1:3)
-        IOM._add_bilinear_approx!(
+        IOM.add_bilinear_approx!(
             IOM.HybSConfig(IOM.SawtoothQuadConfig(2), 2),
             setup.container,
             MockThermalGen,
@@ -417,10 +400,8 @@ end
             1:3,
             setup.x_var_container,
             setup.y_var_container,
-            0.0,
-            4.0,
-            0.0,
-            4.0,
+            [(min = 0.0, max = 4.0)],
+            [(min = 0.0, max = 4.0)],
             HYBS_META,
         )
         expr_container = IOM.get_expression(
@@ -444,7 +425,7 @@ end
         JuMP.set_lower_bound(y_var, 0.0)
         JuMP.set_upper_bound(y_var, 4.0)
 
-        IOM._add_bilinear_approx!(
+        IOM.add_bilinear_approx!(
             IOM.HybSConfig(IOM.SawtoothQuadConfig(2), 2),
             setup.container,
             MockThermalGen,
@@ -452,10 +433,8 @@ end
             1:1,
             setup.x_var_container,
             setup.y_var_container,
-            0.0,
-            4.0,
-            0.0,
-            4.0,
+            [(min = 0.0, max = 4.0)],
+            [(min = 0.0, max = 4.0)],
             HYBS_META,
         )
         expr_container = IOM.get_expression(
@@ -480,7 +459,7 @@ end
         for depth in [1, 2, 4]
             # HybS
             setup_h = _setup_bilinear_test(["dev1"], 1:1)
-            IOM._add_bilinear_approx!(
+            IOM.add_bilinear_approx!(
                 IOM.HybSConfig(IOM.SawtoothQuadConfig(depth), depth),
                 setup_h.container,
                 MockThermalGen,
@@ -488,10 +467,8 @@ end
                 1:1,
                 setup_h.x_var_container,
                 setup_h.y_var_container,
-                0.0,
-                1.0,
-                0.0,
-                1.0,
+                [(min = 0.0, max = 1.0)],
+                [(min = 0.0, max = 1.0)],
                 HYBS_META,
             )
             n_bin_hybs =
@@ -499,7 +476,7 @@ end
 
             # Bin2 (sawtooth)
             setup_b = _setup_bilinear_test(["dev1"], 1:1)
-            IOM._add_bilinear_approx!(
+            IOM.add_bilinear_approx!(
                 IOM.Bin2Config(IOM.SawtoothQuadConfig(depth)),
                 setup_b.container,
                 MockThermalGen,
@@ -507,10 +484,8 @@ end
                 1:1,
                 setup_b.x_var_container,
                 setup_b.y_var_container,
-                0.0,
-                1.0,
-                0.0,
-                1.0,
+                [(min = 0.0, max = 1.0)],
+                [(min = 0.0, max = 1.0)],
                 HYBS_BILINEAR_META,
             )
             n_bin_bin2 =
