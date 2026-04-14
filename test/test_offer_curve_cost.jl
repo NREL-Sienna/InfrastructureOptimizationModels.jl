@@ -29,6 +29,21 @@ function _make_ts(sys::PSY.System, name::String, value::Float64)
     return PSY.Deterministic(; name = name, data = data, resolution = resolution)
 end
 
+"""Build a deterministic time series of NTuple{3, Float64} matching the system's forecast params."""
+function _make_tuple_ts(sys::PSY.System, name::String, value::NTuple{3, Float64})
+    init_time = first(PSY.get_forecast_initial_times(sys))
+    horizon = PSY.get_forecast_horizon(sys)
+    interval = PSY.get_forecast_interval(sys)
+    resolution = first(PSY.get_time_series_resolutions(sys))
+    count = PSY.get_forecast_window_count(sys)
+    horizon_count = IS.get_horizon_count(horizon, resolution)
+    data = OrderedDict{Dates.DateTime, Vector{NTuple{3, Float64}}}()
+    for i in 0:(count - 1)
+        data[init_time + i * interval] = fill(value, horizon_count)
+    end
+    return PSY.Deterministic(; name = name, data = data, resolution = resolution)
+end
+
 """Build a deterministic time series of PiecewiseStepData matching the system's forecast params."""
 function _make_pwl_ts(
     sys::PSY.System,
@@ -90,7 +105,7 @@ function _make_ts_mbc_system(;
     breakpoints = [0.0, 50.0, 100.0],
     initial_input = 10.0,
     no_load = 5.0,
-    start_up_val = 100.0,
+    start_up_val = (100.0, 100.0, 100.0),
     shut_down = 50.0,
 )
     sys = Logging.with_logger(Logging.NullLogger()) do
@@ -115,12 +130,12 @@ function _make_ts_mbc_system(;
     shut_down_ts = _make_ts(sys, "shut_down", shut_down)
     shut_down_key = PSY.add_time_series!(sys, comp, shut_down_ts)
 
-    startup_ts = _make_ts(sys, "start_up", start_up_val)
+    startup_ts = _make_tuple_ts(sys, "start_up", start_up_val)
     startup_key = PSY.add_time_series!(sys, comp, startup_ts)
 
     ts_mbc = PSY.MarketBidTimeSeriesCost(;
         no_load_cost = PSY.TimeSeriesLinearCurve(no_load_key),
-        start_up = startup_key,
+        start_up = IS.TupleTimeSeries{PSY.StartUpStages}(startup_key),
         shut_down = PSY.TimeSeriesLinearCurve(shut_down_key),
         incremental_offer_curves = PSY.make_market_bid_ts_curve(incr_key, incr_init_key),
         decremental_offer_curves = PSY.make_market_bid_ts_curve(decr_key, decr_init_key),
@@ -342,7 +357,7 @@ end
         PSY.LinearCurve(5.0),
     )
     bad_iec = PSY.ImportExportCost(; import_offer_curves = bad_import,
-        export_offer_curves = PSY.make_export_curve(100.0, 10.0))
+        export_offer_curves = PSY.make_export_curve([0.0, 100.0], [10.0]))
     @test_throws ArgumentError IOM._validate_occ_subtype(
         bad_iec, IOM.IncrementalOffer(), bad_import, "test")
 
@@ -351,7 +366,7 @@ end
         PSY.PiecewiseIncrementalCurve(
             PSY.PiecewiseStepData([10.0, 100.0], [10.0]), 0.0, nothing))
     bad_iec2 = PSY.ImportExportCost(; import_offer_curves = bad_import2,
-        export_offer_curves = PSY.make_export_curve(100.0, 10.0))
+        export_offer_curves = PSY.make_export_curve([0.0, 100.0], [10.0]))
     @test_throws ArgumentError IOM._validate_occ_subtype(
         bad_iec2, IOM.IncrementalOffer(), bad_import2, "test")
 end

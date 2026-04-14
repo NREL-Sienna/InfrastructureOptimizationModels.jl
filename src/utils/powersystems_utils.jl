@@ -380,6 +380,7 @@ is_time_variant(::IS.ValueCurve{<:IS.TimeSeriesFunctionData}) = true
 is_time_variant(
     ::IS.ProductionVariableCostCurve{<:IS.ValueCurve{<:IS.TimeSeriesFunctionData}},
 ) = true
+is_time_variant(::IS.TupleTimeSeries) = true
 is_time_variant(::Any) = false
 
 function create_temporary_cost_function_in_system_per_unit(
