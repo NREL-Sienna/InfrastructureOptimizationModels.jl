@@ -12,8 +12,8 @@ struct TestProportionalFormulation <:
 
 # Stub: objective_function_multiplier returns 1.0 for test types
 InfrastructureOptimizationModels.objective_function_multiplier(
-    ::TestProportionalVariable,
-    ::TestProportionalFormulation,
+    ::Type{TestProportionalVariable},
+    ::Type{TestProportionalFormulation},
 ) = 1.0
 
 # Interface implementations for mock types
@@ -21,18 +21,18 @@ InfrastructureOptimizationModels.objective_function_multiplier(
 # Non-time-varying proportional_cost: return the proportional_term from MockOperationCost
 InfrastructureOptimizationModels.proportional_cost(
     op_cost::MockOperationCost,
-    ::TestProportionalVariable,
+    ::Type{TestProportionalVariable},
     d::MockThermalGen,
-    ::TestProportionalFormulation,
+    ::Type{TestProportionalFormulation},
 ) = op_cost.proportional_term
 
 # Time-varying proportional_cost: same value for all time steps (could vary if needed)
 InfrastructureOptimizationModels.proportional_cost(
     ::InfrastructureOptimizationModels.OptimizationContainer,
     op_cost::MockOperationCost,
-    ::TestProportionalVariable,
+    ::Type{TestProportionalVariable},
     d::MockThermalGen,
-    ::TestProportionalFormulation,
+    ::Type{TestProportionalFormulation},
     ::Int,
 ) = op_cost.proportional_term
 
@@ -40,9 +40,9 @@ InfrastructureOptimizationModels.proportional_cost(
 InfrastructureOptimizationModels.is_time_variant_term(
     ::InfrastructureOptimizationModels.OptimizationContainer,
     op_cost::MockOperationCost,
-    ::TestProportionalVariable,
+    ::Type{TestProportionalVariable},
     ::Type{MockThermalGen},
-    ::TestProportionalFormulation,
+    ::Type{TestProportionalFormulation},
     ::Int,
 ) = op_cost.is_time_variant
 
@@ -110,7 +110,7 @@ end
             container,
             TestProportionalVariable,
             devices_iter,
-            TestProportionalFormulation(),
+            TestProportionalFormulation,
         )
 
         # Verify costs are in invariant expression (not variant)
@@ -149,7 +149,7 @@ end
             container,
             TestProportionalVariable,
             devices_iter,
-            TestProportionalFormulation(),
+            TestProportionalFormulation,
         )
 
         # Both invariant and variant should have zero coefficients
@@ -185,7 +185,7 @@ end
             container,
             TestProportionalVariable,
             devices_iter,
-            TestProportionalFormulation(),
+            TestProportionalFormulation,
         )
 
         # Verify each device has correct coefficients
@@ -224,7 +224,7 @@ end
             container,
             TestProportionalVariable,
             devices_iter,
-            TestProportionalFormulation(),
+            TestProportionalFormulation,
         )
 
         # Costs should be in invariant expression
@@ -265,7 +265,7 @@ end
             container,
             TestProportionalVariable,
             devices_iter,
-            TestProportionalFormulation(),
+            TestProportionalFormulation,
         )
 
         # Costs should be in variant expression (not invariant)
@@ -311,7 +311,7 @@ end
             container,
             TestProportionalVariable,
             devices_iter,
-            TestProportionalFormulation(),
+            TestProportionalFormulation,
         )
 
         # device_invariant costs in invariant expression
@@ -367,7 +367,7 @@ end
             container,
             TestProportionalVariable,
             devices_iter,
-            TestProportionalFormulation(),
+            TestProportionalFormulation,
         )
 
         # Both should be zero - device was skipped
@@ -404,7 +404,7 @@ end
             container,
             TestProportionalVariable,
             devices_iter,
-            TestProportionalFormulation(),
+            TestProportionalFormulation,
         )
 
         # Cost should NOT be in the objective (skip_proportional_cost = true)

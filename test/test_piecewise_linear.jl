@@ -15,13 +15,13 @@ end
 
 # Required stubs
 InfrastructureOptimizationModels.objective_function_multiplier(
-    ::TestPWLVariable,
-    ::TestPWLFormulation,
+    ::Type{TestPWLVariable},
+    ::Type{TestPWLFormulation},
 ) = 1.0
 
 InfrastructureOptimizationModels._sos_status(
     ::Type{MockThermalGen},
-    ::TestPWLFormulation,
+    ::Type{TestPWLFormulation},
 ) = IOM.SOSStatusVariable.NO_VARIABLE
 
 # Helper to set up container with variables for a device
@@ -304,7 +304,7 @@ end
                 TestPWLVariable,
                 device,
                 cost_curve,
-                TestPWLFormulation(),
+                TestPWLFormulation,
             )
 
             # Verify PWL variables were created
@@ -346,7 +346,7 @@ end
                 TestPWLVariable,
                 device,
                 cost_curve,
-                TestPWLFormulation(),
+                TestPWLFormulation,
             )
 
             # SYSTEM_BASE: no conversion needed
@@ -375,7 +375,7 @@ end
                 TestPWLVariable,
                 device,
                 cost_curve,
-                TestPWLFormulation(),
+                TestPWLFormulation,
             )
 
             # dt = 15/60 = 0.25 hours, y=2000 * 0.25 = 500
@@ -409,7 +409,7 @@ end
                 TestPWLVariable,
                 device,
                 cost_curve,
-                TestPWLFormulation(),
+                TestPWLFormulation,
             )
 
             jump_model = InfrastructureOptimizationModels.get_jump_model(container)
@@ -440,7 +440,7 @@ end
             TestPWLVariable,
             device,
             cost_curve,
-            TestPWLFormulation(),
+            TestPWLFormulation,
         )
 
         obj = InfrastructureOptimizationModels.get_objective_expression(container)
@@ -481,7 +481,7 @@ end
             TestPWLVariable,
             device,
             cost_curve,
-            TestPWLFormulation(),
+            TestPWLFormulation,
         )
 
         obj = InfrastructureOptimizationModels.get_objective_expression(container)
@@ -521,7 +521,7 @@ end
             TestPWLVariable,
             device,
             cost_curve,
-            TestPWLFormulation(),
+            TestPWLFormulation,
         )
 
         # Verify no SOS2 constraint was added
@@ -559,7 +559,7 @@ end
             TestPWLVariable,
             device,
             cost_curve,
-            TestPWLFormulation(),
+            TestPWLFormulation,
         )
 
         obj = InfrastructureOptimizationModels.get_objective_expression(container)
@@ -637,7 +637,10 @@ end
         # When _sos_status returns VARIABLE, the normalization constraint
         # should reference the OnVariable for the device
         struct TestUCFormulation <: IOM.AbstractThermalUnitCommitment end
-        IOM.objective_function_multiplier(::TestPWLVariable, ::TestUCFormulation) = 1.0
+        IOM.objective_function_multiplier(
+            ::Type{TestPWLVariable},
+            ::Type{TestUCFormulation},
+        ) = 1.0
 
         (; container, device, break_points, power_var) =
             setup_pwl_constraint_test(; device_name = "gen_uc")
@@ -739,7 +742,7 @@ end
                 TestPWLVariable,
                 device,
                 cost_curve,
-                TestPWLFormulation(),
+                TestPWLFormulation,
             )
 
             obj = IOM.get_objective_expression(container)
@@ -778,7 +781,7 @@ end
             TestPWLVariable,
             device,
             cost_curve,
-            TestPWLFormulation(),
+            TestPWLFormulation,
         )
 
         obj = IOM.get_objective_expression(container)
@@ -820,7 +823,7 @@ end
             TestPWLVariable,
             device,
             fuel_curve,
-            TestPWLFormulation(),
+            TestPWLFormulation,
         )
 
         obj = IOM.get_objective_expression(container)

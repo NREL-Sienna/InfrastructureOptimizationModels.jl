@@ -11,8 +11,8 @@ struct TestLinearFormulation <: InfrastructureOptimizationModels.AbstractDeviceF
 
 # Stub: objective_function_multiplier returns 1.0 for test types
 InfrastructureOptimizationModels.objective_function_multiplier(
-    ::TestActivePowerVariable,
-    ::TestLinearFormulation,
+    ::Type{TestActivePowerVariable},
+    ::Type{TestLinearFormulation},
 ) = 1.0
 
 # Helper to set up container with variables for a device
@@ -162,7 +162,7 @@ end
                 TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestLinearFormulation(),
+                TestLinearFormulation,
             )
 
             # NATURAL_UNITS: cost is in $/MW, variable is in p.u. (system base)
@@ -198,7 +198,7 @@ end
                 TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestLinearFormulation(),
+                TestLinearFormulation,
             )
 
             # SYSTEM_BASE: cost is already in $/p.u., no conversion needed
@@ -235,7 +235,7 @@ end
                 TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestLinearFormulation(),
+                TestLinearFormulation,
             )
 
             # DEVICE_BASE: cost is in $/device_p.u., variable is in system p.u.
@@ -273,7 +273,7 @@ end
                 TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestLinearFormulation(),
+                TestLinearFormulation,
             )
 
             # NATURAL_UNITS with 15-min resolution:
@@ -315,7 +315,7 @@ end
             TestActivePowerVariable,
             device,
             fuel_curve,
-            TestLinearFormulation(),
+            TestLinearFormulation,
         )
 
         # NATURAL_UNITS: fuel_curve_per_unit = 8.0 * 100.0 (system_base) = 800.0
@@ -399,7 +399,7 @@ end
             TestActivePowerVariable,
             device,
             fuel_curve,
-            TestLinearFormulation(),
+            TestLinearFormulation,
         )
 
         # Variant objective should contain: fuel_expr * fuel_price for each t

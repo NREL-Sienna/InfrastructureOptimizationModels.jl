@@ -214,7 +214,7 @@ function get_objective_coefficient(
     ::Type{T},
     name::String,
     t::Int,
-) where {T}
+) where {V, T}
     obj = PSI.get_objective_expression(container)
     invariant = PSI.get_invariant_terms(obj)
     var = PSI.get_variable(container, V, T)[name, t]
@@ -231,7 +231,7 @@ function get_objective_variant_coefficient(
     ::Type{T},
     name::String,
     t::Int,
-) where {T}
+) where {V, T}
     obj = PSI.get_objective_expression(container)
     variant = PSI.get_variant_terms(obj)
     var = PSI.get_variable(container, V, T)[name, t]
@@ -261,7 +261,7 @@ function verify_objective_coefficients(
     expected::Union{Float64, Vector{Float64}};
     atol = 1e-10,
     variant = false,
-) where {T}
+) where {V, T}
     time_steps = PSI.get_time_steps(container)
     get_coef = variant ? get_objective_variant_coefficient : get_objective_coefficient
 
@@ -302,7 +302,7 @@ function get_objective_quadratic_coefficient(
     ::Type{T},
     name::String,
     t::Int,
-) where {T}
+) where {V, T}
     obj = PSI.get_objective_expression(container)
     invariant = PSI.get_invariant_terms(obj)
     var = PSI.get_variable(container, V, T)[name, t]
@@ -333,7 +333,7 @@ function verify_quadratic_objective_coefficients(
     expected_linear::Union{Float64, Vector{Float64}},
     expected_quadratic::Union{Float64, Vector{Float64}};
     atol = 1e-10,
-) where {T}
+) where {V, T}
     time_steps = PSI.get_time_steps(container)
 
     for t in time_steps
