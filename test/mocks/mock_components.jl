@@ -143,41 +143,41 @@ struct MockCurrentVariable <: IOM.VariableType end
 struct MockPowerRangeConstraint <: IOM.ConstraintType end
 
 IOM.get_variable_binary(
-    ::ActivePowerVariable,
+    ::Type{ActivePowerVariable},
     ::Type{MockNetworkNode},
-    ::TestDeviceFormulation,
+    ::Type{TestDeviceFormulation},
 ) = false
 IOM.get_variable_binary(
-    ::MockVoltageVariable,
+    ::Type{MockVoltageVariable},
     ::Type{MockNetworkNode},
-    ::TestDeviceFormulation,
+    ::Type{TestDeviceFormulation},
 ) = false
 IOM.get_variable_binary(
-    ::MockCurrentVariable,
+    ::Type{MockCurrentVariable},
     ::Type{MockNetworkNode},
-    ::TestDeviceFormulation,
+    ::Type{TestDeviceFormulation},
 ) = false
 
 IOM.get_variable_lower_bound(
-    ::MockVoltageVariable,
+    ::Type{MockVoltageVariable},
     n::MockNetworkNode,
-    ::TestDeviceFormulation,
+    ::Type{TestDeviceFormulation},
 ) = n.v_min
 IOM.get_variable_upper_bound(
-    ::MockVoltageVariable,
+    ::Type{MockVoltageVariable},
     n::MockNetworkNode,
-    ::TestDeviceFormulation,
+    ::Type{TestDeviceFormulation},
 ) = n.v_max
 
 IOM.get_variable_lower_bound(
-    ::MockCurrentVariable,
+    ::Type{MockCurrentVariable},
     n::MockNetworkNode,
-    ::TestDeviceFormulation,
+    ::Type{TestDeviceFormulation},
 ) = n.i_min
 IOM.get_variable_upper_bound(
-    ::MockCurrentVariable,
+    ::Type{MockCurrentVariable},
     n::MockNetworkNode,
-    ::TestDeviceFormulation,
+    ::Type{TestDeviceFormulation},
 ) = n.i_max
 
 IOM.get_min_max_limits(

@@ -5,29 +5,29 @@ Test types defined in test_utils/test_types.jl.
 """
 
 # Define sos_status for mock components - return NO_VARIABLE (no commitment tracking)
-IOM._sos_status(::Type{MockThermalGen}, ::TestPWLFormulation) =
+IOM._sos_status(::Type{MockThermalGen}, ::Type{TestPWLFormulation}) =
     IOM.SOSStatusVariable.NO_VARIABLE
 
 # Define required methods for test types (only non-default values)
 IOM.get_variable_binary(
-    ::TestBinaryInterpolationVariable,
+    ::Type{TestBinaryInterpolationVariable},
     ::Type{MockThermalGen},
-    ::IOM.AbstractDeviceFormulation,
+    ::Type{<:IOM.AbstractDeviceFormulation},
 ) = true
 IOM.get_variable_binary(
-    ::IOM.VariableType,
+    ::Type{<:IOM.VariableType},
     ::Type{MockThermalGen},
-    ::IOM.AbstractDeviceFormulation,
+    ::Type{<:IOM.AbstractDeviceFormulation},
 ) = false
 IOM.get_variable_upper_bound(
-    ::TestInterpolationVariable,
+    ::Type{TestInterpolationVariable},
     ::MockThermalGen,
-    ::IOM.AbstractDeviceFormulation,
+    ::Type{<:IOM.AbstractDeviceFormulation},
 ) = 1.0
 IOM.get_variable_lower_bound(
-    ::TestInterpolationVariable,
+    ::Type{TestInterpolationVariable},
     ::MockThermalGen,
-    ::IOM.AbstractDeviceFormulation,
+    ::Type{<:IOM.AbstractDeviceFormulation},
 ) = 0.0
 
 #==============================================================================#
@@ -146,7 +146,7 @@ function setup_pwl_interpolation_test(;
 
     # Setup container with all required variables
     container = setup_pwl_test_container(time_steps)
-    formulation = TestPWLFormulation()
+    formulation = TestPWLFormulation
     model = IOM.DeviceModel(MockThermalGen, TestPWLFormulation)
 
     IOM.add_variables!(container, TestOriginalVariable, devices, formulation)
@@ -471,7 +471,7 @@ end
             TestOriginalVariable,
             device,
             fuel_curve,
-            TestPWLFormulation(),
+            TestPWLFormulation,
         )
 
         # Verify PWL variables were created

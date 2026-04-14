@@ -16,8 +16,8 @@ end
 
 # Stub: objective_function_multiplier returns 1.0 for test types
 InfrastructureOptimizationModels.objective_function_multiplier(
-    ::TestActivePowerVariable,
-    ::TestQuadraticFormulation,
+    ::Type{TestActivePowerVariable},
+    ::Type{TestQuadraticFormulation},
 ) = 1.0
 
 # Helper to set up container with variables for a device (same pattern as linear tests)
@@ -163,7 +163,7 @@ end
         InfrastructureOptimizationModels._add_quadraticcurve_variable_cost!(
             container,
             TestActivePowerVariable,
-            TestQuadraticFormulation(),
+            TestQuadraticFormulation,
             device,
             proportional_term,
             quadratic_term,
@@ -203,7 +203,7 @@ end
         InfrastructureOptimizationModels._add_quadraticcurve_variable_cost!(
             container,
             TestActivePowerVariable,
-            TestQuadraticFormulation(),
+            TestQuadraticFormulation,
             device,
             proportional_terms,
             quadratic_terms,
@@ -245,7 +245,7 @@ end
                 TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestQuadraticFormulation(),
+                TestQuadraticFormulation,
             )
 
             # NATURAL_UNITS conversion:
@@ -287,7 +287,7 @@ end
                 TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestQuadraticFormulation(),
+                TestQuadraticFormulation,
             )
 
             # SYSTEM_BASE: no conversion
@@ -326,7 +326,7 @@ end
                 TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestQuadraticFormulation(),
+                TestQuadraticFormulation,
             )
 
             # DEVICE_BASE conversion:
@@ -367,7 +367,7 @@ end
                 TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestQuadraticFormulation(),
+                TestQuadraticFormulation,
             )
 
             # NATURAL_UNITS with 15-min resolution (dt = 0.25):
@@ -400,7 +400,7 @@ end
         InfrastructureOptimizationModels._add_quadraticcurve_variable_cost!(
             container,
             TestActivePowerVariable,
-            TestQuadraticFormulation(),
+            TestQuadraticFormulation,
             device,
             proportional_term,
             quadratic_term,
@@ -444,7 +444,7 @@ end
             TestActivePowerVariable,
             device,
             fuel_curve,
-            TestQuadraticFormulation(),
+            TestQuadraticFormulation,
         )
 
         # NATURAL_UNITS conversion:

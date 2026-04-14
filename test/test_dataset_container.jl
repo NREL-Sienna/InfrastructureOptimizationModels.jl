@@ -71,7 +71,7 @@ confirming that the code runs without errors.
         IOM.set_dataset!(container, var_key, dataset)
 
         # Get using type dispatch (instance of type + Type parameter)
-        retrieved = IOM.get_dataset(container, TestVariableType(), IS.TestComponent)
+        retrieved = IOM.get_dataset(container, TestVariableType, IS.TestComponent)
         @test retrieved === dataset
     end
 

@@ -349,7 +349,7 @@ function build_mip_model(
     optimizer, net::MockNetworkProblem, bilinear_config, quad_config, refinement::Int,
 )
     container, system = make_container(optimizer)
-    tdf = TestDeviceFormulation()
+    tdf = TestDeviceFormulation
     jump_model = IOM.get_jump_model(container)
     time_steps = 1:1
     adj = adjacency_list(net)
