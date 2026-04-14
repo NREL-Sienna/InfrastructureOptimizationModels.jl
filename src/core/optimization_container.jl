@@ -663,11 +663,12 @@ end
 
 ####################################### Variable Container #################################
 add_variable_container!(
-    container::OptimizationContainer, ::Type{T}, ::Type{U}, axs...;
+    container::OptimizationContainer, ::Type{T}, ::Type{U}, axs::Vararg{Any, N};
     sparse = false, meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 } = _add_container!(container, T, U, JuMP.VariableRef, sparse, axs...; meta = meta)
 
 function add_variable_container!(
@@ -675,11 +676,12 @@ function add_variable_container!(
     ::Type{T},
     ::Type{U},
     meta::String,
-    axs...;
+    axs::Vararg{Any, N};
     sparse = false,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     return _add_container!(container, T, U, JuMP.VariableRef, sparse, axs...; meta = meta)
 end
@@ -720,11 +722,12 @@ get_variable(
 
 ##################################### AuxVariable Container ################################
 add_aux_variable_container!(
-    container::OptimizationContainer, ::Type{T}, ::Type{U}, axs...;
+    container::OptimizationContainer, ::Type{T}, ::Type{U}, axs::Vararg{Any, N};
     sparse = false, meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: AuxVariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 } = _add_container!(container, T, U, Float64, sparse, axs...; meta = meta)
 
 function get_aux_variable_keys(container::OptimizationContainer)
@@ -776,11 +779,12 @@ end
 
 ##################################### Constraint Container #################################
 add_constraints_container!(
-    container::OptimizationContainer, ::Type{T}, ::Type{U}, axs...;
+    container::OptimizationContainer, ::Type{T}, ::Type{U}, axs::Vararg{Any, N};
     sparse = false, meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 } = _add_container!(container, T, U, JuMP.ConstraintRef, sparse, axs...; meta = meta)
 
 function get_constraint_keys(container::OptimizationContainer)
@@ -1027,13 +1031,14 @@ function add_expression_container!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    axs...;
+    axs::Vararg{Any, N};
     expr_type = GAE,
     sparse = false,
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {
     T <: ExpressionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     expr_container =
         _add_container!(container, T, U, expr_type, sparse, axs...; meta = meta)
@@ -1350,11 +1355,12 @@ function lazy_container_addition!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    axs...;
+    axs::Vararg{Any, N};
     kwargs...,
 ) where {
     T <: VariableType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     if !has_container_key(container, T, U)
         var_container = add_variable_container!(container, T, U, axs...; kwargs...)
@@ -1368,11 +1374,12 @@ function lazy_container_addition!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    axs...;
+    axs::Vararg{Any, N};
     kwargs...,
 ) where {
     T <: ConstraintType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     meta = get(kwargs, :meta, CONTAINER_KEY_EMPTY_META)
     if !has_container_key(container, T, U, meta)
@@ -1388,11 +1395,12 @@ function lazy_container_addition!(
     container::OptimizationContainer,
     ::Type{T},
     ::Type{U},
-    axs...;
+    axs::Vararg{Any, N};
     kwargs...,
 ) where {
     T <: ExpressionType,
     U <: Union{IS.InfrastructureSystemsComponent, IS.InfrastructureSystemsContainer},
+    N,
 }
     meta = get(kwargs, :meta, CONTAINER_KEY_EMPTY_META)
     if !has_container_key(container, T, U, meta)
