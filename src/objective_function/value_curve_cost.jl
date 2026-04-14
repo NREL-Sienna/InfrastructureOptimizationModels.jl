@@ -437,34 +437,34 @@ function _get_raw_pwl_data(
     PSY.get_power_units(cost_data)
 end
 
-# time-series curve: read from parameter arrays
+# time-series curve: read from parameter arrays. Parameter containers for
+# Slope/Breakpoint are allocated with axes `(names, segments|points, times)`, so the
+# 3-index lookup mirrors `_fill_pwl_data_from_arrays!`. The parameter values carry the
+# units declared on the `CostCurve`, so we forward those through (don't hardcode).
 function _get_raw_pwl_data(
     dir::OfferDirection,
     container::OptimizationContainer,
     ::Type{T},
     name::String,
-    ::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve},
+    cost_data::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve},
     time::Int,
 ) where {T <: PSY.Component}
     SlopeParam = _slope_param(dir)
-    slope_param_arr = get_parameter_array(container, SlopeParam, T)
-    slope_param_mult = get_parameter_multiplier_array(container, SlopeParam, T)
-    @assert size(slope_param_arr) == size(slope_param_mult)
+    slope_arr = get_parameter_array(container, SlopeParam, T)
+    slope_mult = get_parameter_multiplier_array(container, SlopeParam, T)
+    @assert size(slope_arr) == size(slope_mult)
     slope_cost_component =
-        slope_param_arr[name, :, time] .* slope_param_mult[name, :, time]
-    slope_cost_component = slope_cost_component.data
+        (slope_arr[name, :, time] .* slope_mult[name, :, time]).data
 
     BreakpointParam = _breakpoint_param(dir)
-    breakpoint_param_container = get_parameter(container, BreakpointParam, T)
-    breakpoint_param_arr = get_parameter_column_refs(breakpoint_param_container, name)
-    breakpoint_param_mult = get_multiplier_array(breakpoint_param_container)
-    @assert size(breakpoint_param_arr) == size(breakpoint_param_mult[name, :, :])
+    bp_arr = get_parameter_array(container, BreakpointParam, T)
+    bp_mult = get_parameter_multiplier_array(container, BreakpointParam, T)
+    @assert size(bp_arr) == size(bp_mult)
     breakpoint_cost_component =
-        breakpoint_param_arr[:, time] .* breakpoint_param_mult[name, :, time]
-    breakpoint_cost_component = breakpoint_cost_component.data
+        (bp_arr[name, :, time] .* bp_mult[name, :, time]).data
 
     @assert_op length(slope_cost_component) == length(breakpoint_cost_component) - 1
-    return breakpoint_cost_component, slope_cost_component, PSY.UnitSystem.NATURAL_UNITS
+    return breakpoint_cost_component, slope_cost_component, PSY.get_power_units(cost_data)
 end
 
 #################################################################################
@@ -551,10 +551,20 @@ function add_pwl_term_delta!(
     end
 end
 
+# FIXME better validation: for static, != ZERO_OFFER_CURVE would be clearer 
+# and for time series, actually check.
 """
-Generic: incremental offers only (most device formulations).
-Decremental-only overload for load formulations is in POM.
+Is this offer curve carrying meaningful data, as opposed to the default `ZERO_OFFER_CURVE`
+placeholder that PSY assigns to unused sides of a `MarketBidCost` / `ImportExportCost`?
+Only used for load formulations, to decide whether to throw an error about a non-trivial 
+supply offer curve.
 """
+function is_nontrivial_offer(curve::PSY.CostCurve{PSY.PiecewiseIncrementalCurve})
+    xs = PSY.get_x_coords(PSY.get_function_data(PSY.get_value_curve(curve)))
+    return last(xs) > first(xs)
+end
+is_nontrivial_offer(::PSY.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve}) = false
+
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
     ::T,
@@ -564,8 +574,12 @@ function add_variable_cost_to_objective!(
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     component_name = PSY.get_name(component)
     @debug "Market Bid" _group = LOG_GROUP_COST_FUNCTIONS component_name
-    if !isnothing(get_input_offer_curves(cost_function))
-        error("Component $(component_name) is not allowed to participate as a demand.")
+    if is_nontrivial_offer(get_input_offer_curves(cost_function))
+        throw(
+            ArgumentError(
+                "Component $(component_name) is not allowed to participate as a demand.",
+            ),
+        )
     end
     add_pwl_term_delta!(
         IncrementalOffer(),

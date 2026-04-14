@@ -110,7 +110,9 @@ function _add_start_up_cost_to_objective!(
         param = get_parameter_array(container, StartupCostParameter, C)
         mult = get_parameter_multiplier_array(container, StartupCostParameter, C)
         for t in get_time_steps(container)
-            raw_startup_cost = param[name, t] * mult[name, t]
+            # Broadcast so Tuple-valued parameters (for multi-start formulations) work
+            # alongside Float64-valued ones.
+            raw_startup_cost = param[name, t] .* mult[name, t]
             cost_term = start_up_cost(raw_startup_cost, C, T(), U())
             iszero(cost_term) && continue
             rate = cost_term * multiplier
