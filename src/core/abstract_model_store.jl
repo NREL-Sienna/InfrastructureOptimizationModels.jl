@@ -52,7 +52,11 @@ function Base.empty!(store::T) where {T <: AbstractModelStore}
 end
 
 get_data_field(store::AbstractModelStore, ::Val{S}) where {S} = getfield(store, S)
-get_data_field(store::AbstractModelStore, type::Symbol) = get_data_field(store, Val(type))
+@inline Base.@constprop :aggressive get_data_field(
+    store::AbstractModelStore,
+    type::Symbol,
+) =
+    get_data_field(store, Val(type))
 
 function Base.isempty(store::T) where {T <: AbstractModelStore}
     for (name, type) in zip(fieldnames(T), fieldtypes(T))
