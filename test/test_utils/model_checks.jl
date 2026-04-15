@@ -326,7 +326,7 @@ function check_duration_on_initial_conditions_values(
     )
     for ic in duration_on_data
         name = PSY.get_name(ic.component)
-        on_var = PSI.get_initial_condition_value(initial_conditions_data, OnVariable(), T)[
+        on_var = PSI.get_initial_condition_value(initial_conditions_data, OnVariable, T)[
             name,
             1,
         ]
@@ -352,7 +352,7 @@ function check_duration_off_initial_conditions_values(
     )
     for ic in duration_off_data
         name = PSY.get_name(ic.component)
-        on_var = PSI.get_initial_condition_value(initial_conditions_data, OnVariable(), T)[
+        on_var = PSI.get_initial_condition_value(initial_conditions_data, OnVariable, T)[
             name,
             1,
         ]
@@ -372,7 +372,7 @@ function check_status_initial_conditions_values(model, ::Type{T}) where {T <: PS
         PSI.get_initial_conditions_data(PSI.get_optimization_container(model))
     for ic in initial_conditions
         name = PSY.get_name(ic.component)
-        status = PSI.get_initial_condition_value(initial_conditions_data, OnVariable(), T)[
+        status = PSI.get_initial_condition_value(initial_conditions_data, OnVariable, T)[
             name,
             1,
         ]
@@ -392,7 +392,7 @@ function check_active_power_initial_condition_values(
         name = PSY.get_name(ic.component)
         power = PSI.get_initial_condition_value(
             initial_conditions_data,
-            ActivePowerVariable(),
+            ActivePowerVariable,
             T,
         )[
             name,
@@ -417,7 +417,7 @@ function check_active_power_abovemin_initial_condition_values(
         name = PSY.get_name(ic.component)
         power = PSI.get_initial_condition_value(
             initial_conditions_data,
-            PSI.PowerAboveMinimumVariable(),
+            PSI.PowerAboveMinimumVariable,
             T,
         )[
             name,
@@ -494,14 +494,14 @@ function check_constraint_count(
         )
     check_constraint_count(
         model,
-        PSI.RampConstraint(),
+        PSI.RampConstraint,
         T;
         meta = "up",
         filter_func = x -> x.name in device_name_set,
     )
     check_constraint_count(
         model,
-        PSI.RampConstraint(),
+        PSI.RampConstraint,
         T;
         meta = "dn",
         filter_func = x -> x.name in device_name_set,
@@ -528,14 +528,14 @@ function check_constraint_count(
     device_name_set = PSY.get_name.(duration_devices)
     check_constraint_count(
         model,
-        PSI.DurationConstraint(),
+        PSI.DurationConstraint,
         T;
         meta = "up",
         filter_func = x -> x.name in device_name_set,
     )
     return check_constraint_count(
         model,
-        PSI.DurationConstraint(),
+        PSI.DurationConstraint,
         T;
         meta = "dn",
         filter_func = x -> x.name in device_name_set,

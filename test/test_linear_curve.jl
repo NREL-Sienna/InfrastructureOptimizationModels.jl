@@ -11,8 +11,8 @@ struct TestLinearFormulation <: InfrastructureOptimizationModels.AbstractDeviceF
 
 # Stub: objective_function_multiplier returns 1.0 for test types
 InfrastructureOptimizationModels.objective_function_multiplier(
-    ::TestActivePowerVariable,
-    ::TestLinearFormulation,
+    ::Type{TestActivePowerVariable},
+    ::Type{TestLinearFormulation},
 ) = 1.0
 
 # Helper to set up container with variables for a device
@@ -39,7 +39,7 @@ function setup_container_with_variables(
     device_name = get_name(device)
     var_container = InfrastructureOptimizationModels.add_variable_container!(
         container,
-        TestActivePowerVariable(),
+        TestActivePowerVariable,
         MockThermalGen,
         [device_name],
         time_steps,
@@ -78,7 +78,7 @@ end
         expected_coef = 25.0 * 100.0 * 1.0
         @test verify_objective_coefficients(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             MockThermalGen,
             "gen1",
             expected_coef,
@@ -109,7 +109,7 @@ end
         expected_coef = 20.0 * 2.0 * 0.25
         @test verify_objective_coefficients(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             MockThermalGen,
             "gen1",
             expected_coef,
@@ -133,7 +133,7 @@ end
         # Should have zero coefficients since cost_term is zero
         @test verify_objective_coefficients(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             MockThermalGen,
             "gen1",
             0.0,
@@ -159,10 +159,10 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestLinearFormulation(),
+                TestLinearFormulation,
             )
 
             # NATURAL_UNITS: cost is in $/MW, variable is in p.u. (system base)
@@ -171,7 +171,7 @@ end
             expected_coef = 30.0 * 100.0 * 1.0
             @test verify_objective_coefficients(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 MockThermalGen,
                 "gen1",
                 expected_coef,
@@ -195,10 +195,10 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestLinearFormulation(),
+                TestLinearFormulation,
             )
 
             # SYSTEM_BASE: cost is already in $/p.u., no conversion needed
@@ -207,7 +207,7 @@ end
             expected_coef = 30.0 * 1.0
             @test verify_objective_coefficients(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 MockThermalGen,
                 "gen1",
                 expected_coef,
@@ -232,10 +232,10 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestLinearFormulation(),
+                TestLinearFormulation,
             )
 
             # DEVICE_BASE: cost is in $/device_p.u., variable is in system p.u.
@@ -245,7 +245,7 @@ end
             expected_coef = 30.0 * (100.0 / 50.0) * 1.0
             @test verify_objective_coefficients(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 MockThermalGen,
                 "gen1",
                 expected_coef,
@@ -270,10 +270,10 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestLinearFormulation(),
+                TestLinearFormulation,
             )
 
             # NATURAL_UNITS with 15-min resolution:
@@ -283,7 +283,7 @@ end
             expected_coef = 20.0 * 100.0 * 0.25
             @test verify_objective_coefficients(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 MockThermalGen,
                 "gen1",
                 expected_coef,
@@ -312,10 +312,10 @@ end
 
         InfrastructureOptimizationModels.add_variable_cost_to_objective!(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             device,
             fuel_curve,
-            TestLinearFormulation(),
+            TestLinearFormulation,
         )
 
         # NATURAL_UNITS: fuel_curve_per_unit = 8.0 * 100.0 (system_base) = 800.0
@@ -324,7 +324,7 @@ end
         expected_coef = 8.0 * 100.0 * 5.0 * 1.0
         @test verify_objective_coefficients(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             MockThermalGen,
             "gen1",
             expected_coef,
@@ -349,14 +349,14 @@ end
         # the IOM objective function logic from the POM constructor flow.
         fuel_expr_container = IOM.add_expression_container!(
             container,
-            IOM.FuelConsumptionExpression(),
+            IOM.FuelConsumptionExpression,
             MockThermalGen,
             ["gen1"],
             time_steps,
         )
         jump_model = IOM.get_jump_model(container)
         power_var = IOM.get_variable(
-            container, TestActivePowerVariable(), MockThermalGen,
+            container, TestActivePowerVariable, MockThermalGen,
         )
         # Simulate fuel consumption = proportional_term * power_var
         proportional_term = 8.0  # MMBTU/p.u.h (already normalized)
@@ -396,10 +396,10 @@ end
 
         IOM.add_variable_cost_to_objective!(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             device,
             fuel_curve,
-            TestLinearFormulation(),
+            TestLinearFormulation,
         )
 
         # Variant objective should contain: fuel_expr * fuel_price for each t

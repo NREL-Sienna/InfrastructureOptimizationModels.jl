@@ -40,7 +40,7 @@ function _normed_variable!(
     lx = x_max - x_min
     result_expr = add_expression_container!(
         container,
-        NormedVariableExpression(),
+        NormedVariableExpression,
         C,
         names,
         time_steps;

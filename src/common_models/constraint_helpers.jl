@@ -119,10 +119,10 @@ function add_updown_constraints_containers!(
     time_steps,
 ) where {T <: ConstraintType, V <: PSY.Component}
     return (
-        up = add_constraints_container!(container, T(), V, names, time_steps; meta = "up"),
+        up = add_constraints_container!(container, T, V, names, time_steps; meta = "up"),
         down = add_constraints_container!(
             container,
-            T(),
+            T,
             V,
             names,
             time_steps;

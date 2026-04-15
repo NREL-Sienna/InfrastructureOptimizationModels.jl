@@ -79,7 +79,7 @@ should_write_resulting_value(::Type{DCCurrentBalance}) = true
 # because it requires ProductionCostExpression to be defined first)
 function add_expression_container!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     axs...;
     sparse = false,

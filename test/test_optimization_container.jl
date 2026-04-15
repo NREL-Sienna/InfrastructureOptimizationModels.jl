@@ -67,7 +67,7 @@ struct MockExpressionType <: ISOPT.ExpressionType end
 
         var_container = PSI.add_variable_container!(
             container,
-            PSI.ActivePowerVariable(),
+            PSI.ActivePowerVariable,
             MockComponentType,
             device_names,
             time_steps,
@@ -107,7 +107,7 @@ struct MockExpressionType <: ISOPT.ExpressionType end
 
         cons_container = PSI.add_constraints_container!(
             container,
-            MockConstraintType(),
+            MockConstraintType,
             MockComponentType,
             device_names,
             time_steps,
@@ -140,7 +140,7 @@ struct MockExpressionType <: ISOPT.ExpressionType end
 
         expr_container = PSI.add_expression_container!(
             container,
-            MockExpressionType(),
+            MockExpressionType,
             MockComponentType,
             device_names,
             time_steps,

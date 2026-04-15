@@ -33,7 +33,7 @@ function _add_quadratic_approx!(
 ) where {C <: IS.InfrastructureSystemsComponent}
     result_expr = add_expression_container!(
         container,
-        QuadraticExpression(),
+        QuadraticExpression,
         C,
         names,
         time_steps;

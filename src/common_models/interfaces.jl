@@ -47,9 +47,9 @@ end
 Extension point: Is the variable binary/integer?
 """
 function get_variable_binary(
-    ::T,
+    ::Type{T},
     ::Type{U},
-    ::F,
+    ::Type{F},
 ) where {
     T <: VariableType,
     U <: IS.InfrastructureSystemsComponent,
@@ -62,27 +62,27 @@ end
 Extension point: Get variable lower bound.
 """
 get_variable_lower_bound(
-    ::VariableType,
+    ::Type{<:VariableType},
     ::IS.InfrastructureSystemsComponent,
-    ::Union{AbstractDeviceFormulation, AbstractServiceFormulation},
+    ::Type{<:Union{AbstractDeviceFormulation, AbstractServiceFormulation}},
 ) = nothing
 
 """
 Extension point: Get variable upper bound.
 """
 get_variable_upper_bound(
-    ::VariableType,
+    ::Type{<:VariableType},
     ::IS.InfrastructureSystemsComponent,
-    ::Union{AbstractDeviceFormulation, AbstractServiceFormulation},
+    ::Type{<:Union{AbstractDeviceFormulation, AbstractServiceFormulation}},
 ) = nothing
 
 """
 Extension point: Get variable warm start value.
 """
 get_variable_warm_start_value(
-    ::VariableType,
+    ::Type{<:VariableType},
     ::IS.InfrastructureSystemsComponent,
-    ::Union{AbstractDeviceFormulation, AbstractServiceFormulation},
+    ::Type{<:Union{AbstractDeviceFormulation, AbstractServiceFormulation}},
 ) = nothing
 
 ###############################
@@ -95,9 +95,9 @@ Non-time-varying signature - returns a single cost value for all time steps.
 """
 function proportional_cost(
     ::O,
-    ::V,
+    ::Type{V},
     ::C,
-    ::F,
+    ::Type{F},
 ) where {
     O <: PSY.OperationalCost,
     V <: VariableType,
@@ -116,9 +116,9 @@ Time-varying signature - may return different values per time step.
 function proportional_cost(
     ::OptimizationContainer,
     ::O,
-    ::V,
+    ::Type{V},
     ::C,
-    ::F,
+    ::Type{F},
     ::Int,
 ) where {
     O <: PSY.OperationalCost,
@@ -138,9 +138,9 @@ Returns true if the cost should be added to the variant objective expression.
 is_time_variant_term(
     ::OptimizationContainer,
     ::PSY.OperationalCost,
-    ::VariableType,
+    ::Type{<:VariableType},
     ::Type{<:IS.InfrastructureSystemsComponent},
-    ::AbstractDeviceFormulation,
+    ::Type{<:AbstractDeviceFormulation},
     ::Int,
 ) = false
 
@@ -163,8 +163,8 @@ Device-specific implementations (e.g., for StartUpStages, MultiStartVariable) ar
 function start_up_cost(
     cost::Any, # could be NamedTuple, StartUpStages, AffExpr, or Float.
     ::Type{T},
-    ::V,
-    ::F,
+    ::Type{V},
+    ::Type{F},
 ) where {
     T <: IS.InfrastructureSystemsComponent,
     V <: VariableType,
@@ -200,7 +200,7 @@ Extension point: Get minimum and maximum limits for a given component, constrain
 get_min_max_limits(
     ::IS.InfrastructureSystemsComponent,
     ::Type{<:ConstraintType},
-    ::AbstractDeviceFormulation,
+    ::Type{<:AbstractDeviceFormulation},
 ) = nothing
 
 """
@@ -211,18 +211,18 @@ need to map `ActivePower{In/Out}` to {charge/discharge} variable cost.
 """
 function variable_cost(
     cost::PSY.OperationalCost,
-    ::VariableType,
+    ::Type{<:VariableType},
     ::Type{<:IS.InfrastructureSystemsComponent},
-    ::AbstractDeviceFormulation,
+    ::Type{<:AbstractDeviceFormulation},
 )
     return PSY.get_variable(cost)
 end
 
 variable_cost(
     ::Nothing,
-    ::VariableType,
+    ::Type{<:VariableType},
     ::Type{<:IS.InfrastructureSystemsComponent},
-    ::AbstractDeviceFormulation,
+    ::Type{<:AbstractDeviceFormulation},
 ) = 0.0
 
 """

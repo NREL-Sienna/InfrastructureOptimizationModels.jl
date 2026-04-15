@@ -4,8 +4,11 @@ Verifies the PSY-free delta formulation path added in value_curve_cost.jl.
 """
 
 # Formulation dispatch: multiplier and sos_status for test types
-IOM.objective_function_multiplier(::TestVariableType, ::TestDeviceFormulation) = 1.0
-IOM._sos_status(::Type, ::TestDeviceFormulation) = IOM.SOSStatusVariable.NO_VARIABLE
+IOM.objective_function_multiplier(
+    ::Type{TestVariableType},
+    ::Type{TestDeviceFormulation},
+) = 1.0
+IOM._sos_status(::Type, ::Type{TestDeviceFormulation}) = IOM.SOSStatusVariable.NO_VARIABLE
 
 # Helper to create a ForecastKey with sensible defaults
 function _make_forecast_key(name::String)
@@ -80,10 +83,10 @@ end
         # Call the new dispatch
         IOM.add_variable_cost_to_objective!(
             container,
-            TestVariableType(),
+            TestVariableType,
             device,
             cost_fn,
-            TestDeviceFormulation(),
+            TestDeviceFormulation,
         )
 
         # Verify delta variables were created (PiecewiseLinearBlockIncrementalOffer)
@@ -112,7 +115,7 @@ end
         dt = 1.0
 
         delta_var_container = IOM.get_variable(
-            container, IOM.PiecewiseLinearBlockIncrementalOffer(), MockThermalGen)
+            container, IOM.PiecewiseLinearBlockIncrementalOffer, MockThermalGen)
         for t in time_steps
             for (k, expected_slope) in enumerate(expected_slopes_normalized)
                 delta_var = delta_var_container[("gen1", k, t)]
@@ -152,10 +155,10 @@ end
         device = make_mock_thermal("gen1")
 
         IOM.add_variable_cost_to_objective!(
-            container, TestVariableType(), device, cost_fn, TestDeviceFormulation())
+            container, TestVariableType, device, cost_fn, TestDeviceFormulation)
 
         delta_var_container = IOM.get_variable(
-            container, IOM.PiecewiseLinearBlockIncrementalOffer(), MockThermalGen)
+            container, IOM.PiecewiseLinearBlockIncrementalOffer, MockThermalGen)
         obj = IOM.get_objective_expression(container)
         variant = IOM.get_variant_terms(obj)
 
@@ -192,9 +195,9 @@ end
         # Create variable container with both names upfront (add_test_variable!
         # creates the axis from the first name only)
         IOM.add_variable_container!(
-            container, TestVariableType(), MockThermalGen, names, time_steps)
+            container, TestVariableType, MockThermalGen, names, time_steps)
         jump_model = IOM.get_jump_model(container)
-        var_container = IOM.get_variable(container, TestVariableType(), MockThermalGen)
+        var_container = IOM.get_variable(container, TestVariableType, MockThermalGen)
         for name in names, t in time_steps
             var_container[name, t] =
                 JuMP.@variable(jump_model, base_name = "TestVar_$(name)_$(t)")
@@ -211,11 +214,11 @@ end
         for name in names
             device = make_mock_thermal(name)
             IOM.add_variable_cost_to_objective!(
-                container, TestVariableType(), device, cost_fn, TestDeviceFormulation())
+                container, TestVariableType, device, cost_fn, TestDeviceFormulation)
         end
 
         delta_var_container = IOM.get_variable(
-            container, IOM.PiecewiseLinearBlockIncrementalOffer(), MockThermalGen)
+            container, IOM.PiecewiseLinearBlockIncrementalOffer, MockThermalGen)
         obj = IOM.get_objective_expression(container)
         variant = IOM.get_variant_terms(obj)
 
@@ -259,12 +262,12 @@ end
         device = make_mock_thermal("gen1")
 
         IOM.add_variable_cost_to_objective!(
-            container, TestVariableType(), device, cost_fn, TestDeviceFormulation())
+            container, TestVariableType, device, cost_fn, TestDeviceFormulation)
 
         # dt = 15min / 60min = 0.25
         dt = 0.25
         delta_var_container = IOM.get_variable(
-            container, IOM.PiecewiseLinearBlockIncrementalOffer(), MockThermalGen)
+            container, IOM.PiecewiseLinearBlockIncrementalOffer, MockThermalGen)
         obj = IOM.get_objective_expression(container)
         variant = IOM.get_variant_terms(obj)
 
@@ -300,7 +303,7 @@ end
         device = make_mock_thermal("gen1")
 
         IOM.add_variable_cost_to_objective!(
-            container, TestVariableType(), device, cost_fn, TestDeviceFormulation();
+            container, TestVariableType, device, cost_fn, TestDeviceFormulation;
             dir = IOM.DecrementalOffer())
 
         # Verify decremental variable and constraint types used
@@ -318,7 +321,7 @@ end
         # Verify negative sign: OBJECTIVE_FUNCTION_NEGATIVE = -1.0
         dt = 1.0
         delta_var_container = IOM.get_variable(
-            container, IOM.PiecewiseLinearBlockDecrementalOffer(), MockThermalGen)
+            container, IOM.PiecewiseLinearBlockDecrementalOffer, MockThermalGen)
         obj = IOM.get_objective_expression(container)
         variant = IOM.get_variant_terms(obj)
 
@@ -379,14 +382,14 @@ end
                 device = make_mock_thermal("gen1"; base_power = device_base)
 
                 IOM.add_variable_cost_to_objective!(
-                    container, TestVariableType(), device, cost_fn,
-                    TestDeviceFormulation())
+                    container, TestVariableType, device, cost_fn,
+                    TestDeviceFormulation)
 
                 # Check objective coefficients reflect the converted slopes
                 dt = 1.0
                 delta_var_container = IOM.get_variable(
                     container,
-                    IOM.PiecewiseLinearBlockIncrementalOffer(), MockThermalGen)
+                    IOM.PiecewiseLinearBlockIncrementalOffer, MockThermalGen)
                 obj = IOM.get_objective_expression(container)
                 variant = IOM.get_variant_terms(obj)
 
@@ -425,8 +428,8 @@ end
         IOM.add_pwl_constraint_delta!(
             container,
             device,
-            TestVariableType(),
-            TestDeviceFormulation(),
+            TestVariableType,
+            TestDeviceFormulation,
             breakpoints,
             pwl_vars,
             1,
@@ -443,7 +446,9 @@ end
     @testset "add_pwl_constraint_delta! with constant min-gen offset" begin
         # Formulation where _include_constant_min_gen_power_in_constraint returns true
         IOM._include_constant_min_gen_power_in_constraint(
-            ::Type{MockThermalGen}, ::TestVariableType, ::TestConstantMinGenFormulation,
+            ::Type{MockThermalGen},
+            ::Type{TestVariableType},
+            ::Type{TestConstantMinGenFormulation},
         ) = true
 
         time_steps = 1:1
@@ -466,8 +471,8 @@ end
         IOM.add_pwl_constraint_delta!(
             container,
             device,
-            TestVariableType(),
-            TestConstantMinGenFormulation(),
+            TestVariableType,
+            TestConstantMinGenFormulation,
             breakpoints,
             pwl_vars,
             1,
@@ -484,7 +489,9 @@ end
     @testset "add_pwl_constraint_delta! with OnVariable min-gen offset" begin
         # Formulation where _include_min_gen_power_in_constraint returns true
         IOM._include_min_gen_power_in_constraint(
-            ::Type{MockThermalGen}, ::TestVariableType, ::TestCommitmentFormulation,
+            ::Type{MockThermalGen},
+            ::Type{TestVariableType},
+            ::Type{TestCommitmentFormulation},
         ) = true
 
         time_steps = 1:1
@@ -495,7 +502,7 @@ end
 
         # Add OnVariable for the commitment path
         on_var_container = IOM.add_variable_container!(
-            container, IOM.OnVariable(), MockThermalGen, ["gen1"], time_steps)
+            container, IOM.OnVariable, MockThermalGen, ["gen1"], time_steps)
         jump_model = IOM.get_jump_model(container)
         on_var_container["gen1", 1] = JuMP.@variable(
             jump_model, base_name = "On_gen1_1", binary = true)
@@ -514,8 +521,8 @@ end
         IOM.add_pwl_constraint_delta!(
             container,
             device,
-            TestVariableType(),
-            TestCommitmentFormulation(),
+            TestVariableType,
+            TestCommitmentFormulation,
             breakpoints,
             pwl_vars,
             1,

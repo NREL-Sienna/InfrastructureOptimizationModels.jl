@@ -46,7 +46,7 @@ transitions between segments.
 """
 function add_sparse_pwl_interpolation_variables!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     devices,
     model::DeviceModel{U, V},
     num_segments = DEFAULT_INTERPOLATION_LENGTH,
@@ -60,9 +60,9 @@ function add_sparse_pwl_interpolation_variables!(
     time_steps = get_time_steps(container)
 
     # Create variable container using lazy initialization
-    var_container = lazy_container_addition!(container, T(), U)
+    var_container = lazy_container_addition!(container, T, U)
     # Determine if this variable type should be binary based on type, component, and formulation
-    binary_flag = get_variable_binary(T(), U, V())
+    binary_flag = get_variable_binary(T, U, V)
     # Calculate number of segments based on variable type:
     # - Binary variables: (num_segments - 1) to control transitions between segments
     # - Continuous variables: num_segments (one per segment)
@@ -87,11 +87,11 @@ function add_sparse_pwl_interpolation_variables!(
                     )
 
                 # Set upper bound if specified by the device formulation
-                ub = get_variable_upper_bound(T(), d, V())
+                ub = get_variable_upper_bound(T, d, V)
                 ub !== nothing && JuMP.set_upper_bound(var_container[name, i, t], ub)
 
                 # Set lower bound if specified by the device formulation
-                lb = get_variable_lower_bound(T(), d, V())
+                lb = get_variable_lower_bound(T, d, V)
                 lb !== nothing && JuMP.set_lower_bound(var_container[name, i, t], lb)
             end
         end
@@ -141,11 +141,11 @@ Binary variables z ensure the incremental property: δᵢ₊₁ ≤ zᵢ ≤ δ�
 """
 function _add_generic_incremental_interpolation_constraint!(
     container::OptimizationContainer,
-    ::R, # original var : x
-    ::S, # approximated var : y = f(x)
-    ::T, # interpolation var : δ
-    ::U, # binary interpolation var : z
-    ::V, # constraint
+    ::Type{R}, # original var : x
+    ::Type{S}, # approximated var : y = f(x)
+    ::Type{T}, # interpolation var : δ
+    ::Type{U}, # binary interpolation var : z
+    ::Type{V}, # constraint
     devices::IS.FlattenIteratorWrapper{W},
     dic_var_bkpts::Dict{String, Vector{Float64}},
     dic_function_bkpts::Dict{String, Vector{Float64}};
@@ -178,7 +178,7 @@ function _add_generic_incremental_interpolation_constraint!(
     # Container for variable interpolation constraints: x = x₁ + Σᵢ δᵢ(xᵢ₊₁ - xᵢ)
     const_container_var = add_constraints_container!(
         container,
-        V(),
+        V,
         W,
         names,
         time_steps;
@@ -188,7 +188,7 @@ function _add_generic_incremental_interpolation_constraint!(
     # Container for function interpolation constraints: y = y₁ + Σᵢ δᵢ(yᵢ₊₁ - yᵢ)
     const_container_function = add_constraints_container!(
         container,
-        V(),
+        V,
         W,
         names,
         time_steps;
