@@ -227,7 +227,6 @@ end
             model;
             executions = 10,
             output_dir = mktempdir(; cleanup = true),
-            export_optimization_model = serialize,
         ) == PSI.RunStatus.SUCCESSFULLY_FINALIZED
     end
 end

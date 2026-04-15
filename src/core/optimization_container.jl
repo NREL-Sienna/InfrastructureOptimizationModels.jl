@@ -509,14 +509,6 @@ function write_optimizer_stats!(container::OptimizationContainer)
     return
 end
 
-"""
-Exports the OpModel JuMP object in MathOptFormat
-"""
-function serialize_optimization_model(container::OptimizationContainer, save_path::String)
-    serialize_jump_optimization_model(get_jump_model(container), save_path)
-    return
-end
-
 function serialize_metadata!(container::OptimizationContainer, output_dir::String)
     for key in Iterators.flatten((
         keys(container.constraints),

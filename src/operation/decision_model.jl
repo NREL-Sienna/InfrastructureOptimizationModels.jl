@@ -115,7 +115,6 @@ function DecisionModel{M}(
     direct_mode_optimizer = false,
     store_variable_names = false,
     rebuild_model = false,
-    export_optimization_model = false,
     check_numerical_bounds = true,
     initial_time = UNSET_INI_TIME,
     time_series_cache_size::Int = IS.TIME_SERIES_CACHE_SIZE_BYTES,
@@ -141,7 +140,6 @@ function DecisionModel{M}(
         check_numerical_bounds = check_numerical_bounds,
         store_variable_names = store_variable_names,
         rebuild_model = rebuild_model,
-        export_optimization_model = export_optimization_model,
     )
     return DecisionModel{M}(template, sys, settings, jump_model; name = name)
 end

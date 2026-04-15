@@ -616,23 +616,6 @@ function write_optimizer_stats!(optimizer_stats::OptimizerStats, jump_model::JuM
     return
 end
 
-"""
-Exports the JuMP object in MathOptFormat
-"""
-function serialize_jump_optimization_model(jump_model::JuMP.Model, save_path::String)
-    MOF_model = MOPFM(; format = MOI.FileFormats.FORMAT_MOF)
-    MOI.copy_to(MOF_model, JuMP.backend(jump_model))
-    MOI.write_to_file(MOF_model, save_path)
-    return
-end
-
-function write_lp_file(jump_model::JuMP.Model, save_path::String)
-    MOF_model = MOPFM(; format = MOI.FileFormats.FORMAT_LP)
-    MOI.copy_to(MOF_model, JuMP.backend(jump_model))
-    MOI.write_to_file(MOF_model, save_path)
-    return
-end
-
 # check_conflict_status functions can't be tested on CI because free solvers don't support IIS
 function check_conflict_status(
     jump_model::JuMP.Model,

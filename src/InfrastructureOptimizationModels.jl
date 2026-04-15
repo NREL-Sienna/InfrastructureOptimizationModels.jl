@@ -197,7 +197,6 @@ export init_optimization_container!
 ## Op Model Exports
 export get_initial_conditions
 export serialize_outputs
-export serialize_optimization_model
 
 export get_device_models
 export get_branch_models
@@ -489,7 +488,7 @@ export get_deserialize_initial_conditions, get_export_pwl_vars
 export get_check_numerical_bounds, get_allow_fails
 export get_optimizer_solve_log_print, get_calculate_conflict
 export get_detailed_optimizer_stats, get_direct_mode_optimizer
-export get_store_variable_names, get_export_optimization_model
+export get_store_variable_names
 export use_time_series_cache
 export set_horizon!, set_initial_time!, set_warm_start!
 export log_values

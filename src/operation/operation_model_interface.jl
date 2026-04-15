@@ -135,27 +135,12 @@ function solve_model!(model::OperationModel)
     container = get_optimization_container(model)
     model_name = get_name(model)
     ts = get_current_timestamp(model)
-    output_dir = get_output_dir(model)
-
-    if get_export_optimization_model(get_settings(model))
-        model_output_dir = joinpath(output_dir, "optimization_model_exports")
-        mkpath(model_output_dir)
-        tss = replace("$(ts)", ":" => "_")
-        model_export_path = joinpath(model_output_dir, "exported_$(model_name)_$(tss).json")
-        serialize_optimization_model(container, model_export_path)
-        write_lp_file(
-            get_jump_model(container),
-            replace(model_export_path, ".json" => ".lp"),
-        )
-    end
 
     status = execute_optimizer!(container, get_system(model))
     set_run_status!(model, status)
     if status != RunStatus.SUCCESSFULLY_FINALIZED
         settings = get_settings(model)
-        infeasible_opt_path = joinpath(output_dir, "infeasible_$(model_name).json")
         @error("Serializing Infeasible Problem at $(infeasible_opt_path)")
-        serialize_optimization_model(container, infeasible_opt_path)
         if !get_allow_fails(settings)
             error("Solving model $(model_name) failed at $(ts)")
         else
@@ -300,16 +285,6 @@ function unregister_recorders!(model::OperationModel)
     end
 end
 
-const _JUMP_MODEL_FILENAME = "jump_model.json"
-
-function serialize_optimization_model(model::OperationModel)
-    serialize_optimization_model(
-        get_optimization_container(model),
-        joinpath(get_output_dir(model), _JUMP_MODEL_FILENAME),
-    )
-    return
-end
-
 function instantiate_network_model!(model::OperationModel)
     template = get_template(model)
     network_model = get_network_model(template)
@@ -339,12 +314,4 @@ function list_all_keys(x::OperationModel)
     return Iterators.flatten(
         list_fields(get_store(x), T) for T in STORE_CONTAINER_TYPES
     )
-end
-
-function serialize_optimization_model(model::OperationModel, save_path::String)
-    serialize_jump_optimization_model(
-        get_jump_model(get_optimization_container(model)),
-        save_path,
-    )
-    return
 end
