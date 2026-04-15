@@ -21,6 +21,13 @@ apply_maybe_across_time_series(
 ) =
     apply_maybe_across_time_series(fn, PSY.get_time_series(component, ts_key))
 
+apply_maybe_across_time_series(
+    fn::Function,
+    component::PSY.Component,
+    tts::IS.TupleTimeSeries,
+) =
+    apply_maybe_across_time_series(fn, component, IS.get_time_series_key(tts))
+
 # case where the element isn't a time series
 apply_maybe_across_time_series(fn::Function, ::PSY.Component, elem) = fn(elem)
 
