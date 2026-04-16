@@ -15,7 +15,7 @@ end
 function get_time_series(
     container::OptimizationContainer,
     component::T,
-    ::P,
+    ::Type{P},
     meta = CONTAINER_KEY_EMPTY_META,
 ) where {T <: PSY.Component, P <: TimeSeriesParameter}
     parameter_container = get_parameter(container, P, T, meta)

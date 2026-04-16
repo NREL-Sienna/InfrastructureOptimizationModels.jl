@@ -42,10 +42,10 @@ function device_duration_retrospective!(
     container::OptimizationContainer,
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
-    cons_type::ConstraintType,
+    ::Type{C},
     var_types::NTuple{3, Type{<:VariableType}},
     ::Type{T},
-) where {T <: PSY.Component}
+) where {C <: ConstraintType, T <: PSY.Component}
     time_steps = get_time_steps(container)
 
     varon = get_variable(container, var_types[1], T)
@@ -58,7 +58,7 @@ function device_duration_retrospective!(
     ]
     con_up = add_constraints_container!(
         container,
-        typeof(cons_type),
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -66,7 +66,7 @@ function device_duration_retrospective!(
     )
     con_down = add_constraints_container!(
         container,
-        typeof(cons_type),
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -151,11 +151,11 @@ function device_duration_look_ahead!(
     container::OptimizationContainer,
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
-    cons_type_up::ConstraintType,
-    cons_type_down::ConstraintType,
+    ::Type{C_up},
+    ::Type{C_dn},
     var_types::NTuple{3, Type{<:VariableType}},
     ::Type{T},
-) where {T <: PSY.Component}
+) where {C_up <: ConstraintType, C_dn <: ConstraintType, T <: PSY.Component}
     time_steps = get_time_steps(container)
     varon = get_variable(container, var_types[1], T)
     varstart = get_variable(container, var_types[2], T)
@@ -163,9 +163,9 @@ function device_duration_look_ahead!(
 
     device_name_sets = [get_component_name(ic) for ic in initial_duration[:, 1]]
     con_up =
-        add_constraints_container!(container, cons_type_up, device_name_sets, time_steps)
+        add_constraints_container!(container, C_up, T, device_name_sets, time_steps)
     con_down =
-        add_constraints_container!(container, cons_type_down, device_name_sets, time_steps)
+        add_constraints_container!(container, C_dn, T, device_name_sets, time_steps)
 
     for t in time_steps
         for (ix, ic) in enumerate(initial_duration[:, 1])
@@ -251,10 +251,10 @@ function device_duration_parameters!(
     container::OptimizationContainer,
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
-    cons_type::ConstraintType,
+    ::Type{C},
     var_types::NTuple{3, Type{<:VariableType}},
     ::Type{T},
-) where {T <: PSY.Component}
+) where {C <: ConstraintType, T <: PSY.Component}
     time_steps = get_time_steps(container)
 
     varon = get_variable(container, var_types[1], T)
@@ -264,7 +264,7 @@ function device_duration_parameters!(
     device_name_sets = [get_component_name(ic) for ic in initial_duration[:, 1]]
     con_up = add_constraints_container!(
         container,
-        typeof(cons_type),
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -272,7 +272,7 @@ function device_duration_parameters!(
     )
     con_down = add_constraints_container!(
         container,
-        typeof(cons_type),
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -374,10 +374,10 @@ function device_duration_compact_retrospective!(
     container::OptimizationContainer,
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
-    cons_type::ConstraintType,
+    ::Type{C},
     var_types::NTuple{3, Type{<:VariableType}},
     ::Type{T},
-) where {T <: PSY.Component}
+) where {C <: ConstraintType, T <: PSY.Component}
     time_steps = get_time_steps(container)
 
     varon = get_variable(container, var_types[1], T)
@@ -387,7 +387,7 @@ function device_duration_compact_retrospective!(
     device_name_sets = [get_component_name(ic) for ic in initial_duration[:, 1]]
     con_up = add_constraints_container!(
         container,
-        typeof(cons_type),
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -396,7 +396,7 @@ function device_duration_compact_retrospective!(
     )
     con_down = add_constraints_container!(
         container,
-        typeof(cons_type),
+        C,
         T,
         device_name_sets,
         time_steps;
