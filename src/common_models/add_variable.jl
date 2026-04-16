@@ -35,15 +35,16 @@ function add_variables!(
     container::OptimizationContainer,
     ::Type{T},
     devices::U,
-    formulation,
+    ::Type{F},
 ) where {
     T <: VariableType,
     U <: Union{Vector{D}, IS.FlattenIteratorWrapper{D}},
+    F,
 } where {D <: IS.InfrastructureSystemsComponent}
     @assert !isempty(devices)
     time_steps = get_time_steps(container)
     settings = get_settings(container)
-    binary = get_variable_binary(T, D, formulation)
+    binary = get_variable_binary(T, D, F)
 
     variable = add_variable_container!(
         container,
@@ -60,14 +61,14 @@ function add_variables!(
             base_name = "$(T)_$(D)_{$(name), $(t)}",
             binary = binary
         )
-        ub = get_variable_upper_bound(T, d, formulation)
+        ub = get_variable_upper_bound(T, d, F)
         ub !== nothing && JuMP.set_upper_bound(variable[name, t], ub)
 
-        lb = get_variable_lower_bound(T, d, formulation)
+        lb = get_variable_lower_bound(T, d, F)
         lb !== nothing && JuMP.set_lower_bound(variable[name, t], lb)
 
         if get_warm_start(settings)
-            init = get_variable_warm_start_value(T, d, formulation)
+            init = get_variable_warm_start_value(T, d, F)
             init !== nothing && JuMP.set_start_value(variable[name, t], init)
         end
     end
@@ -83,16 +84,17 @@ function add_service_variables!(
     ::Type{T},
     service::U,
     contributing_devices::V,
-    formulation::AbstractServiceFormulation,
+    ::Type{F},
 ) where {
     T <: VariableType,
     U <: PSY.Service,
     V <: Union{Vector{D}, IS.FlattenIteratorWrapper{D}},
+    F <: AbstractServiceFormulation,
 } where {D <: PSY.Component}
     @assert !isempty(contributing_devices)
     time_steps = get_time_steps(container)
 
-    binary = get_variable_binary(T, U, formulation)
+    binary = get_variable_binary(T, U, F)
 
     variable = add_variable_container!(
         container,
@@ -111,13 +113,13 @@ function add_service_variables!(
             binary = binary
         )
 
-        ub = get_variable_upper_bound(T, service, d, formulation)
+        ub = get_variable_upper_bound(T, service, d, F)
         ub !== nothing && JuMP.set_upper_bound(variable[name, t], ub)
 
-        lb = get_variable_lower_bound(T, service, d, formulation)
+        lb = get_variable_lower_bound(T, service, d, F)
         lb !== nothing && !binary && JuMP.set_lower_bound(variable[name, t], lb)
 
-        init = get_variable_warm_start_value(T, d, formulation)
+        init = get_variable_warm_start_value(T, d, F)
         init !== nothing && JuMP.set_start_value(variable[name, t], init)
     end
 

@@ -43,7 +43,7 @@ function device_duration_retrospective!(
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
     cons_type::ConstraintType,
-    var_types::Tuple{VariableType, VariableType, VariableType},
+    var_types::NTuple{3, Type{<:VariableType}},
     ::Type{T},
 ) where {T <: PSY.Component}
     time_steps = get_time_steps(container)
@@ -58,7 +58,7 @@ function device_duration_retrospective!(
     ]
     con_up = add_constraints_container!(
         container,
-        cons_type,
+        typeof(cons_type),
         T,
         device_name_sets,
         time_steps;
@@ -66,7 +66,7 @@ function device_duration_retrospective!(
     )
     con_down = add_constraints_container!(
         container,
-        cons_type,
+        typeof(cons_type),
         T,
         device_name_sets,
         time_steps;
@@ -153,7 +153,7 @@ function device_duration_look_ahead!(
     initial_duration::Matrix{InitialCondition},
     cons_type_up::ConstraintType,
     cons_type_down::ConstraintType,
-    var_types::Tuple{VariableType, VariableType, VariableType},
+    var_types::NTuple{3, Type{<:VariableType}},
     ::Type{T},
 ) where {T <: PSY.Component}
     time_steps = get_time_steps(container)
@@ -252,7 +252,7 @@ function device_duration_parameters!(
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
     cons_type::ConstraintType,
-    var_types::Tuple{VariableType, VariableType, VariableType},
+    var_types::NTuple{3, Type{<:VariableType}},
     ::Type{T},
 ) where {T <: PSY.Component}
     time_steps = get_time_steps(container)
@@ -264,7 +264,7 @@ function device_duration_parameters!(
     device_name_sets = [get_component_name(ic) for ic in initial_duration[:, 1]]
     con_up = add_constraints_container!(
         container,
-        cons_type,
+        typeof(cons_type),
         T,
         device_name_sets,
         time_steps;
@@ -272,7 +272,7 @@ function device_duration_parameters!(
     )
     con_down = add_constraints_container!(
         container,
-        cons_type,
+        typeof(cons_type),
         T,
         device_name_sets,
         time_steps;
@@ -375,7 +375,7 @@ function device_duration_compact_retrospective!(
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
     cons_type::ConstraintType,
-    var_types::Tuple{VariableType, VariableType, VariableType},
+    var_types::NTuple{3, Type{<:VariableType}},
     ::Type{T},
 ) where {T <: PSY.Component}
     time_steps = get_time_steps(container)
@@ -387,7 +387,7 @@ function device_duration_compact_retrospective!(
     device_name_sets = [get_component_name(ic) for ic in initial_duration[:, 1]]
     con_up = add_constraints_container!(
         container,
-        cons_type,
+        typeof(cons_type),
         T,
         device_name_sets,
         time_steps;
@@ -396,7 +396,7 @@ function device_duration_compact_retrospective!(
     )
     con_down = add_constraints_container!(
         container,
-        cons_type,
+        typeof(cons_type),
         T,
         device_name_sets,
         time_steps;
