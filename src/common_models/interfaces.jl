@@ -135,14 +135,7 @@ end
 Extension point: Check if proportional cost term is time-variant.
 Returns true if the cost should be added to the variant objective expression.
 """
-is_time_variant_term(
-    ::OptimizationContainer,
-    ::PSY.OperationalCost,
-    ::Type{<:VariableType},
-    ::Type{<:IS.InfrastructureSystemsComponent},
-    ::Type{<:AbstractDeviceFormulation},
-    ::Int,
-) = false
+is_time_variant_term(::PSY.OperationalCost) = false
 
 # corresponds to get_must_run for thermals, but avoiding device specific code here.
 """

@@ -104,6 +104,9 @@ get_optimizer_stats(res::OptimizationProblemOutputs) = res.optimizer_stats
 get_parameter_values(res::OptimizationProblemOutputs) = res.parameter_values
 get_source_data(res::OptimizationProblemOutputs) = res.source_data
 
+make_system_filename(sys::PSY.System) = make_system_filename(IS.get_uuid(sys))
+make_system_filename(sys_uuid::Union{Base.UUID, AbstractString}) = "system-$(sys_uuid).json"
+
 """
 Load the system from disk if not already set, and return it.
 

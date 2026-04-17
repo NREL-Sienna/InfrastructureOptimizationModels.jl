@@ -60,6 +60,8 @@ function add_proportional_cost_maybe_time_variant!(
     multiplier = objective_function_multiplier(U, V)
     for d in devices
         op_cost_data = get_operation_cost(d)
+        # FIXME this should really be in its own function for compilation reasons:
+        # is_time_variant_term only depends on the type of op_cost_data.
         name = get_name(d)
         for t in get_time_steps(container)
             cost_term = proportional_cost(container, op_cost_data, U, d, V, t)
@@ -78,8 +80,7 @@ function add_proportional_cost_maybe_time_variant!(
                 )
             else
                 variable = get_variable(container, U, T)[name, t]
-                add_as_time_variant =
-                    is_time_variant_term(container, op_cost_data, U, T, V, t)
+                add_as_time_variant = is_time_variant_term(op_cost_data)
                 if add_as_time_variant
                     add_cost_term_variant!(
                         container, variable, rate, ProductionCostExpression, T, name, t)

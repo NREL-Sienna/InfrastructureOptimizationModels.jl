@@ -168,7 +168,6 @@ export get_power_flow_evaluation, has_subnetworks, get_subsystem
 export set_subsystem!, add_dual!
 export requires_all_branch_models, supports_branch_filtering, ignores_branch_filtering
 export validate_network_model
-export validate_available_devices
 export BranchReductionOptimizationTracker
 export get_variable_dict, get_constraint_dict, get_constraint_map_by_type
 export get_number_of_steps, set_number_of_steps!
@@ -340,7 +339,6 @@ export add_variable_container!, add_constraint_dual!
 export add_to_objective_invariant_expression!, lazy_container_addition!
 export get_parameter_multiplier_array, get_aux_variable, get_condition
 export supports_milp, get_quadratic_cost_per_system_unit
-export check_hvdc_line_limits_unidirectional, check_hvdc_line_limits_consistency
 export add_sparse_pwl_interpolation_variables!
 export JuMPOrFloat
 # Constraint helpers

@@ -44,22 +44,6 @@ function get_available_components(
     end
 end
 
-"""
-Default implementation for validating that a device model has available devices.
-Can be extended in downstream packages for additional validation logic.
-"""
-function validate_available_devices(
-    model::DeviceModel{T, <:AbstractDeviceFormulation},
-    sys::PSY.System,
-) where {T <: PSY.Component}
-    devices = get_available_components(model, sys)
-    if isempty(devices)
-        return false
-    end
-    PSY.check_components(sys, devices)
-    return true
-end
-
 _filter_function(x::PSY.ACBus) =
     PSY.get_bustype(x) != PSY.ACBusTypes.ISOLATED && PSY.get_available(x)
 
@@ -102,50 +86,6 @@ function get_available_components(
     )
 end
 =#
-
-make_system_filename(sys::PSY.System) = make_system_filename(IS.get_uuid(sys))
-make_system_filename(sys_uuid::Union{Base.UUID, AbstractString}) = "system-$(sys_uuid).json"
-
-function check_hvdc_line_limits_consistency(
-    d::Union{PSY.TwoTerminalHVDC, PSY.TModelHVDCLine},
-)
-    from_min = PSY.get_active_power_limits_from(d).min
-    to_min = PSY.get_active_power_limits_to(d).min
-    from_max = PSY.get_active_power_limits_from(d).max
-    to_max = PSY.get_active_power_limits_to(d).max
-
-    if from_max < to_min
-        throw(
-            IS.ConflictingInputsError(
-                "From Max $(from_max) can't be a smaller value than To Min $(to_min)",
-            ),
-        )
-    elseif to_max < from_min
-        throw(
-            IS.ConflictingInputsError(
-                "To Max $(to_max) can't be a smaller value than From Min $(from_min)",
-            ),
-        )
-    end
-    return
-end
-
-function check_hvdc_line_limits_unidirectional(d::PSY.TwoTerminalHVDC)
-    from_min = PSY.get_active_power_limits_from(d).min
-    to_min = PSY.get_active_power_limits_to(d).min
-    from_max = PSY.get_active_power_limits_from(d).max
-    to_max = PSY.get_active_power_limits_to(d).max
-
-    if from_min < 0 || to_min < 0 || from_max < 0 || to_max < 0
-        throw(
-            IS.ConflictingInputsError(
-                "Changing flow direction on HVDC Line $(PSY.get_name(d)) is not compatible with non-linear network formulations. \
-                Bi-directional models with losses are only compatible with linear network models like DCPPowerModel.",
-            ),
-        )
-    end
-    return
-end
 
 ##################################################
 ########### Cost Function Utilities ##############
@@ -376,47 +316,9 @@ function _get_piecewise_curve_per_system_unit(
 end
 
 is_time_variant(::IS.TimeSeriesKey) = true
+is_time_variant(::IS.ValueCurve{<:IS.TimeSeriesFunctionData}) = true
+is_time_variant(
+    ::IS.ProductionVariableCostCurve{<:IS.ValueCurve{<:IS.TimeSeriesFunctionData}},
+) = true
+is_time_variant(::IS.TupleTimeSeries) = true
 is_time_variant(::Any) = false
-
-function create_temporary_cost_function_in_system_per_unit(
-    original_cost_function::PSY.CostCurve,
-    new_data::PSY.PiecewiseLinearData,
-)
-    return PSY.CostCurve(
-        PSY.PiecewisePointCurve(new_data),
-        PSY.UnitSystem.SYSTEM_BASE,
-        PSY.get_vom_cost(original_cost_function),
-    )
-end
-
-function create_temporary_cost_function_in_system_per_unit(
-    original_cost_function::PSY.FuelCurve,
-    new_data::PSY.PiecewiseLinearData,
-)
-    return PSY.FuelCurve(
-        PSY.PiecewisePointCurve(new_data),
-        PSY.UnitSystem.SYSTEM_BASE,
-        PSY.get_fuel_cost(original_cost_function),
-        IS.LinearCurve(0.0),  # setting fuel offtake cost to default value of 0
-        PSY.get_vom_cost(original_cost_function),
-    )
-end
-
-function get_deterministic_time_series_type(sys::PSY.System)
-    time_series_types = IS.get_time_series_counts_by_type(sys.data)
-    existing_types = Set(d["type"] for d in time_series_types)
-    if Set(["Deterministic", "DeterministicSingleTimeSeries"]) ∈ existing_types
-        error(
-            "The System contains a combination of forecast data and transformed time series data. Currently this is not supported.",
-        )
-    end
-    if "Deterministic" ∈ existing_types
-        return PSY.Deterministic
-    elseif "DeterministicSingleTimeSeries" ∈ existing_types
-        return PSY.DeterministicSingleTimeSeries
-    else
-        error(
-            "The System does not contain any forecast data or transformed time series data.",
-        )
-    end
-end
