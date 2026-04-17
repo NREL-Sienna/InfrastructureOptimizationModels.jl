@@ -151,19 +151,26 @@ _get_parameter_field(
 #################################################################################
 
 _has_market_bid_cost(device::PSY.StaticInjection) =
-    PSY.get_operation_cost(device) isa MBC_TYPES
+    _has_market_bid_cost(PSY.get_operation_cost(device))
+_has_market_bid_cost(::MBC_TYPES) = true
+_has_market_bid_cost(::PSY.OperationalCost) = false
 
-_has_import_export_cost(device::PSY.Source) =
-    PSY.get_operation_cost(device) isa IEC_TYPES
 _has_import_export_cost(::PSY.StaticInjection) = false
+_has_import_export_cost(device::PSY.Source) =
+    _has_import_export_cost(PSY.get_operation_cost(device))
+_has_import_export_cost(::IEC_TYPES) = true
+_has_import_export_cost(::PSY.OperationalCost) = false
 
 _has_offer_curve_cost(device::PSY.Component) =
     _has_market_bid_cost(device) || _has_import_export_cost(device)
 
 # With the static/TS type split, time-series parameters are determined by cost type:
 # TS cost types always have time-series parameters; static types never do.
-_has_parameter_time_series(::Type{<:ParameterType}, device::PSY.StaticInjection) =
-    PSY.get_operation_cost(device) isa TS_OFFER_CURVE_COST_TYPES
+_has_parameter_time_series(device::PSY.StaticInjection) =
+    _has_parameter_time_series(PSY.get_operation_cost(device))
+
+_has_parameter_time_series(::TS_OFFER_CURVE_COST_TYPES) = true
+_has_parameter_time_series(::PSY.OperationalCost) = false
 
 #################################################################################
 # Section 5: _consider_parameter (generic versions)
@@ -344,7 +351,7 @@ function _process_occ_parameters_helper(
     end
     if _consider_parameter(P, container, model)
         ts_devices =
-            filter(device -> _has_parameter_time_series(P, device), devices)
+            filter(device -> _has_parameter_time_series(device), devices)
         (length(ts_devices) > 0) && add_parameters!(container, P, ts_devices, model)
     end
 end

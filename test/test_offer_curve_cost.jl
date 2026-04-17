@@ -281,14 +281,14 @@ end
     _, source_ts = _make_ts_iec_system()
 
     param = IOM.IncrementalPiecewiseLinearSlopeParameter
-    @test !IOM._has_parameter_time_series(param, comp_static)
-    @test IOM._has_parameter_time_series(param, comp_ts)
-    @test !IOM._has_parameter_time_series(param, source_static)
-    @test IOM._has_parameter_time_series(param, source_ts)
+    @test !IOM._has_parameter_time_series(comp_static)
+    @test IOM._has_parameter_time_series(comp_ts)
+    @test !IOM._has_parameter_time_series(source_static)
+    @test IOM._has_parameter_time_series(source_ts)
 
     startup_param = IOM.StartupCostParameter
-    @test !IOM._has_parameter_time_series(startup_param, comp_static)
-    @test IOM._has_parameter_time_series(startup_param, comp_ts)
+    @test !IOM._has_parameter_time_series(comp_static)
+    @test IOM._has_parameter_time_series(comp_ts)
 end
 
 @testset "Offer Curve Cost: get_initial_input on devices" begin
