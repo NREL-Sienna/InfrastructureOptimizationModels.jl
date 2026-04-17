@@ -260,8 +260,8 @@ function set_parameter!(
     container::ParameterContainer,
     jump_model::JuMP.Model,
     parameter::Union{ValidDataParamEltypes, AbstractVector{<:ValidDataParamEltypes}},
-    ixs...,
-)
+    ixs::Vararg{Any, N},
+) where {N}
     param_array = get_parameter_array(container)
     _set_parameter!(param_array, jump_model, parameter, ixs)
     return
@@ -273,8 +273,8 @@ function set_parameter!(
     container::ParameterContainer,
     ::JuMP.Model,
     parameter::JuMP.VariableRef,
-    ixs...,
-)
+    ixs::Vararg{Any, N},
+) where {N}
     assign_maybe_broadcast!(get_parameter_array(container), parameter, ixs)
     return
 end

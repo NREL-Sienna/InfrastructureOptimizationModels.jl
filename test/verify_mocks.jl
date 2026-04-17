@@ -66,7 +66,7 @@ get_rate(branch)
 MockComponentType()
 
 # TestDeviceFormulation
-TestDeviceFormulation()
+TestDeviceFormulation
 
 # MockReserve
 reserve = MockReserve("reserve", 50.0, [gen])

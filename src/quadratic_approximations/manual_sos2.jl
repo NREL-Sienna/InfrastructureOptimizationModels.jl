@@ -69,11 +69,11 @@ function _add_quadratic_approx!(
 
     # Create all containers upfront
     lambda_container =
-        add_variable_container!(container, QuadraticVariable(), C; meta)
-    z_container = add_variable_container!(container, ManualSOS2BinaryVariable(), C; meta)
+        add_variable_container!(container, QuadraticVariable, C; meta)
+    z_container = add_variable_container!(container, ManualSOS2BinaryVariable, C; meta)
     link_cons = add_constraints_container!(
         container,
-        SOS2LinkingConstraint(),
+        SOS2LinkingConstraint,
         C,
         names,
         time_steps;
@@ -81,7 +81,7 @@ function _add_quadratic_approx!(
     )
     link_expr = add_expression_container!(
         container,
-        SOS2LinkingExpression(),
+        SOS2LinkingExpression,
         C,
         names,
         time_steps;
@@ -89,7 +89,7 @@ function _add_quadratic_approx!(
     )
     norm_cons = add_constraints_container!(
         container,
-        SOS2NormConstraint(),
+        SOS2NormConstraint,
         C,
         names,
         time_steps;
@@ -97,7 +97,7 @@ function _add_quadratic_approx!(
     )
     norm_expr = add_expression_container!(
         container,
-        SOS2NormExpression(),
+        SOS2NormExpression,
         C,
         names,
         time_steps;
@@ -105,7 +105,7 @@ function _add_quadratic_approx!(
     )
     seg_cons = add_constraints_container!(
         container,
-        ManualSOS2SegmentSelectionConstraint(),
+        ManualSOS2SegmentSelectionConstraint,
         C,
         names,
         time_steps;
@@ -113,7 +113,7 @@ function _add_quadratic_approx!(
     )
     seg_expr = add_expression_container!(
         container,
-        ManualSOS2SegmentSelectionExpression(),
+        ManualSOS2SegmentSelectionExpression,
         C,
         names,
         time_steps;
@@ -121,7 +121,7 @@ function _add_quadratic_approx!(
     )
     adj_cons = add_constraints_container!(
         container,
-        ManualSOS2AdjacencyConstraint(),
+        ManualSOS2AdjacencyConstraint,
         C,
         names,
         1:n_points,
@@ -130,7 +130,7 @@ function _add_quadratic_approx!(
     )
     result_expr = add_expression_container!(
         container,
-        QuadraticExpression(),
+        QuadraticExpression,
         C,
         names,
         time_steps;

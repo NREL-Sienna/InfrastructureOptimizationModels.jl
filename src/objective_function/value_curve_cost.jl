@@ -120,23 +120,27 @@ _objective_sign(::DecrementalOffer) = OBJECTIVE_FUNCTION_NEGATIVE
 # Maps parameter types to PSY getter functions.
 #################################################################################
 
-_get_parameter_field(::StartupCostParameter, op_cost) = PSY.get_start_up(op_cost)
-_get_parameter_field(::ShutdownCostParameter, op_cost) = PSY.get_shut_down(op_cost)
-_get_parameter_field(::IncrementalCostAtMinParameter, op_cost) =
+_get_parameter_field(::Type{<:StartupCostParameter}, op_cost) = PSY.get_start_up(op_cost)
+_get_parameter_field(::Type{<:ShutdownCostParameter}, op_cost) = PSY.get_shut_down(op_cost)
+_get_parameter_field(::Type{<:IncrementalCostAtMinParameter}, op_cost) =
     IS.get_initial_input(PSY.get_value_curve(get_output_offer_curves(op_cost)))
-_get_parameter_field(::DecrementalCostAtMinParameter, op_cost) =
+_get_parameter_field(::Type{<:DecrementalCostAtMinParameter}, op_cost) =
     IS.get_initial_input(PSY.get_value_curve(get_input_offer_curves(op_cost)))
 _get_parameter_field(
-    ::Union{
-        IncrementalPiecewiseLinearSlopeParameter,
-        IncrementalPiecewiseLinearBreakpointParameter,
+    ::Type{
+        <:Union{
+            IncrementalPiecewiseLinearSlopeParameter,
+            IncrementalPiecewiseLinearBreakpointParameter,
+        },
     },
     op_cost,
 ) = get_output_offer_curves(op_cost)
 _get_parameter_field(
-    ::Union{
-        DecrementalPiecewiseLinearSlopeParameter,
-        DecrementalPiecewiseLinearBreakpointParameter,
+    ::Type{
+        <:Union{
+            DecrementalPiecewiseLinearSlopeParameter,
+            DecrementalPiecewiseLinearBreakpointParameter,
+        },
     },
     op_cost,
 ) = get_input_offer_curves(op_cost)
@@ -158,7 +162,7 @@ _has_offer_curve_cost(device::PSY.Component) =
 
 # With the static/TS type split, time-series parameters are determined by cost type:
 # TS cost types always have time-series parameters; static types never do.
-_has_parameter_time_series(::ParameterType, device::PSY.StaticInjection) =
+_has_parameter_time_series(::Type{<:ParameterType}, device::PSY.StaticInjection) =
     PSY.get_operation_cost(device) isa TS_OFFER_CURVE_COST_TYPES
 
 #################################################################################
@@ -168,31 +172,31 @@ _has_parameter_time_series(::ParameterType, device::PSY.StaticInjection) =
 #################################################################################
 
 _consider_parameter(
-    ::StartupCostParameter,
+    ::Type{<:StartupCostParameter},
     container::OptimizationContainer,
     ::DeviceModel{T, D},
 ) where {T, D} = has_container_key(container, StartVariable, T)
 
 _consider_parameter(
-    ::ShutdownCostParameter,
+    ::Type{<:ShutdownCostParameter},
     container::OptimizationContainer,
     ::DeviceModel{T, D},
 ) where {T, D} = has_container_key(container, StopVariable, T)
 
 _consider_parameter(
-    ::AbstractCostAtMinParameter,
+    ::Type{<:AbstractCostAtMinParameter},
     container::OptimizationContainer,
     ::DeviceModel{T, D},
 ) where {T, D} = has_container_key(container, OnVariable, T)
 
 _consider_parameter(
-    ::AbstractPiecewiseLinearSlopeParameter,
+    ::Type{<:AbstractPiecewiseLinearSlopeParameter},
     ::OptimizationContainer,
     ::DeviceModel{T, D},
 ) where {T, D} = true
 
 _consider_parameter(
-    ::AbstractPiecewiseLinearBreakpointParameter,
+    ::Type{<:AbstractPiecewiseLinearBreakpointParameter},
     ::OptimizationContainer,
     ::DeviceModel{T, D},
 ) where {T, D} = true
@@ -266,7 +270,7 @@ end
 # Generic validate_occ_component overloads for PSY.StaticInjection.
 # Device-specific overloads (ThermalMultiStart, RenewableDispatch, Storage) are in POM.
 
-function validate_occ_component(::StartupCostParameter, device::PSY.StaticInjection)
+function validate_occ_component(::Type{<:StartupCostParameter}, device::PSY.StaticInjection)
     op_cost = PSY.get_operation_cost(device)
     # TS types are validated at parameter population time
     op_cost isa PSY.MarketBidTimeSeriesCost && return
@@ -283,7 +287,10 @@ function validate_occ_component(::StartupCostParameter, device::PSY.StaticInject
     return
 end
 
-function validate_occ_component(::ShutdownCostParameter, device::PSY.StaticInjection)
+function validate_occ_component(
+    ::Type{<:ShutdownCostParameter},
+    device::PSY.StaticInjection,
+)
     op_cost = PSY.get_operation_cost(device)
     # TS types are validated at parameter population time
     op_cost isa PSY.MarketBidTimeSeriesCost && return
@@ -303,21 +310,22 @@ function validate_occ_component(::ShutdownCostParameter, device::PSY.StaticInjec
 end
 
 # Consistency of initial_input vs offer curves is guaranteed by the static/TS type split
-validate_occ_component(::AbstractCostAtMinParameter, ::PSY.StaticInjection) = nothing
+validate_occ_component(::Type{<:AbstractCostAtMinParameter}, ::PSY.StaticInjection) =
+    nothing
 
 validate_occ_component(
-    ::IncrementalPiecewiseLinearBreakpointParameter,
+    ::Type{<:IncrementalPiecewiseLinearBreakpointParameter},
     device::PSY.StaticInjection,
 ) = validate_occ_breakpoints_slopes(device, IncrementalOffer())
 
 validate_occ_component(
-    ::DecrementalPiecewiseLinearBreakpointParameter,
+    ::Type{<:DecrementalPiecewiseLinearBreakpointParameter},
     device::PSY.StaticInjection,
 ) = validate_occ_breakpoints_slopes(device, DecrementalOffer())
 
 # Slope and breakpoint validations are done together, nothing to do here
 validate_occ_component(
-    ::AbstractPiecewiseLinearSlopeParameter,
+    ::Type{<:AbstractPiecewiseLinearSlopeParameter},
     device::PSY.StaticInjection,
 ) = nothing
 
@@ -326,18 +334,17 @@ validate_occ_component(
 #################################################################################
 
 function _process_occ_parameters_helper(
-    ::P,
+    ::Type{P},
     container::OptimizationContainer,
     model,
     devices,
 ) where {P <: ParameterType}
-    param_instance = P()
     for device in devices
-        validate_occ_component(param_instance, device)
+        validate_occ_component(P, device)
     end
-    if _consider_parameter(param_instance, container, model)
+    if _consider_parameter(P, container, model)
         ts_devices =
-            filter(device -> _has_parameter_time_series(param_instance, device), devices)
+            filter(device -> _has_parameter_time_series(P, device), devices)
         (length(ts_devices) > 0) && add_parameters!(container, P, ts_devices, model)
     end
 end
@@ -351,10 +358,10 @@ function process_import_export_parameters!(
     devices = filter(_has_import_export_cost, collect(devices_in))
 
     for param in (
-        IncrementalPiecewiseLinearSlopeParameter(),
-        IncrementalPiecewiseLinearBreakpointParameter(),
-        DecrementalPiecewiseLinearSlopeParameter(),
-        DecrementalPiecewiseLinearBreakpointParameter(),
+        IncrementalPiecewiseLinearSlopeParameter,
+        IncrementalPiecewiseLinearBreakpointParameter,
+        DecrementalPiecewiseLinearSlopeParameter,
+        DecrementalPiecewiseLinearBreakpointParameter,
     )
         _process_occ_parameters_helper(param, container, model, devices)
     end
@@ -372,25 +379,25 @@ function process_market_bid_parameters!(
     isempty(devices) && return
 
     for param in (
-        StartupCostParameter(),
-        ShutdownCostParameter(),
+        StartupCostParameter,
+        ShutdownCostParameter,
     )
         _process_occ_parameters_helper(param, container, model, devices)
     end
     if incremental
         for param in (
-            IncrementalCostAtMinParameter(),
-            IncrementalPiecewiseLinearSlopeParameter(),
-            IncrementalPiecewiseLinearBreakpointParameter(),
+            IncrementalCostAtMinParameter,
+            IncrementalPiecewiseLinearSlopeParameter,
+            IncrementalPiecewiseLinearBreakpointParameter,
         )
             _process_occ_parameters_helper(param, container, model, devices)
         end
     end
     if decremental
         for param in (
-            DecrementalCostAtMinParameter(),
-            DecrementalPiecewiseLinearSlopeParameter(),
-            DecrementalPiecewiseLinearBreakpointParameter(),
+            DecrementalCostAtMinParameter,
+            DecrementalPiecewiseLinearSlopeParameter,
+            DecrementalPiecewiseLinearBreakpointParameter,
         )
             _process_occ_parameters_helper(param, container, model, devices)
         end
@@ -498,8 +505,8 @@ function add_pwl_term_delta!(
     container::OptimizationContainer,
     component::T,
     ::PSY.OfferCurveCost,
-    ::U,
-    ::V,
+    ::Type{U},
+    ::Type{V},
 ) where {T <: PSY.Component, U <: VariableType, V <: AbstractDeviceFormulation}
     W = _block_offer_var(dir)
     X = _block_offer_constraint(dir)
@@ -524,8 +531,8 @@ function add_pwl_term_delta!(
         add_pwl_constraint_delta!(
             container,
             component,
-            U(),
-            V(),
+            U,
+            V,
             breakpoints,
             pwl_vars,
             t,
@@ -567,10 +574,10 @@ is_nontrivial_offer(::PSY.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve}) = f
 
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::PSY.Component,
     cost_function::PSY.OfferCurveCost,
-    ::U,
+    ::Type{U},
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     component_name = PSY.get_name(component)
     @debug "Market Bid" _group = LOG_GROUP_COST_FUNCTIONS component_name
@@ -586,40 +593,40 @@ function add_variable_cost_to_objective!(
         container,
         component,
         cost_function,
-        T(),
-        U(),
+        T,
+        U,
     )
     return
 end
 
 # Default: most formulations use incremental offers
-_vom_offer_direction(::AbstractDeviceFormulation) = IncrementalOffer()
+_vom_offer_direction(::Type{<:AbstractDeviceFormulation}) = IncrementalOffer()
 
 function _add_vom_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::PSY.Component,
     op_cost::PSY.OfferCurveCost,
-    ::U,
+    ::Type{U},
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
-    dir = _vom_offer_direction(U())
+    dir = _vom_offer_direction(U)
     cost_curves = get_offer_curves(dir, op_cost)
     if is_time_variant(cost_curves)
         @warn "$(typeof(dir)) curves are time variant, there is no VOM cost source. Skipping VOM cost."
         return
     end
     _add_vom_cost_to_objective_helper!(
-        container, T(), component, op_cost, cost_curves, U())
+        container, T, component, op_cost, cost_curves, U)
     return
 end
 
 function _add_vom_cost_to_objective_helper!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::PSY.Component,
     ::PSY.OfferCurveCost,
     cost_data::PSY.CostCurve{PSY.PiecewiseIncrementalCurve},
-    ::U,
+    ::Type{U},
 ) where {T <: VariableType, U <: AbstractDeviceFormulation}
     power_units = PSY.get_power_units(cost_data)
     cost_term = PSY.get_proportional_term(PSY.get_vom_cost(cost_data))
@@ -641,10 +648,10 @@ Routes to the PSY-free delta PWL formulation that reads from parameter container
 """
 function add_variable_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::C,
     cost_function::IS.CostCurve{IS.TimeSeriesPiecewiseIncrementalCurve},
-    ::U;
+    ::Type{U};
     dir::OfferDirection = IncrementalOffer(),
 ) where {
     T <: VariableType,
@@ -653,7 +660,7 @@ function add_variable_cost_to_objective!(
 }
     power_units = IS.get_power_units(cost_function)
     device_base_power = get_base_power(component)
-    _add_ts_incremental_pwl_cost!(dir, container, component, T(), U(),
+    _add_ts_incremental_pwl_cost!(dir, container, component, T, U,
         power_units, device_base_power)
     return
 end
@@ -668,8 +675,8 @@ function _add_ts_incremental_pwl_cost!(
     dir::D,
     container::OptimizationContainer,
     component::C,
-    ::T,
-    ::U,
+    ::Type{T},
+    ::Type{U},
     power_units::IS.UnitSystem,
     device_base_power::Float64,
 ) where {
@@ -688,10 +695,10 @@ function _add_ts_incremental_pwl_cost!(
     # Hoist parameter array lookups out of the time loop (4 dict lookups total, not 4*T)
     SlopeParam = _slope_param(dir)
     BPParam = _breakpoint_param(dir)
-    slope_arr = get_parameter_array(container, SlopeParam(), C)
-    slope_mult = get_parameter_multiplier_array(container, SlopeParam(), C)
-    bp_arr = get_parameter_array(container, BPParam(), C)
-    bp_mult = get_parameter_multiplier_array(container, BPParam(), C)
+    slope_arr = get_parameter_array(container, SlopeParam, C)
+    slope_mult = get_parameter_multiplier_array(container, SlopeParam, C)
+    bp_arr = get_parameter_array(container, BPParam, C)
+    bp_mult = get_parameter_multiplier_array(container, BPParam, C)
 
     # Pre-allocate buffers sized from the parameter array axes
     seg_axis = axes(slope_arr)[2]
@@ -712,8 +719,8 @@ function _add_ts_incremental_pwl_cost!(
         add_pwl_constraint_delta!(
             container,
             component,
-            T(),
-            U(),
+            T,
+            U,
             breakpoints,
             pwl_vars,
             t,

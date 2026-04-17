@@ -4,7 +4,7 @@ that dispatch on concrete parameter supertypes to construct the correct `Paramet
 """
 function add_param_container!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     ::Type{V},
     name::String,
@@ -39,7 +39,7 @@ end
 
 function add_param_container!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     variable_types::Tuple{Vararg{Type}},
     sos_variable::SOSStatusVariable = SOSStatusVariable.NO_VARIABLE,
@@ -64,7 +64,7 @@ end
 
 function add_param_container!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     source_key::V,
     axs...;
@@ -84,7 +84,7 @@ end
 
 function add_param_container!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     ::Type{V},
     axs...;
@@ -100,7 +100,7 @@ end
 
 function add_param_container!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     ::Type{U},
     source_key::V,
     axs...;

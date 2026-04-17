@@ -10,7 +10,10 @@ end
 
 get_data_field(store::EmulationModelStore, ::Val{S}) where {S} =
     getfield(store.data_container, S)
-get_data_field(store::EmulationModelStore, type::Symbol) =
+@inline Base.@constprop :aggressive get_data_field(
+    store::EmulationModelStore,
+    type::Symbol,
+) =
     get_data_field(store, Val(type))
 
 function EmulationModelStore()

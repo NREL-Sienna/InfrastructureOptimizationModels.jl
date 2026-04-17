@@ -67,7 +67,7 @@ function _add_quadratic_approx!(
 
     z_var = add_variable_container!(
         container,
-        EpigraphVariable(),
+        EpigraphVariable,
         C,
         names,
         time_steps;
@@ -75,7 +75,7 @@ function _add_quadratic_approx!(
     )
     g_var = add_variable_container!(
         container,
-        SawtoothAuxVariable(),
+        SawtoothAuxVariable,
         C,
         names,
         g_levels,
@@ -84,7 +84,7 @@ function _add_quadratic_approx!(
     )
     lp_cons = add_constraints_container!(
         container,
-        SawtoothLPConstraint(),
+        SawtoothLPConstraint,
         C,
         names,
         1:2,
@@ -93,7 +93,7 @@ function _add_quadratic_approx!(
     )
     link_cons = add_constraints_container!(
         container,
-        SawtoothLinkingConstraint(),
+        SawtoothLinkingConstraint,
         C,
         names,
         time_steps;
@@ -101,7 +101,7 @@ function _add_quadratic_approx!(
     )
     fL_expr = add_expression_container!(
         container,
-        EpigraphTangentExpression(),
+        EpigraphTangentExpression,
         C,
         names,
         time_steps;
@@ -109,7 +109,7 @@ function _add_quadratic_approx!(
     )
     tangent_cons = add_constraints_container!(
         container,
-        EpigraphTangentConstraint(),
+        EpigraphTangentConstraint,
         C,
         names,
         1:(config.depth + 2),
@@ -119,7 +119,7 @@ function _add_quadratic_approx!(
     )
     result_expr = add_expression_container!(
         container,
-        EpigraphExpression(),
+        EpigraphExpression,
         C,
         names,
         time_steps;

@@ -19,7 +19,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -101,7 +101,7 @@ const BILINEAR_META = "BilinearTest"
                 )
                 expr_container = IOM.get_expression(
                     setup.container,
-                    IOM.BilinearProductExpression(),
+                    IOM.BilinearProductExpression,
                     MockThermalGen,
                     BILINEAR_META,
                 )
@@ -142,7 +142,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -175,7 +175,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container2 = IOM.get_expression(
                 setup2.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -213,7 +213,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -254,7 +254,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -285,7 +285,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -321,7 +321,7 @@ const BILINEAR_META = "BilinearTest"
                 )
                 expr_container = IOM.get_expression(
                     setup.container,
-                    IOM.BilinearProductExpression(),
+                    IOM.BilinearProductExpression,
                     MockThermalGen,
                     BILINEAR_META,
                 )
@@ -359,7 +359,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -402,7 +402,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -438,7 +438,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -477,7 +477,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -508,7 +508,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -540,7 +540,7 @@ const BILINEAR_META = "BilinearTest"
                 )
                 expr_container = IOM.get_expression(
                     setup.container,
-                    IOM.BilinearProductExpression(),
+                    IOM.BilinearProductExpression,
                     MockThermalGen,
                     BILINEAR_META,
                 )
@@ -578,7 +578,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -619,7 +619,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -655,7 +655,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -694,7 +694,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -725,7 +725,7 @@ const BILINEAR_META = "BilinearTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.BilinearProductExpression(),
+                IOM.BilinearProductExpression,
                 MockThermalGen,
                 BILINEAR_META,
             )
@@ -757,7 +757,7 @@ const BILINEAR_META = "BilinearTest"
                 )
                 expr_container = IOM.get_expression(
                     setup.container,
-                    IOM.BilinearProductExpression(),
+                    IOM.BilinearProductExpression,
                     MockThermalGen,
                     BILINEAR_META,
                 )

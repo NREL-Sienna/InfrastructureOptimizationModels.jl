@@ -14,7 +14,7 @@ function _setup_qa_test(device_names::Vector{String}, time_steps::UnitRange{Int}
     container = _setup_qa_container(time_steps)
     var_container = IOM.add_variable_container!(
         container,
-        TestOriginalVariable(),
+        TestOriginalVariable,
         MockThermalGen,
         device_names,
         time_steps,
@@ -30,14 +30,14 @@ function _setup_bilinear_test(device_names::Vector{String}, time_steps::UnitRang
     container = _setup_qa_container(time_steps)
     x_var_container = IOM.add_variable_container!(
         container,
-        TestOriginalVariable(),
+        TestOriginalVariable,
         MockThermalGen,
         device_names,
         time_steps,
     )
     y_var_container = IOM.add_variable_container!(
         container,
-        TestApproximatedVariable(),
+        TestApproximatedVariable,
         MockThermalGen,
         device_names,
         time_steps,

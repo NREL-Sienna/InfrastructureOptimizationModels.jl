@@ -21,15 +21,15 @@ _is_time_series_cost(::IS.DeviceParameter) = false
 
 function add_shut_down_cost!(
     container::OptimizationContainer,
-    ::U,
+    ::Type{U},
     devices::IS.FlattenIteratorWrapper{T},
-    ::V,
+    ::Type{V},
 ) where {
     T <: IS.InfrastructureSystemsComponent,
     U <: VariableType,
     V <: AbstractDeviceFormulation,
 }
-    multiplier = objective_function_multiplier(U(), V())
+    multiplier = objective_function_multiplier(U, V)
     for d in devices
         get_must_run(d) && continue
         # Function barrier: op_cost type becomes a compile-time parameter
@@ -76,9 +76,9 @@ end
 
 function add_start_up_cost!(
     container::OptimizationContainer,
-    ::U,
+    ::Type{U},
     devices::IS.FlattenIteratorWrapper{T},
-    ::V,
+    ::Type{V},
 ) where {
     T <: IS.InfrastructureSystemsComponent,
     U <: VariableType,
@@ -87,23 +87,23 @@ function add_start_up_cost!(
     for d in devices
         # Function barrier: op_cost type becomes a compile-time parameter
         _add_start_up_cost_to_objective!(
-            container, U(), d, get_operation_cost(d), V())
+            container, U, d, get_operation_cost(d), V)
     end
     return
 end
 
 function _add_start_up_cost_to_objective!(
     container::OptimizationContainer,
-    ::T,
+    ::Type{T},
     component::C,
     op_cost::IS.DeviceParameter,
-    ::U,
+    ::Type{U},
 ) where {
     T <: VariableType,
     C <: IS.InfrastructureSystemsComponent,
     U <: AbstractDeviceFormulation,
 }
-    multiplier = objective_function_multiplier(T(), U())
+    multiplier = objective_function_multiplier(T, U)
     get_must_run(component) && return
     name = get_name(component)
     if _is_time_series_cost(op_cost)
@@ -113,7 +113,7 @@ function _add_start_up_cost_to_objective!(
             # Broadcast so Tuple-valued parameters (for multi-start formulations) work
             # alongside Float64-valued ones.
             raw_startup_cost = param[name, t] .* mult[name, t]
-            cost_term = start_up_cost(raw_startup_cost, C, T(), U())
+            cost_term = start_up_cost(raw_startup_cost, C, T, U)
             iszero(cost_term) && continue
             rate = cost_term * multiplier
             variable = get_variable(container, T, C)[name, t]
@@ -123,7 +123,7 @@ function _add_start_up_cost_to_objective!(
     else
         raw_startup_cost = get_start_up(op_cost)
         for t in get_time_steps(container)
-            cost_term = start_up_cost(raw_startup_cost, C, T(), U())
+            cost_term = start_up_cost(raw_startup_cost, C, T, U)
             iszero(cost_term) && continue
             rate = cost_term * multiplier
             variable = get_variable(container, T, C)[name, t]

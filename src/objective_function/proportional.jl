@@ -10,19 +10,19 @@ time-varying should implement its own method.
 """
 function add_proportional_cost!(
     container::OptimizationContainer,
-    ::U,
+    ::Type{U},
     devices::IS.FlattenIteratorWrapper{T},
-    ::V,
+    ::Type{V},
 ) where {
     T <: IS.InfrastructureSystemsComponent,
     U <: VariableType,
     V <: AbstractDeviceFormulation,
 }
     # NOTE: anything time-varying should implement its own method.
-    multiplier = objective_function_multiplier(U(), V())
+    multiplier = objective_function_multiplier(U, V)
     for d in devices
         op_cost_data = get_operation_cost(d)
-        cost_term = proportional_cost(op_cost_data, U(), d, V())
+        cost_term = proportional_cost(op_cost_data, U, d, V)
         iszero(cost_term) && continue
         name = get_name(d)
         rate = cost_term * multiplier
@@ -49,22 +49,22 @@ device, formulation pairs.
 """
 function add_proportional_cost_maybe_time_variant!(
     container::OptimizationContainer,
-    ::U,
+    ::Type{U},
     devices::IS.FlattenIteratorWrapper{T},
-    ::V,
+    ::Type{V},
 ) where {
     T <: IS.InfrastructureSystemsComponent,
     U <: VariableType,
     V <: AbstractDeviceFormulation,
 }
-    multiplier = objective_function_multiplier(U(), V())
+    multiplier = objective_function_multiplier(U, V)
     for d in devices
         op_cost_data = get_operation_cost(d)
         # FIXME this should really be in its own function for compilation reasons:
         # is_time_variant_term only depends on the type of op_cost_data.
         name = get_name(d)
         for t in get_time_steps(container)
-            cost_term = proportional_cost(container, op_cost_data, U(), d, V(), t)
+            cost_term = proportional_cost(container, op_cost_data, U, d, V, t)
             iszero(cost_term) && continue
             rate = cost_term * multiplier
 

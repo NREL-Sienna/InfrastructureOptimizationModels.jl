@@ -33,24 +33,19 @@ for i in the set of time steps.
 * duration_data::Vector{UpDown} : gives how many time steps variable needs to be up or down
 * initial_duration::Matrix{InitialCondition} : gives initial conditions for up (column 1) and down (column 2)
 * cons_name::Symbol : name of the constraint
-* var_keys::Tuple{VariableKey, VariableKey, VariableKey}) : names of the variables
-- : var_keys[1] : varon
-- : var_keys[2] : varstart
-- : var_keys[3] : varstop
 """
 function device_duration_retrospective!(
     container::OptimizationContainer,
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
-    cons_type::ConstraintType,
-    var_types::Tuple{VariableType, VariableType, VariableType},
+    ::Type{C},
     ::Type{T},
-) where {T <: PSY.Component}
+) where {C <: ConstraintType, T <: PSY.Component}
     time_steps = get_time_steps(container)
 
-    varon = get_variable(container, var_types[1], T)
-    varstart = get_variable(container, var_types[2], T)
-    varstop = get_variable(container, var_types[3], T)
+    varon = get_variable(container, OnVariable, T)
+    varstart = get_variable(container, StartVariable, T)
+    varstop = get_variable(container, StopVariable, T)
 
     device_name_sets = [
         get_component_name(ic) for
@@ -58,7 +53,7 @@ function device_duration_retrospective!(
     ]
     con_up = add_constraints_container!(
         container,
-        cons_type,
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -66,7 +61,7 @@ function device_duration_retrospective!(
     )
     con_down = add_constraints_container!(
         container,
-        cons_type,
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -142,30 +137,25 @@ for i in the set of time steps.
 * duration_data::Vector{UpDown} : gives how many time steps variable needs to be up or down
 * initial_duration::Matrix{InitialCondition} : gives initial conditions for up (column 1) and down (column 2)
 * cons_name::Symbol : name of the constraint
-* var_keys::Tuple{VariableKey, VariableKey, VariableKey}) : names of the variables
-- : var_keys[1] : varon
-- : var_keys[2] : varstart
-- : var_keys[3] : varstop
 """
 function device_duration_look_ahead!(
     container::OptimizationContainer,
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
-    cons_type_up::ConstraintType,
-    cons_type_down::ConstraintType,
-    var_types::Tuple{VariableType, VariableType, VariableType},
+    ::Type{C_up},
+    ::Type{C_dn},
     ::Type{T},
-) where {T <: PSY.Component}
+) where {C_up <: ConstraintType, C_dn <: ConstraintType, T <: PSY.Component}
     time_steps = get_time_steps(container)
-    varon = get_variable(container, var_types[1], T)
-    varstart = get_variable(container, var_types[2], T)
-    varstop = get_variable(container, var_types[3], T)
+    varon = get_variable(container, OnVariable, T)
+    varstart = get_variable(container, StartVariable, T)
+    varstop = get_variable(container, StopVariable, T)
 
     device_name_sets = [get_component_name(ic) for ic in initial_duration[:, 1]]
     con_up =
-        add_constraints_container!(container, cons_type_up, device_name_sets, time_steps)
+        add_constraints_container!(container, C_up, T, device_name_sets, time_steps)
     con_down =
-        add_constraints_container!(container, cons_type_down, device_name_sets, time_steps)
+        add_constraints_container!(container, C_dn, T, device_name_sets, time_steps)
 
     for t in time_steps
         for (ix, ic) in enumerate(initial_duration[:, 1])
@@ -251,20 +241,19 @@ function device_duration_parameters!(
     container::OptimizationContainer,
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
-    cons_type::ConstraintType,
-    var_types::Tuple{VariableType, VariableType, VariableType},
+    ::Type{C},
     ::Type{T},
-) where {T <: PSY.Component}
+) where {C <: ConstraintType, T <: PSY.Component}
     time_steps = get_time_steps(container)
 
-    varon = get_variable(container, var_types[1], T)
-    varstart = get_variable(container, var_types[2], T)
-    varstop = get_variable(container, var_types[3], T)
+    varon = get_variable(container, OnVariable, T)
+    varstart = get_variable(container, StartVariable, T)
+    varstop = get_variable(container, StopVariable, T)
 
     device_name_sets = [get_component_name(ic) for ic in initial_duration[:, 1]]
     con_up = add_constraints_container!(
         container,
-        cons_type,
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -272,7 +261,7 @@ function device_duration_parameters!(
     )
     con_down = add_constraints_container!(
         container,
-        cons_type,
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -374,20 +363,19 @@ function device_duration_compact_retrospective!(
     container::OptimizationContainer,
     duration_data::Vector{UpDown},
     initial_duration::Matrix{InitialCondition},
-    cons_type::ConstraintType,
-    var_types::Tuple{VariableType, VariableType, VariableType},
+    ::Type{C},
     ::Type{T},
-) where {T <: PSY.Component}
+) where {C <: ConstraintType, T <: PSY.Component}
     time_steps = get_time_steps(container)
 
-    varon = get_variable(container, var_types[1], T)
-    varstart = get_variable(container, var_types[2], T)
-    varstop = get_variable(container, var_types[3], T)
+    varon = get_variable(container, OnVariable, T)
+    varstart = get_variable(container, StartVariable, T)
+    varstop = get_variable(container, StopVariable, T)
 
     device_name_sets = [get_component_name(ic) for ic in initial_duration[:, 1]]
     con_up = add_constraints_container!(
         container,
-        cons_type,
+        C,
         T,
         device_name_sets,
         time_steps;
@@ -396,7 +384,7 @@ function device_duration_compact_retrospective!(
     )
     con_down = add_constraints_container!(
         container,
-        cons_type,
+        C,
         T,
         device_name_sets,
         time_steps;

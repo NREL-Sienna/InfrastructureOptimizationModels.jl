@@ -280,13 +280,13 @@ end
     _, source_static = _make_static_iec_system()
     _, source_ts = _make_ts_iec_system()
 
-    param = IOM.IncrementalPiecewiseLinearSlopeParameter()
+    param = IOM.IncrementalPiecewiseLinearSlopeParameter
     @test !IOM._has_parameter_time_series(param, comp_static)
     @test IOM._has_parameter_time_series(param, comp_ts)
     @test !IOM._has_parameter_time_series(param, source_static)
     @test IOM._has_parameter_time_series(param, source_ts)
 
-    startup_param = IOM.StartupCostParameter()
+    startup_param = IOM.StartupCostParameter
     @test !IOM._has_parameter_time_series(startup_param, comp_static)
     @test IOM._has_parameter_time_series(startup_param, comp_ts)
 end
@@ -321,24 +321,24 @@ end
     _, comp = _make_static_mbc_system()
     # Startup: static StartUpStages, should warn about multistart but not error
     @test_logs (:warn, r"Multi-start") IOM.validate_occ_component(
-        IOM.StartupCostParameter(), comp)
+        IOM.StartupCostParameter, comp)
     # Shutdown: LinearCurve is valid
-    IOM.validate_occ_component(IOM.ShutdownCostParameter(), comp)
+    IOM.validate_occ_component(IOM.ShutdownCostParameter, comp)
 
     # CostAtMin: should not error (simplified to no-op)
-    IOM.validate_occ_component(IOM.IncrementalCostAtMinParameter(), comp)
-    IOM.validate_occ_component(IOM.DecrementalCostAtMinParameter(), comp)
+    IOM.validate_occ_component(IOM.IncrementalCostAtMinParameter, comp)
+    IOM.validate_occ_component(IOM.DecrementalCostAtMinParameter, comp)
 
     # Breakpoints: validates the static curve
     IOM.validate_occ_component(
-        IOM.IncrementalPiecewiseLinearBreakpointParameter(), comp)
+        IOM.IncrementalPiecewiseLinearBreakpointParameter, comp)
     IOM.validate_occ_component(
-        IOM.DecrementalPiecewiseLinearBreakpointParameter(), comp)
+        IOM.DecrementalPiecewiseLinearBreakpointParameter, comp)
 
     # TS MBC: startup validation should return immediately (skip TS)
     _, comp_ts = _make_ts_mbc_system()
-    IOM.validate_occ_component(IOM.StartupCostParameter(), comp_ts)
-    IOM.validate_occ_component(IOM.ShutdownCostParameter(), comp_ts)
+    IOM.validate_occ_component(IOM.StartupCostParameter, comp_ts)
+    IOM.validate_occ_component(IOM.ShutdownCostParameter, comp_ts)
 end
 
 @testset "Offer Curve Cost: Validation errors (static IEC)" begin

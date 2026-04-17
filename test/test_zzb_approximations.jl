@@ -102,7 +102,7 @@ const ZZB_META = "ZZBTest"
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.QuadraticExpression(),
+            IOM.QuadraticExpression,
             MockThermalGen,
             ZZB_META,
         )
@@ -151,7 +151,7 @@ const ZZB_META = "ZZBTest"
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.QuadraticExpression(),
+            IOM.QuadraticExpression,
             MockThermalGen,
             ZZB_META,
         )
@@ -189,7 +189,7 @@ const ZZB_META = "ZZBTest"
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.QuadraticExpression(),
+            IOM.QuadraticExpression,
             MockThermalGen,
             ZZB_META,
         )
@@ -227,7 +227,7 @@ const ZZB_META = "ZZBTest"
         )
         expr_min = IOM.get_expression(
             setup_min.container,
-            IOM.QuadraticExpression(),
+            IOM.QuadraticExpression,
             MockThermalGen,
             ZZB_META,
         )
@@ -257,7 +257,7 @@ const ZZB_META = "ZZBTest"
         )
         expr_max = IOM.get_expression(
             setup_max.container,
-            IOM.QuadraticExpression(),
+            IOM.QuadraticExpression,
             MockThermalGen,
             ZZB_META,
         )
@@ -293,7 +293,7 @@ const ZZB_META = "ZZBTest"
             )
             expr_container = IOM.get_expression(
                 setup.container,
-                IOM.QuadraticExpression(),
+                IOM.QuadraticExpression,
                 MockThermalGen,
                 ZZB_META,
             )
@@ -327,7 +327,7 @@ const ZZB_META = "ZZBTest"
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.QuadraticExpression(),
+            IOM.QuadraticExpression,
             MockThermalGen,
             ZZB_META,
         )
@@ -362,7 +362,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.BilinearProductExpression(),
+            IOM.BilinearProductExpression,
             MockThermalGen,
             ZZB_META,
         )
@@ -399,7 +399,7 @@ end
                 )
                 expr_container = IOM.get_expression(
                     setup.container,
-                    IOM.BilinearProductExpression(),
+                    IOM.BilinearProductExpression,
                     MockThermalGen,
                     ZZB_META,
                 )
@@ -442,7 +442,7 @@ end
         )
         expr_container = IOM.get_expression(
             setup.container,
-            IOM.BilinearProductExpression(),
+            IOM.BilinearProductExpression,
             MockThermalGen,
             ZZB_META,
         )

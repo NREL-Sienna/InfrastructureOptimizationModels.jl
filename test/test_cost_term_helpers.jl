@@ -195,7 +195,7 @@ Test types defined in test_utils/test_types.jl.
             )
 
             expr_container =
-                IOM.get_expression(container, TestCostExpression(), MockThermalGen)
+                IOM.get_expression(container, TestCostExpression, MockThermalGen)
             expr = expr_container["gen1", 1]
             @test JuMP.coefficient(expr, var) ≈ rate
         end
@@ -227,7 +227,7 @@ Test types defined in test_utils/test_types.jl.
             )
 
             expr_container = IOM.get_expression(
-                container, IOM.FuelConsumptionExpression(), MockThermalGen,
+                container, IOM.FuelConsumptionExpression, MockThermalGen,
             )
             @test JuMP.constant(expr_container["gen1", 2]) ≈ cost_value
             # Other time steps should be unaffected
@@ -262,7 +262,7 @@ Test types defined in test_utils/test_types.jl.
             )
 
             expr_container = IOM.get_expression(
-                container, IOM.FuelConsumptionExpression(), MockThermalGen,
+                container, IOM.FuelConsumptionExpression, MockThermalGen,
             )
             @test JuMP.coefficient(expr_container["gen1", 1], var) ≈ 3.0
         end
@@ -292,7 +292,7 @@ Test types defined in test_utils/test_types.jl.
 
             # Create power variable
             power_var_container = IOM.add_variable_container!(
-                container, TestCostVariable(), MockThermalGen, ["gen1"], time_steps,
+                container, TestCostVariable, MockThermalGen, ["gen1"], time_steps,
             )
             jump_model = IOM.get_jump_model(container)
             for t in time_steps
@@ -307,7 +307,7 @@ Test types defined in test_utils/test_types.jl.
             # We set it to proportional_term * power_var to simulate that.
             fuel_expr_container = IOM.add_expression_container!(
                 container,
-                IOM.FuelConsumptionExpression(),
+                IOM.FuelConsumptionExpression,
                 MockThermalGen,
                 ["gen1"],
                 time_steps,
@@ -344,7 +344,7 @@ Test types defined in test_utils/test_types.jl.
 
             IOM._add_time_varying_fuel_variable_cost!(
                 container,
-                TestCostVariable(),
+                TestCostVariable,
                 device,
                 ts_key,
             )

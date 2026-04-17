@@ -16,8 +16,8 @@ end
 
 # Stub: objective_function_multiplier returns 1.0 for test types
 InfrastructureOptimizationModels.objective_function_multiplier(
-    ::TestActivePowerVariable,
-    ::TestQuadraticFormulation,
+    ::Type{TestActivePowerVariable},
+    ::Type{TestQuadraticFormulation},
 ) = 1.0
 
 # Helper to set up container with variables for a device (same pattern as linear tests)
@@ -44,7 +44,7 @@ function setup_quadratic_test_container(
     device_name = get_name(device)
     var_container = InfrastructureOptimizationModels.add_variable_container!(
         container,
-        TestActivePowerVariable(),
+        TestActivePowerVariable,
         MockThermalGen,
         [device_name],
         time_steps,
@@ -76,7 +76,7 @@ end
 
         InfrastructureOptimizationModels._add_quadraticcurve_variable_term_to_model!(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             device,
             linear_term,
             quadratic_term,
@@ -86,14 +86,14 @@ end
         # Verify coefficients (dt=1.0 so same as input)
         quad_coef = get_objective_quadratic_coefficient(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             MockThermalGen,
             "gen1",
             1,
         )
         lin_coef = get_objective_coefficient(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             MockThermalGen,
             "gen1",
             1,
@@ -105,10 +105,10 @@ end
         # Other time periods should have zero coefficients
         for t in 2:3
             @test get_objective_quadratic_coefficient(
-                container, TestActivePowerVariable(), MockThermalGen, "gen1", t,
+                container, TestActivePowerVariable, MockThermalGen, "gen1", t,
             ) ≈ 0.0
             @test get_objective_coefficient(
-                container, TestActivePowerVariable(), MockThermalGen, "gen1", t,
+                container, TestActivePowerVariable, MockThermalGen, "gen1", t,
             ) ≈ 0.0
         end
     end
@@ -128,7 +128,7 @@ end
 
         InfrastructureOptimizationModels._add_quadraticcurve_variable_term_to_model!(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             device,
             linear_term,
             quadratic_term,
@@ -136,10 +136,10 @@ end
         )
 
         quad_coef = get_objective_quadratic_coefficient(
-            container, TestActivePowerVariable(), MockThermalGen, "gen1", 1,
+            container, TestActivePowerVariable, MockThermalGen, "gen1", 1,
         )
         lin_coef = get_objective_coefficient(
-            container, TestActivePowerVariable(), MockThermalGen, "gen1", 1,
+            container, TestActivePowerVariable, MockThermalGen, "gen1", 1,
         )
 
         # dt = 0.5 for 30 minute resolution
@@ -162,8 +162,8 @@ end
 
         InfrastructureOptimizationModels._add_quadraticcurve_variable_cost!(
             container,
-            TestActivePowerVariable(),
-            TestQuadraticFormulation(),
+            TestActivePowerVariable,
+            TestQuadraticFormulation,
             device,
             proportional_term,
             quadratic_term,
@@ -177,10 +177,10 @@ end
         # Verify all time steps have same coefficients
         for t in time_steps
             quad_coef = get_objective_quadratic_coefficient(
-                container, TestActivePowerVariable(), MockThermalGen, "gen1", t,
+                container, TestActivePowerVariable, MockThermalGen, "gen1", t,
             )
             lin_coef = get_objective_coefficient(
-                container, TestActivePowerVariable(), MockThermalGen, "gen1", t,
+                container, TestActivePowerVariable, MockThermalGen, "gen1", t,
             )
             # dt=1.0 multiplier applied
             @test quad_coef ≈ expected_quadratic * 1.0
@@ -202,8 +202,8 @@ end
 
         InfrastructureOptimizationModels._add_quadraticcurve_variable_cost!(
             container,
-            TestActivePowerVariable(),
-            TestQuadraticFormulation(),
+            TestActivePowerVariable,
+            TestQuadraticFormulation,
             device,
             proportional_terms,
             quadratic_terms,
@@ -212,10 +212,10 @@ end
         # Verify each time step has correct coefficients (with dt=1.0)
         for t in time_steps
             quad_coef = get_objective_quadratic_coefficient(
-                container, TestActivePowerVariable(), MockThermalGen, "gen1", t,
+                container, TestActivePowerVariable, MockThermalGen, "gen1", t,
             )
             lin_coef = get_objective_coefficient(
-                container, TestActivePowerVariable(), MockThermalGen, "gen1", t,
+                container, TestActivePowerVariable, MockThermalGen, "gen1", t,
             )
             @test quad_coef ≈ quadratic_terms[t] * 1.0
             @test lin_coef ≈ proportional_terms[t] * 1.0
@@ -242,10 +242,10 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestQuadraticFormulation(),
+                TestQuadraticFormulation,
             )
 
             # NATURAL_UNITS conversion:
@@ -257,7 +257,7 @@ end
 
             @test verify_quadratic_objective_coefficients(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 MockThermalGen,
                 "gen1",
                 expected_linear,
@@ -284,10 +284,10 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestQuadraticFormulation(),
+                TestQuadraticFormulation,
             )
 
             # SYSTEM_BASE: no conversion
@@ -296,7 +296,7 @@ end
 
             @test verify_quadratic_objective_coefficients(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 MockThermalGen,
                 "gen1",
                 expected_linear,
@@ -323,10 +323,10 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestQuadraticFormulation(),
+                TestQuadraticFormulation,
             )
 
             # DEVICE_BASE conversion:
@@ -337,7 +337,7 @@ end
 
             @test verify_quadratic_objective_coefficients(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 MockThermalGen,
                 "gen1",
                 expected_linear,
@@ -364,10 +364,10 @@ end
 
             InfrastructureOptimizationModels.add_variable_cost_to_objective!(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 device,
                 cost_curve,
-                TestQuadraticFormulation(),
+                TestQuadraticFormulation,
             )
 
             # NATURAL_UNITS with 15-min resolution (dt = 0.25):
@@ -378,7 +378,7 @@ end
 
             @test verify_quadratic_objective_coefficients(
                 container,
-                TestActivePowerVariable(),
+                TestActivePowerVariable,
                 MockThermalGen,
                 "gen1",
                 expected_linear,
@@ -399,8 +399,8 @@ end
 
         InfrastructureOptimizationModels._add_quadraticcurve_variable_cost!(
             container,
-            TestActivePowerVariable(),
-            TestQuadraticFormulation(),
+            TestActivePowerVariable,
+            TestQuadraticFormulation,
             device,
             proportional_term,
             quadratic_term,
@@ -409,10 +409,10 @@ end
         # Should only have linear terms, no quadratic
         for t in time_steps
             quad_coef = get_objective_quadratic_coefficient(
-                container, TestActivePowerVariable(), MockThermalGen, "gen1", t,
+                container, TestActivePowerVariable, MockThermalGen, "gen1", t,
             )
             lin_coef = get_objective_coefficient(
-                container, TestActivePowerVariable(), MockThermalGen, "gen1", t,
+                container, TestActivePowerVariable, MockThermalGen, "gen1", t,
             )
             @test quad_coef ≈ 0.0
             @test lin_coef ≈ proportional_term * 1.0  # dt = 1.0
@@ -441,10 +441,10 @@ end
 
         InfrastructureOptimizationModels.add_variable_cost_to_objective!(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             device,
             fuel_curve,
-            TestQuadraticFormulation(),
+            TestQuadraticFormulation,
         )
 
         # NATURAL_UNITS conversion:
@@ -458,7 +458,7 @@ end
 
         @test verify_quadratic_objective_coefficients(
             container,
-            TestActivePowerVariable(),
+            TestActivePowerVariable,
             MockThermalGen,
             "gen1",
             expected_linear,
