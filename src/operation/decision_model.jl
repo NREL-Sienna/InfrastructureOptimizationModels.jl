@@ -1,3 +1,22 @@
+function get_deterministic_time_series_type(sys::PSY.System)
+    time_series_types = IS.get_time_series_counts_by_type(sys.data)
+    existing_types = Set(d["type"] for d in time_series_types)
+    if Set(["Deterministic", "DeterministicSingleTimeSeries"]) ∈ existing_types
+        error(
+            "The System contains a combination of forecast data and transformed time series data. Currently this is not supported.",
+        )
+    end
+    if "Deterministic" ∈ existing_types
+        return PSY.Deterministic
+    elseif "DeterministicSingleTimeSeries" ∈ existing_types
+        return PSY.DeterministicSingleTimeSeries
+    else
+        error(
+            "The System does not contain any forecast data or transformed time series data.",
+        )
+    end
+end
+
 """
 Abstract type for models that use default InfrastructureOptimizationModels formulations. For custom decision problems
     use DecisionProblem as the super type.
