@@ -287,7 +287,7 @@ function validate_occ_component(::Type{<:StartupCostParameter}, device::PSY.Stat
     elseif !(startup isa Float64)
         throw(
             ArgumentError(
-                "Expected Float64 or StartUpStages startup cost but got $(typeof(startup)) for $(get_name(device))",
+                "Expected Float64, NTuple{3, Float64}, or StartUpStages startup cost but got $(typeof(startup)) for $(get_name(device))",
             ),
         )
     end
